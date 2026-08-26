@@ -11,6 +11,8 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 export interface AccessTokenClaims {
   sub: string;
+  /** Issued-at, in seconds. Set by the signer; used to test against revocations. */
+  iat?: number;
   org: string;
   wks?: string;
   role: string;
@@ -93,8 +95,11 @@ export class AuthGuard implements CanActivate {
     }
     if (claims.typ !== 'access') throw AppError.unauthenticated('Wrong token type');
 
-    // A revoked session must stop working before its token expires.
-    if (await this.redis.client.get(`atr:global:revoked-user:${claims.sub}`)) {
+    // Revocation is a watermark, not a ban: tokens issued before the user's
+    // sessions were revoked stop working immediately, while a fresh login
+    // straight afterwards still succeeds.
+    const watermark = await this.redis.client.get(`atr:global:revoked-before:${claims.sub}`);
+    if (watermark && (claims.iat ?? 0) < Number(watermark)) {
       throw AppError.unauthenticated('This session has been revoked');
     }
 

@@ -358,8 +358,13 @@ export class AuthService {
   }
 
   /**
-   * Kill every session for a user. The Redis marker closes the window in which
-   * an already-issued access token would still verify.
+   * Kill every session for a user.
+   *
+   * Access tokens are stateless, so a watermark in Redis closes the window in
+   * which an already-issued one would still verify. It records *when* the
+   * revocation happened rather than a flag, so a legitimate login immediately
+   * afterwards is not caught by the same sweep. The key expires once no
+   * outstanding access token could still be valid.
    */
   async revokeAllSessions(userId: string, reason: string): Promise<void> {
     await this.prisma.raw.session.updateMany({
@@ -368,11 +373,12 @@ export class AuthService {
     });
     const accessTtlMs = parseDuration(this.config.get('security', { infer: true })!.accessTtl);
     await this.redis.client.set(
-      `atr:global:revoked-user:${userId}`,
-      reason,
+      `atr:global:revoked-before:${userId}`,
+      String(Math.floor(Date.now() / 1000)),
       'PX',
       Math.max(accessTtlMs, 60_000),
     );
+    this.logger.info('Revoked all sessions for a user', { userId, reason });
   }
 
   async listSessions(userId: string) {

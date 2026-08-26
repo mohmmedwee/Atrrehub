@@ -15,6 +15,8 @@ import { RequestContextMiddleware } from './core/http/request-context.middleware
 import { ResponseEnvelopeInterceptor } from './core/http/response.interceptor';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DirectoryModule } from './modules/directory/directory.module';
+import { IamModule } from './modules/iam/iam.module';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
@@ -33,6 +35,8 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     AuditModule,
     TenancyModule,
     AuthModule,
+    IamModule,
+    DirectoryModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.
