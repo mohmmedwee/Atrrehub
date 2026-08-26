@@ -10,7 +10,7 @@ Built from the 51-phase product plan (Phase 0 – Phase 50) in
 [`docs/product/prd.md`](docs/product/prd.md). The MVP boundary the plan defines
 (§52) is complete end to end, along with much of Release 2 and Release 3.
 
-**Delivery status: 30 phases built, 11 partial, 6 schema only, 4 not built.**
+**Delivery status: 34 phases built, 12 partial, 1 schema only, 4 not built.**
 [`docs/product/roadmap.md`](docs/product/roadmap.md) lists every phase with its
 evidence and its named gaps.
 
@@ -161,14 +161,16 @@ pnpm infra:up            # datastores only
 
 | Suite | Command | Covers |
 |---|---|---|
-| Unit | `pnpm test` | Permission evaluation and role escalation, crypto, business-hours arithmetic across timezones and holidays, conversation lifecycle, contact normalization, routing conditions, RAG chunking and fusion, guardrail detectors, the workflow expression evaluator |
+| Unit | `pnpm test` | Permission evaluation and role escalation, crypto, business-hours arithmetic across timezones and holidays, conversation lifecycle, contact normalization, routing conditions, RAG chunking and fusion, guardrail detectors, the workflow expression evaluator, evaluation scorers, report rendering and scheduling, CRM field mapping and sync, OIDC ID-token verification |
 | Integration | `pnpm test:e2e` | Tenant isolation across read, write, delete, list and forged headers; registration and provisioning; refresh-token rotation and reuse detection; deny-by-default authorization; API key scoping |
 
 The guardrail and expression suites are deliberately adversarial: they assert
 that the injection detector does not flag "show me the instructions for
 returning an item", that the PII detector Luhn-validates card numbers rather
 than masking order references, that tool egress refuses the cloud metadata
-endpoint, and that the expression evaluator cannot be made to execute code.
+endpoint, that the expression evaluator cannot be made to execute code, and
+that the OIDC verifier rejects a forged token, a replayed one, and one signed
+with `alg: none`.
 
 ---
 
@@ -220,12 +222,19 @@ posture and [`docs/runbooks.md`](docs/runbooks.md) for operations.
 REST at `/api/v1`, documented at `/api/docs` in non-production. Conventions are
 specified in [`docs/api/standards.md`](docs/api/standards.md):
 
-- Bearer tokens, API keys or widget tokens, all normalizing to one principal
+- Bearer tokens, API keys, SCIM tokens or widget tokens, all normalizing to one
+  principal
 - Cursor pagination, stable under concurrent writes
 - RFC 9457 problem details with stable machine-readable codes
 - `Idempotency-Key` on creating requests; `If-Match` for optimistic locking
 - Rate limits with separate buckets for auth, general API, AI and bulk work
 - Webhooks signed with HMAC-SHA256 over `{timestamp}.{body}`
+
+SCIM 2.0 is mounted at `/scim/v2`, outside the version prefix, because identity
+providers are configured with that base URL and the specification fixes the
+path. Those routes answer in SCIM's own body shape — a provider handed an RFC
+9457 problem document reports an opaque failure and, in several
+implementations, stops synchronizing altogether.
 
 ---
 

@@ -18,6 +18,24 @@ async function bootstrap(): Promise<void> {
     { bufferLogs: true },
   );
 
+  // Identity providers send SCIM bodies as `application/scim+json`, which
+  // Fastify does not parse by default — without this every write from a
+  // provider is rejected as an unsupported media type.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      'application/scim+json',
+      { parseAs: 'string' },
+      (_request: unknown, body: string, done: (error: Error | null, value?: unknown) => void) => {
+        try {
+          done(null, body ? JSON.parse(body) : {});
+        } catch (error) {
+          done(error as Error);
+        }
+      },
+    );
+
   const logger = app.get(AppLogger);
   app.useLogger(logger);
 
@@ -25,7 +43,12 @@ async function bootstrap(): Promise<void> {
   const http = config.get('http', { infer: true })!;
   const isProduction = config.get('isProduction', { infer: true });
 
-  app.setGlobalPrefix('api/v1', { exclude: ['healthz', 'readyz', 'metrics'] });
+  // SCIM is excluded from the version prefix: identity providers are given a
+  // `/scim/v2` base URL and the specification fixes the path, so a versioned
+  // one would simply not be reachable by them.
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['healthz', 'readyz', 'metrics', 'scim/v2/(.*)'],
+  });
 
   await app.register(import('@fastify/helmet'), {
     contentSecurityPolicy: isProduction ? undefined : false,

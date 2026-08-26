@@ -20,6 +20,24 @@ interface ProblemDetails {
 
 const DOC_BASE = 'https://docs.atrrehub.com/errors';
 
+const SCIM_ERROR_SCHEMA = 'urn:ietf:params:scim:api:messages:2.0:Error';
+
+/**
+ * RFC 7644 §3.12. `scimType` and the SCIM status are carried on the error's
+ * `meta.scim` when the service knows them; otherwise the HTTP status is used,
+ * which is what a provider keys its retry behaviour off anyway.
+ */
+function toScimError(problem: ProblemDetails): Record<string, unknown> {
+  const scim = problem.meta?.scim as { scimType?: string; status?: string } | undefined;
+  const status = scim?.status ? Number(scim.status) : problem.status;
+  return {
+    schemas: [SCIM_ERROR_SCHEMA],
+    ...(scim?.scimType ? { scimType: scim.scimType } : {}),
+    detail: problem.detail,
+    status: String(status),
+  };
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   constructor(private readonly logger: AppLogger) {}
@@ -43,6 +61,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code: problem.code,
         detail: problem.detail,
       });
+    }
+
+    // SCIM has its own error body, and identity providers parse it: one that
+    // receives an RFC 9457 problem document where it expected a SCIM error
+    // reports an opaque failure and, in several implementations, stops
+    // synchronizing. This lives here rather than in a controller-scoped filter
+    // because a global catch-all filter takes precedence over one, so a
+    // scoped filter would never run.
+    if (request?.url?.startsWith('/scim/')) {
+      const scim = toScimError(problem);
+      // The HTTP status and the body's status must agree: a provider keys its
+      // retry and alerting off the former and logs the latter.
+      void reply.status(Number(scim.status)).type('application/scim+json').send(scim);
+      return;
     }
 
     void reply.status(problem.status).type('application/problem+json').send(problem);

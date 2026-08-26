@@ -14,11 +14,11 @@ Status is assessed against **code that exists and runs**, not against intent:
 - **Schema only** — database tables exist, no service or API behind them.
 - **Not built** — designed and documented, no implementation.
 
-**Totals: 30 built · 11 partial · 6 schema only · 4 not built.**
+**Totals: 34 built · 12 partial · 1 schema only · 4 not built.**
 
 ---
 
-## Built (30)
+## Built (34)
 
 | Phase | Domain | Evidence |
 |---|---|---|
@@ -49,13 +49,17 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 27 | Real-time quality | Live signals pushed to the agent during the conversation |
 | 28 | Customer intelligence | Intent, sentiment, topics, entities, churn risk, trends |
 | 29 | Analytics platform | Executive, agent, AI and channel dashboards |
+| 30 | Reporting | Closed source catalogue, saved reports, CSV export, scheduled email |
+| 32 | CRM & enterprise integrations | Connect/test/enable/sync lifecycle, four connectors, field mapping |
+| 34 | Notification platform | Rules, audiences, in-app/email/webhook delivery, inbox |
+| 36 | AI evaluation | Six scorers, dataset runs, run diffing, the agent promotion gate |
 | 38 | Security | Application and data controls — see `docs/security/controls.md` |
-| 48 | Testing platform | 136 unit + 23 integration tests, tenant isolation in CI |
+| 48 | Testing platform | 225 unit + 23 integration tests, tenant isolation in CI |
 | 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
 
 ---
 
-## Partial (11)
+## Partial (12)
 
 | Phase | Domain | Built | Gap |
 |---|---|---|---|
@@ -64,6 +68,7 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 35 | Billing & usage | AI token/cost metering, per-tenant monthly ceilings enforced in the gateway | No subscription management, no plan enforcement beyond AI, no usage rollups |
 | 37 | AI governance | Allowed models, token and cost limits, retention window, full AI audit trail | No admin API or UI to manage the policy |
 | 39 | Enterprise compliance | Retention enforcement, audit trail, right-to-erasure for memory | No data export, no residency controls, no access reviews |
+| 40 | Enterprise SSO & provisioning | OIDC with JWKS verification, PKCE, domain routing, JIT provisioning, group→role mapping, SCIM 2.0 Users and Groups | No SAML — assertion signature verification needs XML canonicalization, which is not safe to hand-roll |
 | 41 | Observability | 168 Prometheus metrics, structured logs with correlation | OTel config exists but tracing is **not wired**; no exporter registered |
 | 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown | No read-replica routing, no dead-letter queue configuration |
 | 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress | No automated tenant provisioning API, no usage metering for billing |
@@ -73,18 +78,13 @@ Status is assessed against **code that exists and runs**, not against intent:
 
 ---
 
-## Schema only (6)
+## Schema only (1)
 
 Tables exist in the data model; no service, controller or job uses them.
 
 | Phase | Domain | Tables present |
 |---|---|---|
-| 30 | Reporting | `saved_reports` |
-| 32 | CRM & enterprise integrations | `integrations` |
-| 34 | Notification platform | `notification_rules`, `notifications` |
-| 36 | AI evaluation | `evaluation_datasets`, `evaluation_cases`, `evaluation_runs`, `evaluation_results` — the agent publish gate reads datasets, but nothing executes a run |
-| 40 | Enterprise SSO & provisioning | `sso_connections` |
-| — | Analytics rollups | `metrics_daily` (analytics computes live from operational tables instead) |
+| — | Analytics rollups | `metrics_daily` (analytics and reporting both compute live from operational tables instead) |
 
 ---
 
@@ -113,5 +113,5 @@ copilot and basic analytics.
 |---|---|---|
 | **1 — MVP** | Phases 2–21, 29 | Complete |
 | **2** | Voice, AI voice, WhatsApp, routing, automation, AI customer context | Routing, automation and customer context complete; voice and social outstanding |
-| **3** | AI QC, real-time QC, advanced analytics, social channels, WFM | QC and real-time QC complete; advanced analytics partial; social and WFM outstanding |
-| **Enterprise** | SSO, SCIM, private cloud, hybrid, advanced security, AI governance, developer platform, HA/DR | Security and governance largely complete; the rest partial or outstanding |
+| **3** | AI QC, real-time QC, advanced analytics, social channels, WFM | QC, real-time QC and reporting complete; social and WFM outstanding |
+| **Enterprise** | SSO, SCIM, private cloud, hybrid, advanced security, AI governance, developer platform, HA/DR | SSO (OIDC), SCIM, security and governance complete; SAML, hybrid and DR outstanding |

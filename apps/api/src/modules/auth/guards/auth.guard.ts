@@ -46,6 +46,7 @@ export class AuthGuard implements CanActivate {
     const headers = request.headers as Record<string, string | undefined>;
 
     const resolved =
+      (await this.fromScimToken(headers)) ??
       (await this.fromBearer(headers)) ??
       (await this.fromApiKey(headers)) ??
       (await this.fromWidgetToken(headers));
@@ -146,6 +147,37 @@ export class AuthGuard implements CanActivate {
       permissions: record.permissions,
     };
     return { principal, organizationId: record.organizationId, workspaceId: undefined };
+  }
+
+  /**
+   * A SCIM bearer token, issued per SSO connection.
+   *
+   * Resolved before the JWT path, because an identity provider sends it in the
+   * same Authorization header and JWT verification would reject it as a
+   * malformed access token before anything else could look at it. The
+   * permission set is exactly what directory synchronization needs and nothing
+   * more — this credential lives in a third-party system.
+   */
+  private async fromScimToken(headers: Record<string, string | undefined>) {
+    const header = headers.authorization;
+    if (!header?.startsWith('Bearer scim_')) return null;
+
+    const connection = await this.prisma.raw.ssoConnection.findFirst({
+      where: {
+        isEnabled: true,
+        config: { path: ['scimTokenHash'], equals: this.crypto.hashToken(header.slice(7)) },
+      },
+      select: { id: true, domain: true, organizationId: true },
+    });
+    if (!connection) throw AppError.unauthenticated('The SCIM token is invalid');
+
+    const principal: Principal = {
+      type: 'system',
+      id: connection.id,
+      label: `SCIM (${connection.domain})`,
+      permissions: ['user:manage', 'organization:read'],
+    };
+    return { principal, organizationId: connection.organizationId, workspaceId: undefined };
   }
 
   private async fromWidgetToken(headers: Record<string, string | undefined>) {

@@ -217,6 +217,48 @@ export class AuthService {
     });
   }
 
+  /**
+   * Issue a session for a user already authenticated by an identity provider.
+   *
+   * Deliberately does not touch the password path: there is no password to
+   * check, and no lockout counter to clear, because nothing was guessed. MFA
+   * is likewise the provider's to enforce — re-prompting for a second factor
+   * the IdP already required is friction without a threat behind it.
+   */
+  async completeFederatedLogin(userId: string, organizationId: string): Promise<AuthResult> {
+    const user = await this.prisma.raw.user.findUnique({
+      where: { id: userId },
+      include: {
+        memberships: {
+          where: { organizationId },
+          include: { organization: true, role: true },
+        },
+      },
+    });
+    if (!user) throw AppError.unauthenticated('This account no longer exists');
+    if (user.status === 'suspended' || user.status === 'deactivated')
+      throw AppError.unauthenticated('This account is not active');
+
+    const membership = user.memberships[0];
+    if (!membership)
+      throw AppError.unauthenticated('This account does not belong to that organization');
+
+    RequestContextStore.patch({ organizationId });
+
+    return this.issueSession({
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      mfaEnabled: user.mfaEnabled,
+      organization: membership.organization,
+      roleKey: membership.role.key,
+      permissions: membership.role.permissions,
+      isOwner: membership.isOwner,
+      mfaVerified: true,
+    });
+  }
+
   /** Exponential lockout: 1m, 2m, 4m … capped, after the threshold is crossed. */
   private async recordFailedLogin(userId: string, current: number): Promise<void> {
     const count = current + 1;

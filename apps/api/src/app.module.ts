@@ -21,6 +21,7 @@ import { EvaluationModule } from './modules/evaluation/evaluation.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SsoModule } from './modules/sso/sso.module';
 import { QualityModule } from './modules/quality/quality.module';
 import { CopilotModule } from './modules/copilot/copilot.module';
 import { GuardrailsModule } from './modules/guardrails/guardrails.module';
@@ -92,6 +93,7 @@ import { WorkersModule } from './workers/workers.module';
     IntegrationsModule,
     NotificationsModule,
     ReportsModule,
+    SsoModule,
     WidgetModule,
     WorkersModule,
   ],
