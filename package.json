@@ -2,9 +2,12 @@
   "name": "atrrehub",
   "version": "0.1.0",
   "private": true,
-  "description": "Atrrehub — AI-Native Omnichannel Customer Experience & Contact Center Platform",
+  "description": "Atrrehub \u2014 AI-Native Omnichannel Customer Experience & Contact Center Platform",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22.0.0", "pnpm": ">=10.0.0" },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
   "scripts": {
     "build": "pnpm -r --filter \"./packages/*\" build && pnpm -r --filter \"./apps/*\" build",
     "dev": "pnpm -r --parallel dev",
@@ -29,5 +32,15 @@
     "@types/node": "^22.10.2",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "@swc/core",
+      "esbuild",
+      "msgpackr-extract"
+    ]
   }
 }

@@ -1,0 +1,81 @@
+name: atrrehub
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: atrrehub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atrrehub
+      POSTGRES_PASSWORD: atrrehub
+      POSTGRES_DB: atrrehub
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../sql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U atrrehub -d atrrehub']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: atrrehub-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    container_name: atrrehub-minio
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: atrrehub
+      MINIO_ROOT_PASSWORD: atrrehub123
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: atrrehub-mailpit
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: atrrehub-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '16686:16686'
+      - '4318:4318'
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
