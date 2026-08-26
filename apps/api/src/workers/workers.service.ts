@@ -12,6 +12,7 @@ import { KnowledgeService } from '../modules/knowledge/knowledge.service';
 import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
 import { ReportsService } from '../modules/reports/reports.service';
+import { IntegrationsService } from '../modules/integrations/integrations.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
 import { RuntimeService } from '../modules/workflows/runtime.service';
 import { SlaService } from '../modules/sla/sla.service';
@@ -37,6 +38,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly quality: QualityService,
     private readonly reports: ReportsService,
     private readonly intelligence: IntelligenceService,
+    private readonly integrations: IntegrationsService,
     private readonly memory: MemoryService,
     private readonly metrics: MetricsService,
     private readonly logger: AppLogger,
@@ -208,6 +210,18 @@ export class WorkersService implements OnApplicationBootstrap {
       if (sent) this.logger.info('Scheduled reports delivered', { count: sent });
     } catch (error) {
       this.logger.error('Scheduled report dispatch failed', error);
+    }
+  }
+
+  /** Pull contacts from every enabled integration. */
+  @Cron(CronExpression.EVERY_6_HOURS)
+  async syncIntegrations(): Promise<void> {
+    if (!this.enabled) return;
+    try {
+      const synced = await this.integrations.syncDue();
+      if (synced) this.logger.info('Integrations synchronized', { count: synced });
+    } catch (error) {
+      this.logger.error('Integration sync sweep failed', error);
     }
   }
 

@@ -61,7 +61,9 @@ export class CryptoService {
 
   decrypt(payload: string): string {
     const [version, ivB64, tagB64, dataB64] = payload.split('.');
-    if (version !== 'v1' || !ivB64 || !tagB64 || !dataB64) {
+    // The ciphertext segment is empty for an empty plaintext, which is a
+    // legitimate value to store — only a missing segment is malformed.
+    if (version !== 'v1' || !ivB64 || !tagB64 || dataB64 === undefined) {
       throw new Error('Malformed ciphertext');
     }
     const decipher = createDecipheriv(ALGORITHM, this.masterKey, Buffer.from(ivB64, 'base64url'));

@@ -18,6 +18,15 @@ describe('CryptoService', () => {
       expect(crypto.encrypt('same')).not.toBe(crypto.encrypt('same'));
     });
 
+    it('round-trips an empty string, which an optional credential may be', () => {
+      expect(crypto.decrypt(crypto.encrypt(''))).toBe('');
+    });
+
+    it('still rejects a payload missing a segment', () => {
+      expect(() => crypto.decrypt('v1.abc.def')).toThrow('Malformed ciphertext');
+      expect(() => crypto.decrypt('nonsense')).toThrow('Malformed ciphertext');
+    });
+
     it('rejects a tampered ciphertext rather than returning garbage', () => {
       const payload = crypto.encrypt('sensitive');
       const parts = payload.split('.');

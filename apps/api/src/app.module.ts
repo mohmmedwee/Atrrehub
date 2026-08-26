@@ -18,6 +18,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AutomationModule } from './modules/automation/automation.module';
 import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { EvaluationModule } from './modules/evaluation/evaluation.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { QualityModule } from './modules/quality/quality.module';
@@ -88,6 +89,7 @@ import { WorkersModule } from './workers/workers.module';
     QualityModule,
     AnalyticsModule,
     EvaluationModule,
+    IntegrationsModule,
     NotificationsModule,
     ReportsModule,
     WidgetModule,
