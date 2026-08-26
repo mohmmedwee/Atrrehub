@@ -13,6 +13,7 @@ import { MetricsInterceptor } from './core/http/metrics.interceptor';
 import { RateLimitGuard } from './core/http/rate-limit.guard';
 import { RequestContextMiddleware } from './core/http/request-context.middleware';
 import { ResponseEnvelopeInterceptor } from './core/http/response.interceptor';
+import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChannelsModule } from './modules/channels/channels.module';
@@ -22,6 +23,8 @@ import { DirectoryModule } from './modules/directory/directory.module';
 import { IamModule } from './modules/iam/iam.module';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { RagModule } from './modules/rag/rag.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { RoutingModule } from './modules/routing/routing.module';
 import { SlaModule } from './modules/sla/sla.module';
@@ -51,6 +54,9 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     TicketsModule,
     SlaModule,
     RoutingModule,
+    AiModule,
+    RagModule,
+    KnowledgeModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.
