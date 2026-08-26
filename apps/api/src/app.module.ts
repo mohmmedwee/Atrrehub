@@ -23,6 +23,9 @@ import { IamModule } from './modules/iam/iam.module';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { RoutingModule } from './modules/routing/routing.module';
+import { SlaModule } from './modules/sla/sla.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 
 @Module({
@@ -45,6 +48,9 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     RealtimeModule,
     ChannelsModule,
     ConversationsModule,
+    TicketsModule,
+    SlaModule,
+    RoutingModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.

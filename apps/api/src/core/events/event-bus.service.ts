@@ -84,11 +84,17 @@ export class EventBus {
     return id;
   }
 
-  /** Deliver to in-process listeners without touching the outbox. */
+  /**
+   * Deliver to in-process listeners without touching the outbox.
+   *
+   * Only the event's own type is emitted. The emitter runs in wildcard mode, so
+   * a listener registered on `**` already receives every event — emitting `**`
+   * explicitly would instead invoke *every* listener for *every* event, handing
+   * each one a payload it was never written to handle.
+   */
   emitLocal(envelope: DomainEventEnvelope): void {
     try {
       this.emitter.emit(envelope.type, envelope);
-      this.emitter.emit('**', envelope);
     } catch (error) {
       this.logger.error('In-process event listener failed', error, { type: envelope.type });
     }

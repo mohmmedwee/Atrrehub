@@ -1160,6 +1160,7 @@ model SlaTarget {
   escalateToUserId String?     @map("escalate_to_user_id")
 
   policy SlaPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  clocks SlaClock[]
 
   @@unique([policyId, type, priority])
   @@index([organizationId])
@@ -1187,6 +1188,7 @@ model SlaClock {
   elapsedMs      Int?          @map("elapsed_ms")
 
   policy       SlaPolicy     @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  target       SlaTarget     @relation(fields: [targetId], references: [id], onDelete: Cascade)
   conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   ticket       Ticket?       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
