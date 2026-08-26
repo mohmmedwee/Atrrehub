@@ -1,0 +1,33 @@
+{
+  "name": "atrrehub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Atrrehub — AI-Native Omnichannel Customer Experience & Contact Center Platform",
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=22.0.0", "pnpm": ">=10.0.0" },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" build && pnpm -r --filter \"./apps/*\" build",
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @atrrehub/api dev",
+    "dev:web": "pnpm --filter @atrrehub/web dev",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yaml,yml}\"",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @atrrehub/api test:e2e",
+    "db:generate": "pnpm --filter @atrrehub/api db:generate",
+    "db:migrate": "pnpm --filter @atrrehub/api db:migrate",
+    "db:push": "pnpm --filter @atrrehub/api db:push",
+    "db:seed": "pnpm --filter @atrrehub/api db:seed",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "infra:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "bootstrap": "bash scripts/bootstrap.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}
