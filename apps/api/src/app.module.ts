@@ -40,6 +40,7 @@ import { RoutingModule } from './modules/routing/routing.module';
 import { SlaModule } from './modules/sla/sla.module';
 import { TicketsModule } from './modules/tickets/tickets.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
+import { WidgetModule } from './modules/widget/widget.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     IntelligenceModule,
     QualityModule,
     AnalyticsModule,
+    WidgetModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.
