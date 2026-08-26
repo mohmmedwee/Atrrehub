@@ -163,7 +163,10 @@ const ADMIN_PERMISSIONS: Permission[] = [
   'eval:manage',
 ];
 
-export const SYSTEM_ROLES: Record<RoleKey, { name: string; description: string; permissions: Permission[] }> = {
+export const SYSTEM_ROLES: Record<
+  RoleKey,
+  { name: string; description: string; permissions: Permission[] }
+> = {
   owner: {
     name: 'Organization Owner',
     description: 'Full control including billing and governance',
@@ -296,6 +299,9 @@ export function hasAnyPermission(granted: readonly string[], required: readonly 
   return required.some((permission) => hasPermission(granted, permission));
 }
 
-export function hasAllPermissions(granted: readonly string[], required: readonly string[]): boolean {
+export function hasAllPermissions(
+  granted: readonly string[],
+  required: readonly string[],
+): boolean {
   return required.every((permission) => hasPermission(granted, permission));
 }

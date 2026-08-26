@@ -11,7 +11,12 @@ import {
 import type { ScryptOptions } from 'node:crypto';
 
 /** `promisify` cannot see the options overload, so wrap it explicitly. */
-const scrypt = (password: string, salt: Buffer, keylen: number, options: ScryptOptions): Promise<Buffer> =>
+const scrypt = (
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: ScryptOptions,
+): Promise<Buffer> =>
   new Promise((resolve, reject) => {
     scryptCb(password, salt, keylen, options, (error, derived) =>
       error ? reject(error) : resolve(derived),
@@ -47,7 +52,12 @@ export class CryptoService {
     const cipher = createCipheriv(ALGORITHM, this.masterKey, iv);
     const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
     const tag = cipher.getAuthTag();
-    return ['v1', iv.toString('base64url'), tag.toString('base64url'), ciphertext.toString('base64url')].join('.');
+    return [
+      'v1',
+      iv.toString('base64url'),
+      tag.toString('base64url'),
+      ciphertext.toString('base64url'),
+    ].join('.');
   }
 
   decrypt(payload: string): string {
@@ -94,7 +104,14 @@ export class CryptoService {
       p: SCRYPT_P,
       maxmem: 256 * 1024 * 1024,
     });
-    return ['scrypt', SCRYPT_N, SCRYPT_R, SCRYPT_P, salt.toString('base64url'), derived.toString('base64url')].join('$');
+    return [
+      'scrypt',
+      SCRYPT_N,
+      SCRYPT_R,
+      SCRYPT_P,
+      salt.toString('base64url'),
+      derived.toString('base64url'),
+    ].join('$');
   }
 
   async verifyPassword(password: string, stored: string): Promise<boolean> {
@@ -102,12 +119,17 @@ export class CryptoService {
     if (parts.length !== 6 || parts[0] !== 'scrypt') return false;
     const [, n, r, p, saltB64, hashB64] = parts;
     const expected = Buffer.from(hashB64, 'base64url');
-    const derived = await scrypt(password.normalize('NFKC'), Buffer.from(saltB64, 'base64url'), expected.length, {
-      N: Number(n),
-      r: Number(r),
-      p: Number(p),
-      maxmem: 256 * 1024 * 1024,
-    });
+    const derived = await scrypt(
+      password.normalize('NFKC'),
+      Buffer.from(saltB64, 'base64url'),
+      expected.length,
+      {
+        N: Number(n),
+        r: Number(r),
+        p: Number(p),
+        maxmem: 256 * 1024 * 1024,
+      },
+    );
     return derived.length === expected.length && timingSafeEqual(derived, expected);
   }
 

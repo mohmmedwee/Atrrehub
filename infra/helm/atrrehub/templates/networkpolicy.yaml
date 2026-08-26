@@ -1,0 +1,37 @@
+{{- if .Values.networkPolicy.enabled }}
+{{/* Default deny, then allow only what the platform actually needs. */}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "atrrehub.fullname" . }}-default-deny
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "atrrehub.name" . }}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "atrrehub.fullname" . }}-allow-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "atrrehub.name" . }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: {{ .Values.api.port }} }
+        - { protocol: TCP, port: {{ .Values.web.port }} }
+    # Prometheus scrapes /metrics directly.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - { protocol: TCP, port: {{ .Values.api.port }} }
+{{- end }}

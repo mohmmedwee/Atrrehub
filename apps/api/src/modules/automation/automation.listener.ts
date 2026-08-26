@@ -12,7 +12,10 @@ export class AutomationListener {
     private readonly logger: AppLogger,
   ) {}
 
-  private async evaluate(trigger: Parameters<AutomationService['evaluate']>[0], subject: { type: string; id: string }) {
+  private async evaluate(
+    trigger: Parameters<AutomationService['evaluate']>[0],
+    subject: { type: string; id: string },
+  ) {
     try {
       await this.automation.evaluate(trigger, subject);
     } catch (error) {
@@ -23,18 +26,27 @@ export class AutomationListener {
 
   @OnEvent(DomainEvent.ConversationCreated)
   async onConversationCreated(event: DomainEventEnvelope<{ conversationId: string }>) {
-    await this.evaluate('conversation_created', { type: 'conversation', id: event.data.conversationId });
+    await this.evaluate('conversation_created', {
+      type: 'conversation',
+      id: event.data.conversationId,
+    });
   }
 
   @OnEvent(DomainEvent.MessageCreated)
   async onMessage(event: DomainEventEnvelope<{ conversationId: string; direction: string }>) {
     if (event.data.direction !== 'inbound') return;
-    await this.evaluate('message_received', { type: 'conversation', id: event.data.conversationId });
+    await this.evaluate('message_received', {
+      type: 'conversation',
+      id: event.data.conversationId,
+    });
   }
 
   @OnEvent(DomainEvent.ConversationResolved)
   async onResolved(event: DomainEventEnvelope<{ conversationId: string }>) {
-    await this.evaluate('conversation_resolved', { type: 'conversation', id: event.data.conversationId });
+    await this.evaluate('conversation_resolved', {
+      type: 'conversation',
+      id: event.data.conversationId,
+    });
   }
 
   @OnEvent(DomainEvent.TicketCreated)
@@ -64,6 +76,9 @@ export class AutomationListener {
 
   @OnEvent(DomainEvent.IntelExtracted)
   async onSentimentChanged(event: DomainEventEnvelope<{ conversationId: string }>) {
-    await this.evaluate('sentiment_changed', { type: 'conversation', id: event.data.conversationId });
+    await this.evaluate('sentiment_changed', {
+      type: 'conversation',
+      id: event.data.conversationId,
+    });
   }
 }

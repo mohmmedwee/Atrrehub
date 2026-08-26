@@ -39,7 +39,11 @@ export class WidgetService {
   async resolveAccount(widgetKey: string | undefined): Promise<WidgetAccount> {
     const account = widgetKey
       ? await this.prisma.raw.channelAccount.findFirst({
-          where: { channel: 'web_chat', isActive: true, config: { path: ['widgetKey'], equals: widgetKey } },
+          where: {
+            channel: 'web_chat',
+            isActive: true,
+            config: { path: ['widgetKey'], equals: widgetKey },
+          },
         })
       : await this.prisma.raw.channelAccount.findFirst({
           where: { channel: 'web_chat', isActive: true },
@@ -77,7 +81,14 @@ export class WidgetService {
    */
   async receive(
     account: WidgetAccount,
-    input: { sessionId: string; body: string; conversationId?: string; email?: string; displayName?: string; locale?: string },
+    input: {
+      sessionId: string;
+      body: string;
+      conversationId?: string;
+      email?: string;
+      displayName?: string;
+      locale?: string;
+    },
   ) {
     const result = await this.channels.acceptInbound(
       'web_chat',
@@ -86,7 +97,11 @@ export class WidgetService {
         threadKey: `web_chat:${input.sessionId}`,
         contact: input.email
           ? { kind: 'email', value: input.email, displayName: input.displayName }
-          : { kind: 'external', value: input.sessionId, displayName: input.displayName ?? 'Website visitor' },
+          : {
+              kind: 'external',
+              value: input.sessionId,
+              displayName: input.displayName ?? 'Website visitor',
+            },
         body: input.body,
         locale: input.locale,
         metadata: { sessionId: input.sessionId },
@@ -109,7 +124,9 @@ export class WidgetService {
         });
 
         const messages = await this.conversations.listMessages(conversation.id, { limit: 5 });
-        const reply = [...messages.data].reverse().find((message) => message.direction === 'outbound');
+        const reply = [...messages.data]
+          .reverse()
+          .find((message) => message.direction === 'outbound');
 
         if (reply) {
           return {
@@ -121,7 +138,9 @@ export class WidgetService {
         }
       } catch (error) {
         // A failed AI turn must still leave the visitor with a working chat.
-        this.logger.error('The AI agent could not answer a widget message', error, { conversationId: conversation.id });
+        this.logger.error('The AI agent could not answer a widget message', error, {
+          conversationId: conversation.id,
+        });
       }
     }
 
@@ -137,7 +156,10 @@ export class WidgetService {
     // Mismatched session and conversation is reported as missing, not forbidden.
     if (!conversation) throw AppError.notFound('Conversation', conversationId);
 
-    const messages = await this.conversations.listMessages(conversationId, { limit: 100, includePrivate: false });
+    const messages = await this.conversations.listMessages(conversationId, {
+      limit: 100,
+      includePrivate: false,
+    });
     return {
       data: messages.data
         .filter((message) => !message.isPrivate && message.type !== 'note')

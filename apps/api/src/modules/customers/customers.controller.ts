@@ -40,13 +40,22 @@ const SearchQuery = CursorQuery.extend({
   tags: z
     .string()
     .optional()
-    .transform((value) => (value ? value.split(',').map((t) => t.trim()).filter(Boolean) : undefined)),
+    .transform((value) =>
+      value
+        ? value
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined,
+    ),
   segmentId: z.string().optional(),
   sort: z.string().max(80).optional(),
 });
 
 const MergeSchema = z.object({ sourceId: z.string().min(3) }).strict();
-const NoteSchema = z.object({ body: z.string().min(1).max(8000), isPinned: z.boolean().optional() }).strict();
+const NoteSchema = z
+  .object({ body: z.string().min(1).max(8000), isPinned: z.boolean().optional() })
+  .strict();
 
 const SegmentConditionSchema = z.object({
   field: z.string().min(1).max(80),
@@ -124,7 +133,9 @@ export class CustomersController {
 
   @Get(':id/overview')
   @RequirePermissions('customer:read')
-  @ApiOperation({ summary: 'Customer 360 overview: profile, conversations, tickets, notes, activity' })
+  @ApiOperation({
+    summary: 'Customer 360 overview: profile, conversations, tickets, notes, activity',
+  })
   overview(@Param('id') id: string) {
     return this.customers.overview(id);
   }
@@ -132,14 +143,20 @@ export class CustomersController {
   @Get(':id/timeline')
   @RequirePermissions('customer:read')
   @ApiOperation({ summary: 'Unified customer timeline' })
-  timeline(@Param('id') id: string, @Query(zodQuery(CursorQuery)) query: z.infer<typeof CursorQuery>) {
+  timeline(
+    @Param('id') id: string,
+    @Query(zodQuery(CursorQuery)) query: z.infer<typeof CursorQuery>,
+  ) {
     return this.customers.timeline(id, query);
   }
 
   @Patch(':id')
   @RequirePermissions('customer:update')
   @ApiOperation({ summary: 'Update a customer' })
-  update(@Param('id') id: string, @Body(zodBody(CustomerSchema.partial())) body: Record<string, unknown>) {
+  update(
+    @Param('id') id: string,
+    @Body(zodBody(CustomerSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.customers.update(id, body);
   }
 
@@ -154,14 +171,20 @@ export class CustomersController {
   @Post(':id/merge')
   @RequirePermissions('customer:merge')
   @ApiOperation({ summary: 'Merge another customer into this one' })
-  merge(@Param('id') targetId: string, @Body(zodBody(MergeSchema)) body: z.infer<typeof MergeSchema>) {
+  merge(
+    @Param('id') targetId: string,
+    @Body(zodBody(MergeSchema)) body: z.infer<typeof MergeSchema>,
+  ) {
     return this.customers.merge(body.sourceId, targetId);
   }
 
   @Post(':id/contact-methods')
   @RequirePermissions('customer:update')
   @ApiOperation({ summary: 'Add a contact method' })
-  addContactMethod(@Param('id') id: string, @Body(zodBody(ContactMethodSchema)) body: z.infer<typeof ContactMethodSchema>) {
+  addContactMethod(
+    @Param('id') id: string,
+    @Body(zodBody(ContactMethodSchema)) body: z.infer<typeof ContactMethodSchema>,
+  ) {
     return this.customers.addContactMethod(id, body);
   }
 

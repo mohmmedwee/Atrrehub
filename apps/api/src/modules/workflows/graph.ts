@@ -96,22 +96,43 @@ export function validateGraph(graph: WorkflowGraph): GraphIssue[] {
 
   const ids = new Set<string>();
   for (const node of nodes) {
-    if (ids.has(node.id)) issues.push({ severity: 'error', nodeId: node.id, message: `Duplicate node id "${node.id}"` });
+    if (ids.has(node.id))
+      issues.push({
+        severity: 'error',
+        nodeId: node.id,
+        message: `Duplicate node id "${node.id}"`,
+      });
     ids.add(node.id);
     if (!(node.type in NODE_TYPES)) {
-      issues.push({ severity: 'error', nodeId: node.id, message: `Unknown node type "${node.type}"` });
+      issues.push({
+        severity: 'error',
+        nodeId: node.id,
+        message: `Unknown node type "${node.type}"`,
+      });
     }
   }
 
   const triggers = nodes.filter((node) => NODE_TYPES[node.type] === 'trigger');
-  if (triggers.length === 0) issues.push({ severity: 'error', message: 'The workflow has no trigger node' });
+  if (triggers.length === 0)
+    issues.push({ severity: 'error', message: 'The workflow has no trigger node' });
   if (triggers.length > 1) {
-    issues.push({ severity: 'error', message: `The workflow has ${triggers.length} triggers; exactly one is required` });
+    issues.push({
+      severity: 'error',
+      message: `The workflow has ${triggers.length} triggers; exactly one is required`,
+    });
   }
 
   for (const edge of edges) {
-    if (!ids.has(edge.from)) issues.push({ severity: 'error', message: `Edge "${edge.id}" starts at unknown node "${edge.from}"` });
-    if (!ids.has(edge.to)) issues.push({ severity: 'error', message: `Edge "${edge.id}" ends at unknown node "${edge.to}"` });
+    if (!ids.has(edge.from))
+      issues.push({
+        severity: 'error',
+        message: `Edge "${edge.id}" starts at unknown node "${edge.from}"`,
+      });
+    if (!ids.has(edge.to))
+      issues.push({
+        severity: 'error',
+        message: `Edge "${edge.id}" ends at unknown node "${edge.to}"`,
+      });
   }
 
   // Every node must be reachable from the trigger, or it is dead configuration.
@@ -130,7 +151,11 @@ export function validateGraph(graph: WorkflowGraph): GraphIssue[] {
     }
     for (const node of nodes) {
       if (!reachable.has(node.id)) {
-        issues.push({ severity: 'warning', nodeId: node.id, message: `"${node.name ?? node.id}" is unreachable from the trigger` });
+        issues.push({
+          severity: 'warning',
+          nodeId: node.id,
+          message: `"${node.name ?? node.id}" is unreachable from the trigger`,
+        });
       }
     }
   }
@@ -139,17 +164,30 @@ export function validateGraph(graph: WorkflowGraph): GraphIssue[] {
   for (const node of nodes) {
     const outgoing = edges.filter((edge) => edge.from === node.id);
     if ((node.type === 'logic.condition' || node.type === 'logic.switch') && outgoing.length < 2) {
-      issues.push({ severity: 'warning', nodeId: node.id, message: `"${node.name ?? node.id}" branches but has fewer than two outgoing edges` });
+      issues.push({
+        severity: 'warning',
+        nodeId: node.id,
+        message: `"${node.name ?? node.id}" branches but has fewer than two outgoing edges`,
+      });
     }
     if (NODE_TYPES[node.type] === 'trigger' && !outgoing.length) {
-      issues.push({ severity: 'error', nodeId: node.id, message: 'The trigger has no outgoing edge' });
+      issues.push({
+        severity: 'error',
+        nodeId: node.id,
+        message: 'The trigger has no outgoing edge',
+      });
     }
   }
 
   for (const cycle of findCycles(nodes, edges)) {
-    const hasLoopNode = cycle.some((id) => nodes.find((node) => node.id === id)?.type === 'logic.loop');
+    const hasLoopNode = cycle.some(
+      (id) => nodes.find((node) => node.id === id)?.type === 'logic.loop',
+    );
     if (!hasLoopNode) {
-      issues.push({ severity: 'error', message: `Cycle without a loop node: ${cycle.join(' → ')}` });
+      issues.push({
+        severity: 'error',
+        message: `Cycle without a loop node: ${cycle.join(' → ')}`,
+      });
     }
   }
 
@@ -159,7 +197,8 @@ export function validateGraph(graph: WorkflowGraph): GraphIssue[] {
 /** Depth-first cycle detection, returning each cycle's node path. */
 function findCycles(nodes: WorkflowNode[], edges: WorkflowEdge[]): string[][] {
   const adjacency = new Map<string, string[]>();
-  for (const edge of edges) adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
+  for (const edge of edges)
+    adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
 
   const cycles: string[][] = [];
   const state = new Map<string, 'visiting' | 'done'>();

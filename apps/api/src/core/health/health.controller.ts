@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header, Res } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { FastifyReply } from 'fastify';
 import { Public } from '../../modules/auth/decorators/public.decorator';
 import { MetricsService } from '../metrics/metrics.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,10 +34,15 @@ export class HealthController {
     return raw({ status, checks: { database, cache } });
   }
 
+  /**
+   * Prometheus scrape endpoint. It must emit the exposition text format, so it
+   * bypasses the JSON envelope entirely rather than wrapping the payload.
+   */
   @Public()
   @Get('metrics')
+  @Header('content-type', 'text/plain; version=0.0.4; charset=utf-8')
   @ApiExcludeEndpoint()
-  async scrape() {
-    return raw({ __text: await this.metrics.scrape() });
+  async scrape(@Res() reply: FastifyReply): Promise<void> {
+    await reply.type('text/plain; version=0.0.4; charset=utf-8').send(await this.metrics.scrape());
   }
 }

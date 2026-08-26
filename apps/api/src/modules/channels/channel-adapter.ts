@@ -11,7 +11,10 @@ export interface ChannelAdapter {
   readonly channel: ChannelType;
 
   /** Translate a provider payload into the platform's normalized shape. */
-  receive(payload: unknown, account: ChannelAccountContext): Promise<NormalizedInboundMessage | null>;
+  receive(
+    payload: unknown,
+    account: ChannelAccountContext,
+  ): Promise<NormalizedInboundMessage | null>;
 
   /** Deliver an outbound message through the provider. */
   send(message: OutboundMessage, account: ChannelAccountContext): Promise<DeliveryReceipt>;
@@ -45,7 +48,11 @@ export interface NormalizedInboundMessage {
   /** Stable key that groups messages into one conversation (email thread, chat session). */
   threadKey?: string;
   /** How to identify or create the customer. */
-  contact: { kind: 'email' | 'phone' | 'whatsapp' | 'telegram' | 'external'; value: string; displayName?: string };
+  contact: {
+    kind: 'email' | 'phone' | 'whatsapp' | 'telegram' | 'external';
+    value: string;
+    displayName?: string;
+  };
   subject?: string;
   body: string;
   bodyHtml?: string;

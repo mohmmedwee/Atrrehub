@@ -81,7 +81,10 @@ export class RedisService implements OnModuleDestroy {
    * Fixed-window counter. Returns the count after increment and the seconds
    * remaining in the window, so callers can populate RateLimit-* headers.
    */
-  async incrementWindow(key: string, windowSeconds: number): Promise<{ count: number; ttl: number }> {
+  async incrementWindow(
+    key: string,
+    windowSeconds: number,
+  ): Promise<{ count: number; ttl: number }> {
     const pipeline = this.client.multi();
     pipeline.incr(key);
     pipeline.ttl(key);

@@ -6,8 +6,17 @@ import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { AutomationService } from './automation.service';
 
 const TriggerEnum = z.enum([
-  'ticket_created', 'ticket_updated', 'message_received', 'conversation_created', 'conversation_resolved',
-  'sla_warning', 'sla_breach', 'customer_created', 'sentiment_changed', 'schedule', 'webhook',
+  'ticket_created',
+  'ticket_updated',
+  'message_received',
+  'conversation_created',
+  'conversation_resolved',
+  'sla_warning',
+  'sla_breach',
+  'customer_created',
+  'sentiment_changed',
+  'schedule',
+  'webhook',
 ]);
 
 const ConditionSchema = z.object({
@@ -17,7 +26,18 @@ const ConditionSchema = z.object({
 });
 
 const ActionSchema = z.object({
-  type: z.enum(['assign', 'send_message', 'send_email', 'create_ticket', 'update_ticket', 'update_customer', 'set_priority', 'add_tag', 'escalate', 'webhook']),
+  type: z.enum([
+    'assign',
+    'send_message',
+    'send_email',
+    'create_ticket',
+    'update_ticket',
+    'update_customer',
+    'set_priority',
+    'add_tag',
+    'escalate',
+    'webhook',
+  ]),
   config: z.record(z.unknown()).default({}),
 });
 
@@ -63,7 +83,10 @@ export class AutomationController {
   @Patch('rules/:id')
   @RequirePermissions('automation:manage')
   @ApiOperation({ summary: 'Update an automation rule' })
-  update(@Param('id') id: string, @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>) {
+  update(
+    @Param('id') id: string,
+    @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.automation.update(id, body);
   }
 
@@ -86,8 +109,22 @@ export class AutomationController {
   @RequirePermissions('automation:manage')
   @ApiOperation({ summary: 'Preview which rules would fire, without running them' })
   simulate(
-    @Body(zodBody(z.object({ trigger: TriggerEnum, subjectType: z.string().max(40), subjectId: z.string().min(3) }).strict()))
-    body: { trigger: z.infer<typeof TriggerEnum>; subjectType: string; subjectId: string },
+    @Body(
+      zodBody(
+        z
+          .object({
+            trigger: TriggerEnum,
+            subjectType: z.string().max(40),
+            subjectId: z.string().min(3),
+          })
+          .strict(),
+      ),
+    )
+    body: {
+      trigger: z.infer<typeof TriggerEnum>;
+      subjectType: string;
+      subjectId: string;
+    },
   ) {
     return this.automation.simulate(body.trigger, { type: body.subjectType, id: body.subjectId });
   }

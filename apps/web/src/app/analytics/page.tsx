@@ -11,12 +11,22 @@ export default function AnalyticsPage() {
     queryKey: ['analytics', 'executive'],
     queryFn: () => get<ExecutiveAnalytics>('/analytics/executive'),
   });
-  const { data: ai } = useQuery({ queryKey: ['analytics', 'ai'], queryFn: () => get<AiAnalytics>('/analytics/ai') });
-  const { data: channels } = useQuery({ queryKey: ['analytics', 'channels'], queryFn: () => get<ChannelRow[]>('/analytics/channels') });
-  const { data: agents } = useQuery({ queryKey: ['analytics', 'agents'], queryFn: () => get<AgentRow[]>('/analytics/agents').catch(() => []) });
+  const { data: ai } = useQuery({
+    queryKey: ['analytics', 'ai'],
+    queryFn: () => get<AiAnalytics>('/analytics/ai'),
+  });
+  const { data: channels } = useQuery({
+    queryKey: ['analytics', 'channels'],
+    queryFn: () => get<ChannelRow[]>('/analytics/channels'),
+  });
+  const { data: agents } = useQuery({
+    queryKey: ['analytics', 'agents'],
+    queryFn: () => get<AgentRow[]>('/analytics/agents').catch(() => []),
+  });
   const { data: series } = useQuery({
     queryKey: ['analytics', 'series'],
-    queryFn: () => get<{ series: { date: string; value: number }[] }>('/analytics/series/conversations'),
+    queryFn: () =>
+      get<{ series: { date: string; value: number }[] }>('/analytics/series/conversations'),
   });
 
   if (isLoading) return <Spinner label="Loading analytics" />;
@@ -26,13 +36,27 @@ export default function AnalyticsPage() {
     <div className="mx-auto max-w-7xl space-y-4 p-4">
       <div>
         <h1 className="text-xl font-semibold">Analytics</h1>
-        <p className="mt-0.5 text-sm text-text-muted">Last 30 days across every channel, agent and AI execution.</p>
+        <p className="mt-0.5 text-sm text-text-muted">
+          Last 30 days across every channel, agent and AI execution.
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Interactions" value={compactNumber(executive.interactions)} sub={`${executive.openNow} open now`} />
-        <Stat label="Resolution rate" value={`${executive.resolutionRate}%`} sub={`${executive.resolved} resolved`} />
-        <Stat label="AI resolution" value={`${executive.aiResolutionRate}%`} sub={`${executive.aiHandled} handled by AI`} />
+        <Stat
+          label="Interactions"
+          value={compactNumber(executive.interactions)}
+          sub={`${executive.openNow} open now`}
+        />
+        <Stat
+          label="Resolution rate"
+          value={`${executive.resolutionRate}%`}
+          sub={`${executive.resolved} resolved`}
+        />
+        <Stat
+          label="AI resolution"
+          value={`${executive.aiResolutionRate}%`}
+          sub={`${executive.aiHandled} handled by AI`}
+        />
         <Stat
           label="CSAT"
           value={executive.csat.average ? executive.csat.average.toFixed(2) : '—'}
@@ -56,7 +80,11 @@ export default function AnalyticsPage() {
                       {target.attainmentPercent}% · {target.met} met, {target.breached} breached
                     </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-sunken" role="img" aria-label={`${target.attainmentPercent}% attainment`}>
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full bg-surface-sunken"
+                    role="img"
+                    aria-label={`${target.attainmentPercent}% attainment`}
+                  >
                     <div
                       className={`h-full rounded-full ${target.attainmentPercent >= 95 ? 'bg-success' : target.attainmentPercent >= 85 ? 'bg-warning' : 'bg-danger'}`}
                       style={{ width: `${Math.max(2, target.attainmentPercent)}%` }}
@@ -100,7 +128,9 @@ export default function AnalyticsPage() {
                       <td className="px-4 py-1.5 text-end tabular-nums">
                         {compactNumber(model.promptTokens + model.completionTokens)}
                       </td>
-                      <td className="px-4 py-1.5 text-end tabular-nums">{duration(model.averageLatencyMs)}</td>
+                      <td className="px-4 py-1.5 text-end tabular-nums">
+                        {duration(model.averageLatencyMs)}
+                      </td>
                       <td className="px-4 py-1.5 text-end tabular-nums">{money(model.costUsd)}</td>
                     </tr>
                   ))}
@@ -112,7 +142,10 @@ export default function AnalyticsPage() {
           {ai?.guardrails.length ? (
             <div className="flex flex-wrap gap-1.5 border-t border-border px-4 py-2.5">
               {ai.guardrails.map((entry) => (
-                <Badge key={`${entry.check}-${entry.action}`} tone={entry.action === 'block' ? 'danger' : 'warning'}>
+                <Badge
+                  key={`${entry.check}-${entry.action}`}
+                  tone={entry.action === 'block' ? 'danger' : 'warning'}
+                >
                   {entry.check.replace(/_/g, ' ')} · {entry.count}
                 </Badge>
               ))}
@@ -135,10 +168,16 @@ export default function AnalyticsPage() {
                 <tbody>
                   {channels.map((channel) => (
                     <tr key={channel.channel} className="border-b border-border last:border-0">
-                      <td className="px-4 py-1.5 capitalize">{channel.channel.replace('_', ' ')}</td>
+                      <td className="px-4 py-1.5 capitalize">
+                        {channel.channel.replace('_', ' ')}
+                      </td>
                       <td className="px-4 py-1.5 text-end tabular-nums">{channel.volume}</td>
-                      <td className="px-4 py-1.5 text-end tabular-nums">{channel.resolutionRate}%</td>
-                      <td className="px-4 py-1.5 text-end tabular-nums">{duration(channel.averageFirstResponseMs)}</td>
+                      <td className="px-4 py-1.5 text-end tabular-nums">
+                        {channel.resolutionRate}%
+                      </td>
+                      <td className="px-4 py-1.5 text-end tabular-nums">
+                        {duration(channel.averageFirstResponseMs)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -171,10 +210,18 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-1.5">{agent.name}</td>
                     <td className="px-4 py-1.5 text-end tabular-nums">{agent.handled}</td>
                     <td className="px-4 py-1.5 text-end tabular-nums">{agent.resolutionRate}%</td>
-                    <td className="px-4 py-1.5 text-end tabular-nums">{duration(agent.averageHandleTimeMs)}</td>
-                    <td className="px-4 py-1.5 text-end tabular-nums">{agent.firstContactResolutionRate}%</td>
-                    <td className="px-4 py-1.5 text-end tabular-nums">{agent.csat?.toFixed(2) ?? '—'}</td>
-                    <td className="px-4 py-1.5 text-end tabular-nums">{agent.qaScore?.toFixed(1) ?? '—'}</td>
+                    <td className="px-4 py-1.5 text-end tabular-nums">
+                      {duration(agent.averageHandleTimeMs)}
+                    </td>
+                    <td className="px-4 py-1.5 text-end tabular-nums">
+                      {agent.firstContactResolutionRate}%
+                    </td>
+                    <td className="px-4 py-1.5 text-end tabular-nums">
+                      {agent.csat?.toFixed(2) ?? '—'}
+                    </td>
+                    <td className="px-4 py-1.5 text-end tabular-nums">
+                      {agent.qaScore?.toFixed(1) ?? '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -204,7 +251,10 @@ function Sparkline({ series }: { series: { date: string; value: number }[] }) {
   const height = 32;
   const step = series.length > 1 ? width / (series.length - 1) : width;
   const path = series
-    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${(index * step).toFixed(2)} ${(height - (point.value / max) * height).toFixed(2)}`)
+    .map(
+      (point, index) =>
+        `${index === 0 ? 'M' : 'L'} ${(index * step).toFixed(2)} ${(height - (point.value / max) * height).toFixed(2)}`,
+    )
     .join(' ');
 
   const total = series.reduce((sum, point) => sum + point.value, 0);
@@ -219,11 +269,19 @@ function Sparkline({ series }: { series: { date: string; value: number }[] }) {
         aria-label={`${total} conversations over ${series.length} days, peaking at ${max} in a day`}
       >
         <path d={`${path} L ${width} ${height} L 0 ${height} Z`} fill="rgb(var(--accent) / 0.12)" />
-        <path d={path} fill="none" stroke="rgb(var(--accent))" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        <path
+          d={path}
+          fill="none"
+          stroke="rgb(var(--accent))"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
       <div className="mt-2 flex justify-between text-xs text-text-muted">
         <span>{series[0]?.date}</span>
-        <span className="font-medium text-text">{total} total · peak {max}</span>
+        <span className="font-medium text-text">
+          {total} total · peak {max}
+        </span>
         <span>{series.at(-1)?.date}</span>
       </div>
     </div>
@@ -233,7 +291,14 @@ function Sparkline({ series }: { series: { date: string; value: number }[] }) {
 interface AiAnalytics {
   executions: { total: number; successRate: number };
   handoffRate: number;
-  models: { model: string; calls: number; promptTokens: number; completionTokens: number; costUsd: number; averageLatencyMs: number }[];
+  models: {
+    model: string;
+    calls: number;
+    promptTokens: number;
+    completionTokens: number;
+    costUsd: number;
+    averageLatencyMs: number;
+  }[];
   guardrails: { check: string; action: string; count: number }[];
 }
 

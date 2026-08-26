@@ -26,7 +26,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { data: me, isLoading, isError } = useQuery({
+  const {
+    data: me,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['me'],
     queryFn: () => get<Me>('/auth/me'),
     retry: false,
@@ -72,7 +76,9 @@ export function Shell({ children }: { children: ReactNode }) {
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
                   className={`rounded-md px-2.5 py-1 text-sm transition-colors duration-fast ${
-                    active ? 'bg-accent/10 font-medium text-accent' : 'text-text-muted hover:bg-surface-sunken hover:text-text'
+                    active
+                      ? 'bg-accent/10 font-medium text-accent'
+                      : 'text-text-muted hover:bg-surface-sunken hover:text-text'
                   }`}
                 >
                   {item.label}
@@ -85,8 +91,15 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-3">
           <span className="hidden text-xs text-text-muted sm:inline">{me.organization.name}</span>
           <PresenceToggle current={me.user.presence} />
-          <Avatar name={`${me.user.firstName} ${me.user.lastName}`} url={me.user.avatarUrl} size={26} />
-          <button onClick={signOut} className="text-xs text-text-muted underline-offset-2 hover:text-text hover:underline">
+          <Avatar
+            name={`${me.user.firstName} ${me.user.lastName}`}
+            url={me.user.avatarUrl}
+            size={26}
+          />
+          <button
+            onClick={signOut}
+            className="text-xs text-text-muted underline-offset-2 hover:text-text hover:underline"
+          >
             Sign out
           </button>
         </div>
@@ -116,7 +129,9 @@ function PresenceToggle({ current }: { current: string }) {
       </span>
       <select
         defaultValue={current}
-        onChange={(event) => post('/me/presence', { presence: event.target.value }).catch(() => undefined)}
+        onChange={(event) =>
+          post('/me/presence', { presence: event.target.value }).catch(() => undefined)
+        }
         className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-xs text-text"
       >
         {options.map((option) => (

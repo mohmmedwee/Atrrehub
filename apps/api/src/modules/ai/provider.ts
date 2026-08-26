@@ -74,7 +74,9 @@ export interface AiProviderAdapter {
   embed(request: EmbeddingRequest): Promise<EmbeddingResponse>;
   rerank?(request: RerankRequest): Promise<RerankResponse>;
   /** Streaming completions, where the provider supports them. */
-  stream?(request: CompletionRequest): AsyncIterable<{ delta: string; done: boolean; usage?: CompletionResponse['usage'] }>;
+  stream?(
+    request: CompletionRequest,
+  ): AsyncIterable<{ delta: string; done: boolean; usage?: CompletionResponse['usage'] }>;
 }
 
 /**
@@ -93,7 +95,11 @@ export const MODEL_PRICING: Record<string, { prompt: number; completion: number 
   local: { prompt: 0, completion: 0 },
 };
 
-export function estimateCostUsd(model: string, promptTokens: number, completionTokens: number): number {
+export function estimateCostUsd(
+  model: string,
+  promptTokens: number,
+  completionTokens: number,
+): number {
   const pricing = MODEL_PRICING[model] ?? MODEL_PRICING.local;
   return (promptTokens * pricing.prompt + completionTokens * pricing.completion) / 1_000_000;
 }

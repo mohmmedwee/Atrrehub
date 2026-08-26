@@ -45,7 +45,13 @@ describe('conversation lifecycle', () => {
   });
 
   it('exposes exactly the statuses that count as open', () => {
-    expect(ConversationsService.openStatuses).toEqual(['new', 'queued', 'assigned', 'active', 'waiting']);
+    expect(ConversationsService.openStatuses).toEqual([
+      'new',
+      'queued',
+      'assigned',
+      'active',
+      'waiting',
+    ]);
     expect(ConversationsService.openStatuses).not.toContain('resolved');
     expect(ConversationsService.openStatuses).not.toContain('closed');
   });

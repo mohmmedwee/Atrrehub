@@ -20,7 +20,9 @@ export class SlaListener {
   ) {}
 
   @OnEvent(DomainEvent.ConversationCreated)
-  async onConversationCreated(event: DomainEventEnvelope<{ conversationId: string; channel: string }>) {
+  async onConversationCreated(
+    event: DomainEventEnvelope<{ conversationId: string; channel: string }>,
+  ) {
     const conversation = await this.prisma.raw.conversation.findUnique({
       where: { id: event.data.conversationId },
       include: { customer: { select: { tier: true } } },
@@ -40,7 +42,9 @@ export class SlaListener {
 
   /** The first agent or AI reply stops the first-response clock. */
   @OnEvent(DomainEvent.MessageCreated)
-  async onMessage(event: DomainEventEnvelope<{ conversationId: string; direction: string; authorType: string }>) {
+  async onMessage(
+    event: DomainEventEnvelope<{ conversationId: string; direction: string; authorType: string }>,
+  ) {
     const { conversationId, direction, authorType } = event.data;
 
     if (direction === 'outbound' && (authorType === 'user' || authorType === 'ai_agent')) {
@@ -120,7 +124,9 @@ export class SlaListener {
 
   /** Surface warnings and breaches in the workspace as they happen. */
   @OnEvent(DomainEvent.SlaWarning)
-  onWarning(event: DomainEventEnvelope<{ targetType: string; subjectId: string; remainingMs: number }>) {
+  onWarning(
+    event: DomainEventEnvelope<{ targetType: string; subjectId: string; remainingMs: number }>,
+  ) {
     this.realtime.emitToOrganization(event.organizationId, 'sla:warning', event.data);
   }
 

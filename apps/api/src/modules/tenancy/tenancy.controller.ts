@@ -67,7 +67,9 @@ export class TenancyController {
   @Post('workspaces')
   @RequirePermissions('workspace:manage')
   @ApiOperation({ summary: 'Create a workspace' })
-  async createWorkspace(@Body(zodBody(CreateWorkspaceSchema)) body: z.infer<typeof CreateWorkspaceSchema>) {
+  async createWorkspace(
+    @Body(zodBody(CreateWorkspaceSchema)) body: z.infer<typeof CreateWorkspaceSchema>,
+  ) {
     return this.tenancy.createWorkspace(body);
   }
 

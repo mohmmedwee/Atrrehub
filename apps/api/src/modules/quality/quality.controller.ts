@@ -31,7 +31,15 @@ const ManualSchema = z
   .object({
     conversationId: z.string().min(3),
     templateId: z.string().min(3),
-    scores: z.array(z.object({ criterionId: z.string(), score: z.number().min(0).max(100), reasoning: z.string().max(1000).optional() })).min(1),
+    scores: z
+      .array(
+        z.object({
+          criterionId: z.string(),
+          score: z.number().min(0).max(100),
+          reasoning: z.string().max(1000).optional(),
+        }),
+      )
+      .min(1),
     reasoning: z.string().max(4000).optional(),
     strengths: z.array(z.string().max(300)).max(10).optional(),
     improvements: z.array(z.string().max(300)).max(10).optional(),
@@ -60,7 +68,10 @@ export class QualityController {
   @Patch('templates/:id')
   @RequirePermissions('qc:template_manage')
   @ApiOperation({ summary: 'Update a QC template' })
-  updateTemplate(@Param('id') id: string, @Body(zodBody(TemplateSchema.partial().omit({ criteria: true }))) body: Record<string, unknown>) {
+  updateTemplate(
+    @Param('id') id: string,
+    @Body(zodBody(TemplateSchema.partial().omit({ criteria: true }))) body: Record<string, unknown>,
+  ) {
     return this.quality.updateTemplate(id, body);
   }
 
@@ -75,7 +86,10 @@ export class QualityController {
   @Get('evaluations')
   @RequirePermissions('qc:read_own')
   @ApiOperation({ summary: 'List evaluations' })
-  listEvaluations(@Query('subjectId') subjectId?: string, @Query('templateId') templateId?: string) {
+  listEvaluations(
+    @Query('subjectId') subjectId?: string,
+    @Query('templateId') templateId?: string,
+  ) {
     return this.quality.listEvaluations({ subjectId, templateId });
   }
 
@@ -90,7 +104,10 @@ export class QualityController {
   @RequirePermissions('qc:evaluate')
   @RateLimit(RATE_BUCKETS.ai)
   @ApiOperation({ summary: 'Run an AI evaluation of a conversation' })
-  evaluate(@Param('conversationId') conversationId: string, @Query('templateId') templateId?: string) {
+  evaluate(
+    @Param('conversationId') conversationId: string,
+    @Query('templateId') templateId?: string,
+  ) {
     return this.quality.evaluateConversation(conversationId, templateId);
   }
 
@@ -104,7 +121,11 @@ export class QualityController {
   @Post('evaluations/:id/dispute')
   @RequirePermissions('qc:dispute')
   @ApiOperation({ summary: 'Dispute an evaluation' })
-  dispute(@Param('id') id: string, @Body(zodBody(z.object({ reason: z.string().min(10).max(2000) }).strict())) body: { reason: string }) {
+  dispute(
+    @Param('id') id: string,
+    @Body(zodBody(z.object({ reason: z.string().min(10).max(2000) }).strict()))
+    body: { reason: string },
+  ) {
     return this.quality.raiseDispute(id, body.reason);
   }
 
@@ -113,7 +134,16 @@ export class QualityController {
   @ApiOperation({ summary: 'Resolve a dispute, optionally overriding the score' })
   resolveDispute(
     @Param('id') id: string,
-    @Body(zodBody(z.object({ resolution: z.string().min(5).max(2000), resolvedScore: z.number().min(0).max(100).optional() }).strict()))
+    @Body(
+      zodBody(
+        z
+          .object({
+            resolution: z.string().min(5).max(2000),
+            resolvedScore: z.number().min(0).max(100).optional(),
+          })
+          .strict(),
+      ),
+    )
     body: { resolution: string; resolvedScore?: number },
   ) {
     return this.quality.resolveDispute(id, body);

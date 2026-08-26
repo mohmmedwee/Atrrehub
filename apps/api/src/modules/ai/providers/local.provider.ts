@@ -27,7 +27,10 @@ export class LocalProvider implements AiProviderAdapter {
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
-    const system = request.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+    const system = request.messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n');
     const lastUser = [...request.messages].reverse().find((m) => m.role === 'user')?.content ?? '';
     const context = this.extractContext(system);
 
@@ -43,7 +46,16 @@ export class LocalProvider implements AiProviderAdapter {
       if (tool) {
         return {
           content: '',
-          toolCalls: [{ id: `call_${this.hash(lastUser).slice(0, 12)}`, name: tool.name, arguments: this.synthesizeSchema(tool.parameters, lastUser, context) as Record<string, unknown> }],
+          toolCalls: [
+            {
+              id: `call_${this.hash(lastUser).slice(0, 12)}`,
+              name: tool.name,
+              arguments: this.synthesizeSchema(tool.parameters, lastUser, context) as Record<
+                string,
+                unknown
+              >,
+            },
+          ],
           finishReason: 'tool_calls',
           usage: this.usage(request, ''),
           model: request.model,
@@ -99,11 +111,20 @@ export class LocalProvider implements AiProviderAdapter {
     finishReason: CompletionResponse['finishReason'],
     confidence = 0.75,
   ): CompletionResponse {
-    return { content, finishReason, usage: this.usage(request, content), model: request.model, confidence };
+    return {
+      content,
+      finishReason,
+      usage: this.usage(request, content),
+      model: request.model,
+      confidence,
+    };
   }
 
   private usage(request: CompletionRequest, output: string) {
-    const promptTokens = request.messages.reduce((total, message) => total + estimateTokens(message.content), 0);
+    const promptTokens = request.messages.reduce(
+      (total, message) => total + estimateTokens(message.content),
+      0,
+    );
     const completionTokens = estimateTokens(output);
     return { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
   }
@@ -165,7 +186,8 @@ export class LocalProvider implements AiProviderAdapter {
 
   private selectTool(tools: CompletionRequest['tools'], question: string) {
     const questionTerms = this.terms(question);
-    let best: { tool: NonNullable<CompletionRequest['tools']>[number]; score: number } | null = null;
+    let best: { tool: NonNullable<CompletionRequest['tools']>[number]; score: number } | null =
+      null;
     for (const tool of tools ?? []) {
       const toolTerms = this.terms(`${tool.name} ${tool.description}`);
       const overlap = [...questionTerms].filter((term) => toolTerms.has(term)).length;
@@ -176,12 +198,18 @@ export class LocalProvider implements AiProviderAdapter {
   }
 
   /** Build a value that satisfies a JSON Schema, drawing on the prompt where it can. */
-  private synthesizeSchema(schema: Record<string, unknown>, question: string, context: string[]): unknown {
+  private synthesizeSchema(
+    schema: Record<string, unknown>,
+    question: string,
+    context: string[],
+  ): unknown {
     const type = schema.type as string | undefined;
 
     if (schema.enum && Array.isArray(schema.enum)) {
       const lowered = question.toLowerCase();
-      const match = (schema.enum as unknown[]).find((value) => lowered.includes(String(value).toLowerCase()));
+      const match = (schema.enum as unknown[]).find((value) =>
+        lowered.includes(String(value).toLowerCase()),
+      );
       return match ?? schema.enum[0];
     }
 
@@ -247,7 +275,42 @@ export class LocalProvider implements AiProviderAdapter {
 }
 
 const STOP_WORDS = new Set([
-  'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out',
-  'has', 'have', 'this', 'that', 'with', 'from', 'they', 'been', 'were', 'their', 'what', 'when',
-  'your', 'about', 'would', 'there', 'could', 'other', 'into', 'more', 'some', 'will', 'how', 'why',
+  'the',
+  'and',
+  'for',
+  'are',
+  'but',
+  'not',
+  'you',
+  'all',
+  'can',
+  'her',
+  'was',
+  'one',
+  'our',
+  'out',
+  'has',
+  'have',
+  'this',
+  'that',
+  'with',
+  'from',
+  'they',
+  'been',
+  'were',
+  'their',
+  'what',
+  'when',
+  'your',
+  'about',
+  'would',
+  'there',
+  'could',
+  'other',
+  'into',
+  'more',
+  'some',
+  'will',
+  'how',
+  'why',
 ]);

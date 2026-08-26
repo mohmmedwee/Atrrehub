@@ -68,7 +68,10 @@ export class SlaController {
   @Patch('policies/:id')
   @RequirePermissions('sla:manage')
   @ApiOperation({ summary: 'Update an SLA policy' })
-  updatePolicy(@Param('id') id: string, @Body(zodBody(PolicySchema.partial().omit({ targets: true }))) body: Record<string, unknown>) {
+  updatePolicy(
+    @Param('id') id: string,
+    @Body(zodBody(PolicySchema.partial().omit({ targets: true }))) body: Record<string, unknown>,
+  ) {
     return this.sla.updatePolicy(id, body);
   }
 
@@ -83,7 +86,10 @@ export class SlaController {
   @Get('clocks/:subjectType/:subjectId')
   @RequirePermissions('sla:read')
   @ApiOperation({ summary: 'SLA clocks for a conversation or ticket' })
-  clocks(@Param('subjectType') subjectType: 'conversation' | 'ticket', @Param('subjectId') subjectId: string) {
+  clocks(
+    @Param('subjectType') subjectType: 'conversation' | 'ticket',
+    @Param('subjectId') subjectId: string,
+  ) {
     return this.sla.clocksFor(subjectType, subjectId);
   }
 

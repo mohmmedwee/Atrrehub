@@ -39,7 +39,10 @@ export class WidgetController {
     @Body(zodBody(MessageSchema)) body: z.infer<typeof MessageSchema>,
   ) {
     const account = await this.widget.resolveAccount(widgetKey);
-    return RequestContextStore.runAsSystem(() => this.widget.receive(account, body), account.organizationId);
+    return RequestContextStore.runAsSystem(
+      () => this.widget.receive(account, body),
+      account.organizationId,
+    );
   }
 
   @Public()
@@ -63,6 +66,9 @@ export class WidgetController {
   @ApiOperation({ summary: 'Branding and greeting for the widget' })
   async config(@Headers('x-widget-key') widgetKey: string | undefined) {
     const account = await this.widget.resolveAccount(widgetKey);
-    return RequestContextStore.runAsSystem(() => this.widget.config(account), account.organizationId);
+    return RequestContextStore.runAsSystem(
+      () => this.widget.config(account),
+      account.organizationId,
+    );
   }
 }

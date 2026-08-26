@@ -76,7 +76,10 @@ export class ChannelsController {
   @Patch('accounts/:id')
   @RequirePermissions('integration:manage')
   @ApiOperation({ summary: 'Update a channel account' })
-  updateAccount(@Param('id') id: string, @Body(zodBody(UpdateAccountSchema)) body: z.infer<typeof UpdateAccountSchema>) {
+  updateAccount(
+    @Param('id') id: string,
+    @Body(zodBody(UpdateAccountSchema)) body: z.infer<typeof UpdateAccountSchema>,
+  ) {
     return this.channels.updateAccount(id, body);
   }
 

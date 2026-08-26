@@ -34,14 +34,26 @@ describe('expression evaluation', () => {
 
   it('composes with and, or and not', () => {
     expect(evaluateCondition('customer.tier == "gold" and customer.age > 30', scope)).toBe(true);
-    expect(evaluateCondition('customer.tier == "bronze" or conversation.channel == "email"', scope)).toBe(true);
+    expect(
+      evaluateCondition('customer.tier == "bronze" or conversation.channel == "email"', scope),
+    ).toBe(true);
     expect(evaluateCondition('not (customer.tier == "bronze")', scope)).toBe(true);
     expect(evaluateCondition('customer.tier == "gold" and customer.age > 90', scope)).toBe(false);
   });
 
   it('respects parentheses', () => {
-    expect(evaluateCondition('(customer.tier == "bronze" or customer.age > 30) and conversation.channel == "email"', scope)).toBe(true);
-    expect(evaluateCondition('customer.tier == "bronze" or (customer.age > 30 and conversation.channel == "sms")', scope)).toBe(false);
+    expect(
+      evaluateCondition(
+        '(customer.tier == "bronze" or customer.age > 30) and conversation.channel == "email"',
+        scope,
+      ),
+    ).toBe(true);
+    expect(
+      evaluateCondition(
+        'customer.tier == "bronze" or (customer.age > 30 and conversation.channel == "sms")',
+        scope,
+      ),
+    ).toBe(false);
   });
 
   it('tests membership in an array value', () => {
@@ -50,7 +62,9 @@ describe('expression evaluation', () => {
   });
 
   it('tests membership in a literal list', () => {
-    expect(evaluateCondition('conversation.priority in ["high", "urgent", "critical"]', scope)).toBe(true);
+    expect(
+      evaluateCondition('conversation.priority in ["high", "urgent", "critical"]', scope),
+    ).toBe(true);
     expect(evaluateCondition('conversation.priority in ["low", "normal"]', scope)).toBe(false);
   });
 

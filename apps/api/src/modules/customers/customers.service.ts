@@ -58,7 +58,8 @@ export class CustomersService {
   static normalize(kind: string, value: string): string {
     const trimmed = value.trim();
     if (kind === 'email') return trimmed.toLowerCase();
-    if (kind === 'phone' || kind === 'whatsapp' || kind === 'sms') return trimmed.replace(/[^\d+]/g, '');
+    if (kind === 'phone' || kind === 'whatsapp' || kind === 'sms')
+      return trimmed.replace(/[^\d+]/g, '');
     return trimmed.toLowerCase();
   }
 
@@ -88,9 +89,12 @@ export class CustomersService {
         include: { customer: { select: { id: true, displayName: true } } },
       });
       if (existing) {
-        throw AppError.conflict(`${method.kind} ${method.value} already belongs to another customer`, {
-          customerId: existing.customer.id,
-        });
+        throw AppError.conflict(
+          `${method.kind} ${method.value} already belongs to another customer`,
+          {
+            customerId: existing.customer.id,
+          },
+        );
       }
     }
 
@@ -145,8 +149,17 @@ export class CustomersService {
       return created;
     });
 
-    await this.events.publish(DomainEvent.CustomerCreated, { type: 'customer', id }, { customerId: id });
-    await this.audit.record({ action: 'customer.created', resourceType: 'customer', resourceId: id, after: customer });
+    await this.events.publish(
+      DomainEvent.CustomerCreated,
+      { type: 'customer', id },
+      { customerId: id },
+    );
+    await this.audit.record({
+      action: 'customer.created',
+      resourceType: 'customer',
+      resourceId: id,
+      after: customer,
+    });
     return this.get(id);
   }
 
@@ -181,7 +194,14 @@ export class CustomersService {
       where: { id: customerId },
       data: {
         ...rest,
-        ...(attributes ? { attributes: { ...(before.attributes as object), ...attributes } as Prisma.InputJsonValue } : {}),
+        ...(attributes
+          ? {
+              attributes: {
+                ...(before.attributes as object),
+                ...attributes,
+              } as Prisma.InputJsonValue,
+            }
+          : {}),
         ...(patch.firstName || patch.lastName || patch.displayName
           ? { displayName: this.displayNameFor({ ...before, ...patch } as CustomerInput) }
           : {}),
@@ -192,18 +212,33 @@ export class CustomersService {
       for (const method of contactMethods) await this.addContactMethod(customerId, method);
     }
 
-    await this.events.publish(DomainEvent.CustomerUpdated, { type: 'customer', id: customerId }, {
+    await this.events.publish(
+      DomainEvent.CustomerUpdated,
+      { type: 'customer', id: customerId },
+      {
+        customerId,
+        changed: Object.keys(patch),
+      },
+    );
+    await this.audit.recordDiff(
+      'customer.updated',
+      'customer',
       customerId,
-      changed: Object.keys(patch),
-    });
-    await this.audit.recordDiff('customer.updated', 'customer', customerId, before as never, after as never);
+      before as never,
+      after as never,
+    );
     return this.get(customerId);
   }
 
   async delete(customerId: string) {
     const customer = await this.get(customerId);
     await this.prisma.db.customer.delete({ where: { id: customerId } });
-    await this.audit.record({ action: 'customer.deleted', resourceType: 'customer', resourceId: customerId, before: customer });
+    await this.audit.record({
+      action: 'customer.deleted',
+      resourceType: 'customer',
+      resourceId: customerId,
+      before: customer,
+    });
   }
 
   // ── Search ─────────────────────────────────────────────────────────────────
@@ -229,7 +264,11 @@ export class CustomersService {
               { displayName: { contains: params.q, mode: 'insensitive' } },
               { company: { contains: params.q, mode: 'insensitive' } },
               { externalId: params.q },
-              { contactMethods: { some: { normalized: { contains: CustomersService.normalize('email', params.q) } } } },
+              {
+                contactMethods: {
+                  some: { normalized: { contains: CustomersService.normalize('email', params.q) } },
+                },
+              },
             ],
           }
         : {}),
@@ -243,7 +282,10 @@ export class CustomersService {
 
     const rows = await this.prisma.db.customer.findMany({
       where,
-      include: { contactMethods: { where: { isPrimary: true }, take: 1 }, aiContext: { select: { sentiment: true, riskLevel: true, intent: true } } },
+      include: {
+        contactMethods: { where: { isPrimary: true }, take: 1 },
+        aiContext: { select: { sentiment: true, riskLevel: true, intent: true } },
+      },
       orderBy: parseSort(params.sort, ['createdAt', 'updatedAt', 'displayName', 'lastSeenAt']),
       ...cursorArgs(params),
     });
@@ -303,7 +345,9 @@ export class CustomersService {
   }
 
   async removeContactMethod(customerId: string, contactMethodId: string) {
-    const method = await this.prisma.db.contactMethod.findFirst({ where: { id: contactMethodId, customerId } });
+    const method = await this.prisma.db.contactMethod.findFirst({
+      where: { id: contactMethodId, customerId },
+    });
     if (!method) throw AppError.notFound('Contact method', contactMethodId);
     await this.prisma.db.contactMethod.delete({ where: { id: contactMethodId } });
   }
@@ -323,7 +367,11 @@ export class CustomersService {
     const organizationId = RequestContextStore.organizationId()!;
 
     await this.prisma.raw.$transaction(async (tx) => {
-      const targetKeys = new Set(target.contactMethods.map((m: { kind: string; normalized: string }) => `${m.kind}:${m.normalized}`));
+      const targetKeys = new Set(
+        target.contactMethods.map(
+          (m: { kind: string; normalized: string }) => `${m.kind}:${m.normalized}`,
+        ),
+      );
       for (const method of source.contactMethods) {
         if (targetKeys.has(`${method.kind}:${method.normalized}`)) {
           await tx.contactMethod.delete({ where: { id: method.id } });
@@ -335,11 +383,26 @@ export class CustomersService {
         }
       }
 
-      await tx.conversation.updateMany({ where: { customerId: sourceId }, data: { customerId: targetId } });
-      await tx.ticket.updateMany({ where: { customerId: sourceId }, data: { customerId: targetId } });
-      await tx.customerNote.updateMany({ where: { customerId: sourceId }, data: { customerId: targetId } });
-      await tx.customerActivity.updateMany({ where: { customerId: sourceId }, data: { customerId: targetId } });
-      await tx.memoryEntry.updateMany({ where: { customerId: sourceId }, data: { customerId: targetId } });
+      await tx.conversation.updateMany({
+        where: { customerId: sourceId },
+        data: { customerId: targetId },
+      });
+      await tx.ticket.updateMany({
+        where: { customerId: sourceId },
+        data: { customerId: targetId },
+      });
+      await tx.customerNote.updateMany({
+        where: { customerId: sourceId },
+        data: { customerId: targetId },
+      });
+      await tx.customerActivity.updateMany({
+        where: { customerId: sourceId },
+        data: { customerId: targetId },
+      });
+      await tx.memoryEntry.updateMany({
+        where: { customerId: sourceId },
+        data: { customerId: targetId },
+      });
 
       // Fill gaps on the survivor from the record being absorbed.
       await tx.customer.update({
@@ -352,7 +415,10 @@ export class CustomersService {
           tier: target.tier ?? source.tier,
           externalId: target.externalId ?? source.externalId,
           tags: [...new Set([...target.tags, ...source.tags])],
-          attributes: { ...(source.attributes as object), ...(target.attributes as object) } as Prisma.InputJsonValue,
+          attributes: {
+            ...(source.attributes as object),
+            ...(target.attributes as object),
+          } as Prisma.InputJsonValue,
         },
       });
 
@@ -375,7 +441,11 @@ export class CustomersService {
       });
     });
 
-    await this.events.publish(DomainEvent.CustomerMerged, { type: 'customer', id: targetId }, { sourceId, targetId });
+    await this.events.publish(
+      DomainEvent.CustomerMerged,
+      { type: 'customer', id: targetId },
+      { sourceId, targetId },
+    );
     await this.audit.record({
       action: 'customer.merged',
       resourceType: 'customer',
@@ -392,7 +462,13 @@ export class CustomersService {
     await this.get(customerId);
     const principal = RequestContextStore.principal();
     const note = await this.prisma.db.customerNote.create({
-      data: { id: newId('note'), customerId, body, isPinned, authorId: principal?.id ?? null } as never,
+      data: {
+        id: newId('note'),
+        customerId,
+        body,
+        isPinned,
+        authorId: principal?.id ?? null,
+      } as never,
     });
     await this.recordActivity(customerId, {
       kind: 'note_added',
@@ -420,7 +496,14 @@ export class CustomersService {
   /** Append to the unified timeline. Called by every module that touches a customer. */
   async recordActivity(
     customerId: string,
-    activity: { kind: string; title: string; summary?: string; refType?: string; refId?: string; metadata?: Record<string, unknown> },
+    activity: {
+      kind: string;
+      title: string;
+      summary?: string;
+      refType?: string;
+      refId?: string;
+      metadata?: Record<string, unknown>;
+    },
   ) {
     const organizationId = RequestContextStore.organizationId();
     if (!organizationId) return;
@@ -458,15 +541,31 @@ export class CustomersService {
         orderBy: { createdAt: 'desc' },
         take: 10,
         select: {
-          id: true, reference: true, subject: true, channel: true, status: true,
-          priority: true, createdAt: true, lastMessageAt: true, assigneeId: true, csatScore: true,
+          id: true,
+          reference: true,
+          subject: true,
+          channel: true,
+          status: true,
+          priority: true,
+          createdAt: true,
+          lastMessageAt: true,
+          assigneeId: true,
+          csatScore: true,
         },
       }),
       this.prisma.db.ticket.findMany({
         where: { customerId: customer.id },
         orderBy: { createdAt: 'desc' },
         take: 10,
-        select: { id: true, reference: true, subject: true, status: true, priority: true, createdAt: true, resolvedAt: true },
+        select: {
+          id: true,
+          reference: true,
+          subject: true,
+          status: true,
+          priority: true,
+          createdAt: true,
+          resolvedAt: true,
+        },
       }),
       this.prisma.db.customerNote.findMany({
         where: { customerId: customer.id },
@@ -516,12 +615,17 @@ export class CustomersService {
    * the allow-list and JSON attributes can be referenced, so a segment
    * definition can never reach into another table or another tenant.
    */
-  private compileSegment(definition: { all?: SegmentCondition[]; any?: SegmentCondition[] }): Prisma.CustomerWhereInput {
+  private compileSegment(definition: {
+    all?: SegmentCondition[];
+    any?: SegmentCondition[];
+  }): Prisma.CustomerWhereInput {
     const compile = (condition: SegmentCondition): Prisma.CustomerWhereInput | null => {
       const scalarFields = ['tier', 'company', 'locale', 'displayName', 'externalId', 'jobTitle'];
 
       if (condition.field === 'tags') {
-        const values = Array.isArray(condition.value) ? (condition.value as string[]) : [String(condition.value)];
+        const values = Array.isArray(condition.value)
+          ? (condition.value as string[])
+          : [String(condition.value)];
         if (condition.op === 'in') return { tags: { hasSome: values } };
         if (condition.op === 'eq') return { tags: { hasEvery: values } };
         if (condition.op === 'neq') return { NOT: { tags: { hasSome: values } } };
@@ -543,9 +647,13 @@ export class CustomersService {
         case 'neq':
           return { NOT: { [field]: condition.value } } as Prisma.CustomerWhereInput;
         case 'contains':
-          return { [field]: { contains: String(condition.value), mode: 'insensitive' } } as Prisma.CustomerWhereInput;
+          return {
+            [field]: { contains: String(condition.value), mode: 'insensitive' },
+          } as Prisma.CustomerWhereInput;
         case 'in':
-          return { [field]: { in: (condition.value as unknown[]).map(String) } } as Prisma.CustomerWhereInput;
+          return {
+            [field]: { in: (condition.value as unknown[]).map(String) },
+          } as Prisma.CustomerWhereInput;
         case 'exists':
           return { NOT: { [field]: null } } as Prisma.CustomerWhereInput;
         case 'not_exists':

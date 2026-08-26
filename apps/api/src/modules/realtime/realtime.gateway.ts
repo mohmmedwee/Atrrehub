@@ -50,12 +50,18 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(socket: Socket): Promise<void> {
     try {
-      const token = (socket.handshake.auth?.token ?? socket.handshake.query?.token) as string | undefined;
+      const token = (socket.handshake.auth?.token ?? socket.handshake.query?.token) as
+        string | undefined;
       if (!token) throw new Error('missing token');
 
       // Either an agent access token or a widget token; both carry `org`.
       const claims = await this.jwt.verifyAsync<
-        Omit<AccessTokenClaims, 'typ'> & { typ: 'access' | 'widget'; cha?: string; cnv?: string; cus?: string }
+        Omit<AccessTokenClaims, 'typ'> & {
+          typ: 'access' | 'widget';
+          cha?: string;
+          cnv?: string;
+          cus?: string;
+        }
       >(token);
 
       const principal: SocketPrincipal =
@@ -82,7 +88,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         await this.trackPresence(principal.organizationId, principal.id, socket.id, true);
       } else if (principal.conversationId) {
         // A widget socket is pinned to exactly one conversation.
-        await socket.join(this.conversationRoom(principal.organizationId, principal.conversationId));
+        await socket.join(
+          this.conversationRoom(principal.organizationId, principal.conversationId),
+        );
       }
 
       socket.emit('connected', { principal: { type: principal.type, id: principal.id } });
@@ -113,7 +121,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     // Widgets may only ever watch the conversation their token names.
     if (principal.type === 'widget') {
-      if (principal.conversationId !== body.conversationId) return { ok: false, reason: 'forbidden' };
+      if (principal.conversationId !== body.conversationId)
+        return { ok: false, reason: 'forbidden' };
       return { ok: true };
     }
 
@@ -134,12 +143,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() body: { conversationId: string },
   ): Promise<{ ok: boolean }> {
     const principal = this.principals.get(socket);
-    if (principal) await socket.leave(this.conversationRoom(principal.organizationId, body.conversationId));
+    if (principal)
+      await socket.leave(this.conversationRoom(principal.organizationId, body.conversationId));
     return { ok: true };
   }
 
   @SubscribeMessage('subscribe:queue')
-  async subscribeQueue(@ConnectedSocket() socket: Socket, @MessageBody() body: { queueId: string }) {
+  async subscribeQueue(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() body: { queueId: string },
+  ) {
     const principal = this.principals.get(socket);
     if (principal?.type !== 'user') return { ok: false };
     await socket.join(`${this.orgRoom(principal.organizationId)}:queue:${body.queueId}`);
@@ -147,7 +160,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   @SubscribeMessage('typing')
-  async typing(@ConnectedSocket() socket: Socket, @MessageBody() body: { conversationId: string; isTyping: boolean }) {
+  async typing(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() body: { conversationId: string; isTyping: boolean },
+  ) {
     const principal = this.principals.get(socket);
     if (!principal) return { ok: false };
     socket.to(this.conversationRoom(principal.organizationId, body.conversationId)).emit('typing', {
@@ -162,7 +178,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   // ── Server-side emission ───────────────────────────────────────────────────
 
   /** Returns true when at least one socket was listening. */
-  emitToConversation(organizationId: string, conversationId: string, event: string, payload: unknown): boolean {
+  emitToConversation(
+    organizationId: string,
+    conversationId: string,
+    event: string,
+    payload: unknown,
+  ): boolean {
     const room = this.conversationRoom(organizationId, conversationId);
     const listeners = this.server?.sockets?.adapter?.rooms?.get(room)?.size ?? 0;
     this.server?.to(room).emit(event, { conversationId, ...(payload as object) });
@@ -187,7 +208,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
    * Presence is reference-counted per socket: an agent with the workspace open
    * in two tabs only goes offline when the last one closes.
    */
-  private async trackPresence(organizationId: string, userId: string, socketId: string, online: boolean): Promise<void> {
+  private async trackPresence(
+    organizationId: string,
+    userId: string,
+    socketId: string,
+    online: boolean,
+  ): Promise<void> {
     const key = this.redis.key(organizationId, 'presence', userId);
     if (online) {
       await this.redis.client.sadd(key, socketId);

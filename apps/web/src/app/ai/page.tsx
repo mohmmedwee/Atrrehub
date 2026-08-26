@@ -13,14 +13,26 @@ export default function AiStudioPage() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<string | null>(null);
 
-  const { data: agents, isLoading } = useQuery({ queryKey: ['agents'], queryFn: () => get<Agent[]>('/agents') });
+  const { data: agents, isLoading } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => get<Agent[]>('/agents'),
+  });
   const { data: executions } = useQuery({
     queryKey: ['executions', selectedAgent],
     queryFn: () =>
-      get<{ id: string; status: string; triggerType: string; durationMs: number | null; promptTokens: number; completionTokens: number; costUsd: string; createdAt: string; error: string | null }[]>(
-        '/agents/executions',
-        selectedAgent ? { agentId: selectedAgent } : undefined,
-      ),
+      get<
+        {
+          id: string;
+          status: string;
+          triggerType: string;
+          durationMs: number | null;
+          promptTokens: number;
+          completionTokens: number;
+          costUsd: string;
+          createdAt: string;
+          error: string | null;
+        }[]
+      >('/agents/executions', selectedAgent ? { agentId: selectedAgent } : undefined),
     refetchInterval: 10_000,
   });
 
@@ -29,7 +41,9 @@ export default function AiStudioPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">AI Studio</h1>
-          <p className="mt-0.5 text-sm text-text-muted">Build, test and observe the AI agents handling your conversations.</p>
+          <p className="mt-0.5 text-sm text-text-muted">
+            Build, test and observe the AI agents handling your conversations.
+          </p>
         </div>
       </div>
 
@@ -38,7 +52,10 @@ export default function AiStudioPage() {
           <Card title="Agents">
             {isLoading ? <Spinner /> : null}
             {!isLoading && !agents?.length ? (
-              <Empty title="No agents yet" hint="Create an agent to start deflecting conversations with AI." />
+              <Empty
+                title="No agents yet"
+                hint="Create an agent to start deflecting conversations with AI."
+              />
             ) : null}
             <ul className="divide-y divide-border">
               {agents?.map((agent) => (
@@ -52,12 +69,18 @@ export default function AiStudioPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium">{agent.name}</span>
-                      <Badge tone={agent.state === 'published' ? 'success' : 'muted'}>{agent.state}</Badge>
+                      <Badge tone={agent.state === 'published' ? 'success' : 'muted'}>
+                        {agent.state}
+                      </Badge>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-text-muted">{agent.description ?? agent.key}</p>
+                    <p className="mt-0.5 truncate text-xs text-text-muted">
+                      {agent.description ?? agent.key}
+                    </p>
                     <p className="mt-1 text-xs text-text-muted">
                       {agent.versions.length} version{agent.versions.length === 1 ? '' : 's'}
-                      {agent.versions[0]?.publishedAt ? ` · live v${agent.versions[0].version}` : ' · draft'}
+                      {agent.versions[0]?.publishedAt
+                        ? ` · live v${agent.versions[0].version}`
+                        : ' · draft'}
                     </p>
                   </button>
                 </li>
@@ -65,12 +88,16 @@ export default function AiStudioPage() {
             </ul>
           </Card>
 
-          {selectedAgent ? <TestConsole agentId={selectedAgent} onExecution={setSelectedExecution} /> : null}
+          {selectedAgent ? (
+            <TestConsole agentId={selectedAgent} onExecution={setSelectedExecution} />
+          ) : null}
         </div>
 
         <div className="space-y-4">
           <Card title="Recent executions">
-            {!executions?.length ? <Empty title="No executions yet" hint="Run an agent to see its trace here." /> : null}
+            {!executions?.length ? (
+              <Empty title="No executions yet" hint="Run an agent to see its trace here." />
+            ) : null}
             <ul className="divide-y divide-border">
               {executions?.slice(0, 12).map((execution) => (
                 <li key={execution.id}>
@@ -86,12 +113,17 @@ export default function AiStudioPage() {
                         <span className="text-text-muted">{execution.triggerType}</span>
                       </span>
                       <span className="text-xs tabular-nums text-text-muted">
-                        {duration(execution.durationMs)} · {execution.promptTokens + execution.completionTokens} tok ·{' '}
+                        {duration(execution.durationMs)} ·{' '}
+                        {execution.promptTokens + execution.completionTokens} tok ·{' '}
                         {money(Number(execution.costUsd))}
                       </span>
                     </div>
-                    {execution.error ? <p className="mt-1 truncate text-xs text-danger">{execution.error}</p> : null}
-                    <p className="mt-0.5 text-xs text-text-muted">{relativeTime(execution.createdAt)}</p>
+                    {execution.error ? (
+                      <p className="mt-1 truncate text-xs text-danger">{execution.error}</p>
+                    ) : null}
+                    <p className="mt-0.5 text-xs text-text-muted">
+                      {relativeTime(execution.createdAt)}
+                    </p>
                   </button>
                 </li>
               ))}
@@ -105,11 +137,20 @@ export default function AiStudioPage() {
   );
 }
 
-function TestConsole({ agentId, onExecution }: { agentId: string; onExecution: (id: string) => void }) {
+function TestConsole({
+  agentId,
+  onExecution,
+}: {
+  agentId: string;
+  onExecution: (id: string) => void;
+}) {
   const [message, setMessage] = useState('');
 
   const run = useMutation({
-    mutationFn: () => post<{ executionId: string; status: string; costUsd: number }>(`/agents/${agentId}/run`, { message }),
+    mutationFn: () =>
+      post<{ executionId: string; status: string; costUsd: number }>(`/agents/${agentId}/run`, {
+        message,
+      }),
     onSuccess: (result) => onExecution(result.executionId),
   });
 
@@ -125,10 +166,17 @@ function TestConsole({ agentId, onExecution }: { agentId: string; onExecution: (
             placeholder="How long do refunds take?"
           />
         </Field>
-        <Button onClick={() => message.trim() && run.mutate()} disabled={!message.trim() || run.isPending}>
+        <Button
+          onClick={() => message.trim() && run.mutate()}
+          disabled={!message.trim() || run.isPending}
+        >
           {run.isPending ? 'Running…' : 'Run agent'}
         </Button>
-        {run.isError ? <p className="text-xs text-danger">The run failed. Check the agent has a published version.</p> : null}
+        {run.isError ? (
+          <p className="text-xs text-danger">
+            The run failed. Check the agent has a published version.
+          </p>
+        ) : null}
       </div>
     </Card>
   );
@@ -174,7 +222,9 @@ function ExecutionDebugger({ executionId }: { executionId: string }) {
               <span className="shrink-0 text-xs tabular-nums text-text-muted">
                 {duration(step.durationMs)}
                 {step.model ? ` · ${step.model}` : ''}
-                {step.promptTokens + step.completionTokens > 0 ? ` · ${step.promptTokens + step.completionTokens} tok` : ''}
+                {step.promptTokens + step.completionTokens > 0
+                  ? ` · ${step.promptTokens + step.completionTokens} tok`
+                  : ''}
               </span>
             </div>
 
@@ -182,7 +232,9 @@ function ExecutionDebugger({ executionId }: { executionId: string }) {
 
             {step.output !== null && step.output !== undefined ? (
               <details className="mt-1.5">
-                <summary className="cursor-pointer text-xs text-text-muted hover:text-text">Output</summary>
+                <summary className="cursor-pointer text-xs text-text-muted hover:text-text">
+                  Output
+                </summary>
                 <pre className="mt-1 max-h-48 overflow-auto rounded-md bg-surface-sunken p-2 text-xs">
                   {JSON.stringify(step.output, null, 2)}
                 </pre>
@@ -194,11 +246,21 @@ function ExecutionDebugger({ executionId }: { executionId: string }) {
 
       {data.guardrails.length ? (
         <div className="border-t border-border px-4 py-2.5">
-          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Guardrail decisions</h3>
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Guardrail decisions
+          </h3>
           <ul className="space-y-1">
             {data.guardrails.map((event) => (
               <li key={event.id} className="flex items-center gap-2 text-xs">
-                <Badge tone={event.action === 'block' ? 'danger' : event.action === 'handoff' ? 'warning' : 'muted'}>
+                <Badge
+                  tone={
+                    event.action === 'block'
+                      ? 'danger'
+                      : event.action === 'handoff'
+                        ? 'warning'
+                        : 'muted'
+                  }
+                >
                   {event.action}
                 </Badge>
                 <span>{event.check.replace(/_/g, ' ')}</span>
@@ -211,11 +273,15 @@ function ExecutionDebugger({ executionId }: { executionId: string }) {
 
       {data.toolCalls.length ? (
         <div className="border-t border-border px-4 py-2.5">
-          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Tool calls</h3>
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Tool calls
+          </h3>
           <ul className="space-y-1">
             {data.toolCalls.map((call) => (
               <li key={call.id} className="flex items-center gap-2 text-xs">
-                <Badge tone={call.status === 'succeeded' ? 'success' : 'danger'}>{call.status}</Badge>
+                <Badge tone={call.status === 'succeeded' ? 'success' : 'danger'}>
+                  {call.status}
+                </Badge>
                 <span className="text-text-muted">{duration(call.durationMs)}</span>
               </li>
             ))}

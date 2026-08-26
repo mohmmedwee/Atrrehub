@@ -74,7 +74,10 @@ export class RagService {
     const organizationId = RequestContextStore.organizationId()!;
     if (!chunks.length) return 0;
 
-    const embedded = await this.gateway.embed(chunks.map((chunk) => chunk.content), { operation: 'index' });
+    const embedded = await this.gateway.embed(
+      chunks.map((chunk) => chunk.content),
+      { operation: 'index' },
+    );
     const model = embedded.model;
 
     await this.prisma.raw.$transaction(async (tx) => {
@@ -140,16 +143,21 @@ export class RagService {
     let ranked = shortlist;
     if (options.rerank !== false && shortlist.length > topK) {
       const rerankStarted = Date.now();
-      const results = await this.gateway.rerank(query, shortlist.map((hit) => hit.content), topK);
-      this.metrics.retrievalDuration.observe({ stage: 'rerank' }, (Date.now() - rerankStarted) / 1000);
+      const results = await this.gateway.rerank(
+        query,
+        shortlist.map((hit) => hit.content),
+        topK,
+      );
+      this.metrics.retrievalDuration.observe(
+        { stage: 'rerank' },
+        (Date.now() - rerankStarted) / 1000,
+      );
       ranked = results
         .map((result) => ({ ...shortlist[result.index], score: result.score }))
         .filter((hit): hit is RetrievalHit => !!hit);
     }
 
-    const hits = ranked
-      .filter((hit) => hit.score >= (options.minScore ?? 0))
-      .slice(0, topK);
+    const hits = ranked.filter((hit) => hit.score >= (options.minScore ?? 0)).slice(0, topK);
 
     const latencyMs = Date.now() - started;
     this.metrics.retrievalDuration.observe({ stage: 'total' }, latencyMs / 1000);
@@ -189,14 +197,26 @@ export class RagService {
     const kbFilter = options.knowledgeBaseIds?.length
       ? `AND c.knowledge_base_id = ANY($3::text[])`
       : '';
-    const localeFilter = options.locale ? `AND c.locale = $${options.knowledgeBaseIds?.length ? 4 : 3}` : '';
+    const localeFilter = options.locale
+      ? `AND c.locale = $${options.knowledgeBaseIds?.length ? 4 : 3}`
+      : '';
 
     const params: unknown[] = [organizationId, JSON.stringify(vector)];
     if (options.knowledgeBaseIds?.length) params.push(options.knowledgeBaseIds);
     if (options.locale) params.push(options.locale);
 
     const rows = await this.prisma.raw.$queryRawUnsafe<
-      { chunk_id: string; document_id: string; knowledge_base_id: string; title: string; heading: string | null; content: string; distance: number; uri: string | null; version: number }[]
+      {
+        chunk_id: string;
+        document_id: string;
+        knowledge_base_id: string;
+        title: string;
+        heading: string | null;
+        content: string;
+        distance: number;
+        uri: string | null;
+        version: number;
+      }[]
     >(
       `SELECT c.id AS chunk_id, c.document_id, c.knowledge_base_id, d.title, c.heading, c.content,
               (c.embedding <=> $2::vector) AS distance, d.uri, d.version
@@ -236,13 +256,25 @@ export class RagService {
     options: RetrievalOptions,
   ): Promise<RetrievalHit[]> {
     const started = Date.now();
-    const kbFilter = options.knowledgeBaseIds?.length ? `AND c.knowledge_base_id = ANY($3::text[])` : '';
+    const kbFilter = options.knowledgeBaseIds?.length
+      ? `AND c.knowledge_base_id = ANY($3::text[])`
+      : '';
     const params: unknown[] = [organizationId, query];
     if (options.knowledgeBaseIds?.length) params.push(options.knowledgeBaseIds);
 
     const rows = await this.prisma.raw
       .$queryRawUnsafe<
-        { chunk_id: string; document_id: string; knowledge_base_id: string; title: string; heading: string | null; content: string; rank: number; uri: string | null; version: number }[]
+        {
+          chunk_id: string;
+          document_id: string;
+          knowledge_base_id: string;
+          title: string;
+          heading: string | null;
+          content: string;
+          rank: number;
+          uri: string | null;
+          version: number;
+        }[]
       >(
         `SELECT c.id AS chunk_id, c.document_id, c.knowledge_base_id, d.title, c.heading, c.content,
                 ts_rank(c.search_vector, websearch_to_tsquery('simple', $2)) AS rank, d.uri, d.version
@@ -314,7 +346,15 @@ export class RagService {
    */
   buildContext(hits: RetrievalHit[]): {
     context: string;
-    citations: { index: number; documentId: string; chunkId: string; title: string; heading?: string; uri?: string; version: number }[];
+    citations: {
+      index: number;
+      documentId: string;
+      chunkId: string;
+      title: string;
+      heading?: string;
+      uri?: string;
+      version: number;
+    }[];
   } {
     const citations = hits.map((hit, index) => ({
       index: index + 1,
@@ -327,7 +367,10 @@ export class RagService {
     }));
 
     const context = hits
-      .map((hit, index) => `[${index + 1}] ${hit.title}${hit.heading ? ` — ${hit.heading}` : ''}\n${hit.content}`)
+      .map(
+        (hit, index) =>
+          `[${index + 1}] ${hit.title}${hit.heading ? ` — ${hit.heading}` : ''}\n${hit.content}`,
+      )
       .join('\n\n');
 
     return { context, citations };
@@ -348,7 +391,9 @@ export class RagService {
         .filter((term) => term.length > 3),
     );
 
-    const sentences = answer.split(/(?<=[.!?؟])\s+/).filter((sentence) => sentence.trim().length > 15);
+    const sentences = answer
+      .split(/(?<=[.!?؟])\s+/)
+      .filter((sentence) => sentence.trim().length > 15);
     if (!sentences.length) return { score: 1, unsupported: [] };
 
     const unsupported: string[] = [];
@@ -377,13 +422,16 @@ export class RagService {
       where: { createdAt: { gte: params.from, lte: params.to } },
       select: { hitCount: true, topScore: true, latencyMs: true },
     });
-    if (!logs.length) return { queries: 0, zeroHitRate: 0, averageLatencyMs: 0, averageTopScore: 0 };
+    if (!logs.length)
+      return { queries: 0, zeroHitRate: 0, averageLatencyMs: 0, averageTopScore: 0 };
 
     const zeroHits = logs.filter((log) => log.hitCount === 0).length;
     return {
       queries: logs.length,
       zeroHitRate: Math.round((zeroHits / logs.length) * 1000) / 10,
-      averageLatencyMs: Math.round(logs.reduce((total, log) => total + log.latencyMs, 0) / logs.length),
+      averageLatencyMs: Math.round(
+        logs.reduce((total, log) => total + log.latencyMs, 0) / logs.length,
+      ),
       averageTopScore:
         Math.round(
           (logs.reduce((total, log) => total + (log.topScore ?? 0), 0) / logs.length) * 1000,

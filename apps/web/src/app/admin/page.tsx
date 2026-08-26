@@ -23,7 +23,9 @@ export default function AdminPage() {
     <div className="mx-auto max-w-6xl space-y-4 p-4">
       <div>
         <h1 className="text-xl font-semibold">Administration</h1>
-        <p className="mt-0.5 text-sm text-text-muted">Configure your organization, its people and its operating rules.</p>
+        <p className="mt-0.5 text-sm text-text-muted">
+          Configure your organization, its people and its operating rules.
+        </p>
       </div>
 
       <nav className="flex flex-wrap gap-1 border-b border-border" aria-label="Admin sections">
@@ -33,7 +35,9 @@ export default function AdminPage() {
             onClick={() => setTab(entry.key)}
             aria-current={tab === entry.key ? 'page' : undefined}
             className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-fast ${
-              tab === entry.key ? 'border-accent font-medium text-accent' : 'border-transparent text-text-muted hover:text-text'
+              tab === entry.key
+                ? 'border-accent font-medium text-accent'
+                : 'border-transparent text-text-muted hover:text-text'
             }`}
           >
             {entry.label}
@@ -54,8 +58,14 @@ function People() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ email: '', firstName: '', lastName: '', roleKey: 'agent' });
 
-  const { data, isLoading } = useQuery({ queryKey: ['users'], queryFn: () => get<{ data: UserRow[] }>('/users', { limit: 100 }) });
-  const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: () => get<RoleRow[]>('/roles') });
+  const { data, isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => get<{ data: UserRow[] }>('/users', { limit: 100 }),
+  });
+  const { data: roles } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => get<RoleRow[]>('/roles'),
+  });
 
   const invite = useMutation({
     mutationFn: () => post('/users', form),
@@ -91,18 +101,35 @@ function People() {
       <Card title="Invite someone">
         <div className="space-y-3 p-4">
           <Field label="Email">
-            <input className={inputClass} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <input
+              className={inputClass}
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label="First name">
-              <input className={inputClass} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+              <input
+                className={inputClass}
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              />
             </Field>
             <Field label="Last name">
-              <input className={inputClass} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+              <input
+                className={inputClass}
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              />
             </Field>
           </div>
           <Field label="Role" hint="You cannot grant permissions you do not hold yourself.">
-            <select className={inputClass} value={form.roleKey} onChange={(e) => setForm({ ...form, roleKey: e.target.value })}>
+            <select
+              className={inputClass}
+              value={form.roleKey}
+              onChange={(e) => setForm({ ...form, roleKey: e.target.value })}
+            >
               {roles?.map((role) => (
                 <option key={role.id} value={role.key}>
                   {role.name} ({role.permissions.length} permissions)
@@ -110,10 +137,16 @@ function People() {
               ))}
             </select>
           </Field>
-          <Button onClick={() => invite.mutate()} disabled={!form.email || !form.firstName || invite.isPending} full>
+          <Button
+            onClick={() => invite.mutate()}
+            disabled={!form.email || !form.firstName || invite.isPending}
+            full
+          >
             {invite.isPending ? 'Sending…' : 'Send invitation'}
           </Button>
-          {invite.isError ? <p className="text-xs text-danger">Could not send the invitation.</p> : null}
+          {invite.isError ? (
+            <p className="text-xs text-danger">Could not send the invitation.</p>
+          ) : null}
         </div>
       </Card>
     </div>
@@ -121,9 +154,18 @@ function People() {
 }
 
 function Queues() {
-  const { data: queues } = useQuery({ queryKey: ['queues'], queryFn: () => get<QueueRow[]>('/queues') });
-  const { data: teams } = useQuery({ queryKey: ['teams'], queryFn: () => get<TeamRow[]>('/teams') });
-  const { data: hours } = useQuery({ queryKey: ['business-hours'], queryFn: () => get<HoursRow[]>('/business-hours') });
+  const { data: queues } = useQuery({
+    queryKey: ['queues'],
+    queryFn: () => get<QueueRow[]>('/queues'),
+  });
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => get<TeamRow[]>('/teams'),
+  });
+  const { data: hours } = useQuery({
+    queryKey: ['business-hours'],
+    queryFn: () => get<HoursRow[]>('/business-hours'),
+  });
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -175,8 +217,9 @@ function Queues() {
                   {calendar.isDefault ? <Badge tone="accent">default</Badge> : null}
                 </div>
                 <p className="mt-0.5 text-xs text-text-muted">
-                  {calendar.timezone} · {calendar.rules.length} working day{calendar.rules.length === 1 ? '' : 's'} ·{' '}
-                  {calendar.holidays?.length ?? 0} holidays
+                  {calendar.timezone} · {calendar.rules.length} working day
+                  {calendar.rules.length === 1 ? '' : 's'} · {calendar.holidays?.length ?? 0}{' '}
+                  holidays
                 </p>
               </li>
             ))}
@@ -191,7 +234,10 @@ function Knowledge() {
   const queryClient = useQueryClient();
   const [article, setArticle] = useState({ knowledgeBaseId: '', title: '', body: '' });
 
-  const { data: bases } = useQuery({ queryKey: ['kb'], queryFn: () => get<BaseRow[]>('/knowledge/bases') });
+  const { data: bases } = useQuery({
+    queryKey: ['kb'],
+    queryFn: () => get<BaseRow[]>('/knowledge/bases'),
+  });
   const { data: articles } = useQuery({
     queryKey: ['articles'],
     queryFn: () => get<{ data: ArticleRow[] }>('/knowledge/articles', { limit: 50 }),
@@ -223,7 +269,9 @@ function Knowledge() {
               <Badge tone={entry.state === 'published' ? 'success' : 'muted'}>{entry.state}</Badge>
             </li>
           ))}
-          {!articles?.data.length ? <Empty title="No articles yet" hint="Published articles ground every AI answer." /> : null}
+          {!articles?.data.length ? (
+            <Empty title="No articles yet" hint="Published articles ground every AI answer." />
+          ) : null}
         </ul>
       </Card>
 
@@ -244,7 +292,11 @@ function Knowledge() {
             </select>
           </Field>
           <Field label="Title">
-            <input className={inputClass} value={article.title} onChange={(e) => setArticle({ ...article, title: e.target.value })} />
+            <input
+              className={inputClass}
+              value={article.title}
+              onChange={(e) => setArticle({ ...article, title: e.target.value })}
+            />
           </Field>
           <Field label="Body" hint="Published immediately and indexed for retrieval.">
             <textarea
@@ -256,7 +308,12 @@ function Knowledge() {
           </Field>
           <Button
             onClick={() => create.mutate()}
-            disabled={!article.knowledgeBaseId || !article.title || article.body.length < 10 || create.isPending}
+            disabled={
+              !article.knowledgeBaseId ||
+              !article.title ||
+              article.body.length < 10 ||
+              create.isPending
+            }
             full
           >
             {create.isPending ? 'Publishing…' : 'Publish'}
@@ -268,8 +325,14 @@ function Knowledge() {
 }
 
 function Automation() {
-  const { data: rules } = useQuery({ queryKey: ['automation'], queryFn: () => get<RuleRow[]>('/automation/rules') });
-  const { data: runs } = useQuery({ queryKey: ['automation-runs'], queryFn: () => get<RunRow[]>('/automation/runs') });
+  const { data: rules } = useQuery({
+    queryKey: ['automation'],
+    queryFn: () => get<RuleRow[]>('/automation/rules'),
+  });
+  const { data: runs } = useQuery({
+    queryKey: ['automation-runs'],
+    queryFn: () => get<RunRow[]>('/automation/runs'),
+  });
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -279,15 +342,20 @@ function Automation() {
             <li key={rule.id} className="px-4 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">{rule.name}</span>
-                <Badge tone={rule.isActive ? 'success' : 'muted'}>{rule.isActive ? 'active' : 'paused'}</Badge>
+                <Badge tone={rule.isActive ? 'success' : 'muted'}>
+                  {rule.isActive ? 'active' : 'paused'}
+                </Badge>
               </div>
               <p className="mt-0.5 text-xs text-text-muted">
-                on {rule.trigger.replace(/_/g, ' ')} → {rule.actions.map((action) => action.type).join(', ')}
+                on {rule.trigger.replace(/_/g, ' ')} →{' '}
+                {rule.actions.map((action) => action.type).join(', ')}
               </p>
               <p className="mt-0.5 text-xs text-text-muted">{rule.runCount} runs</p>
             </li>
           ))}
-          {!rules?.length ? <Empty title="No automation rules" hint="Rules act on triggers without involving AI." /> : null}
+          {!rules?.length ? (
+            <Empty title="No automation rules" hint="Rules act on triggers without involving AI." />
+          ) : null}
         </ul>
       </Card>
 
@@ -315,8 +383,14 @@ function Automation() {
 }
 
 function Quality() {
-  const { data: templates } = useQuery({ queryKey: ['qc-templates'], queryFn: () => get<TemplateRow[]>('/quality/templates') });
-  const { data: evaluations } = useQuery({ queryKey: ['qc-evaluations'], queryFn: () => get<EvaluationRow[]>('/quality/evaluations') });
+  const { data: templates } = useQuery({
+    queryKey: ['qc-templates'],
+    queryFn: () => get<TemplateRow[]>('/quality/templates'),
+  });
+  const { data: evaluations } = useQuery({
+    queryKey: ['qc-evaluations'],
+    queryFn: () => get<EvaluationRow[]>('/quality/evaluations'),
+  });
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -349,26 +423,101 @@ function Quality() {
                 {evaluation.template?.name} · {relativeTime(evaluation.createdAt)}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold tabular-nums">{evaluation.score.toFixed(1)}</span>
-                <Badge tone={evaluation.passed ? 'success' : 'danger'}>{evaluation.passed ? 'pass' : 'fail'}</Badge>
+                <span className="text-sm font-semibold tabular-nums">
+                  {evaluation.score.toFixed(1)}
+                </span>
+                <Badge tone={evaluation.passed ? 'success' : 'danger'}>
+                  {evaluation.passed ? 'pass' : 'fail'}
+                </Badge>
               </div>
             </li>
           ))}
-          {!evaluations?.length ? <Empty title="No evaluations yet" hint="Conversations are scored automatically once resolved." /> : null}
+          {!evaluations?.length ? (
+            <Empty
+              title="No evaluations yet"
+              hint="Conversations are scored automatically once resolved."
+            />
+          ) : null}
         </ul>
       </Card>
     </div>
   );
 }
 
-interface UserRow { id: string; email: string; firstName: string; lastName: string; status: string; skills?: string[]; role: { key: string } }
-interface RoleRow { id: string; key: string; name: string; permissions: string[] }
-interface QueueRow { id: string; name: string; strategy: string; aiFirst: boolean; team: { name: string } | null; slaPolicy: { name: string } | null; _count?: { conversations: number } }
-interface TeamRow { id: string; name: string; members?: unknown[]; skills?: string[]; languages?: string[] }
-interface HoursRow { id: string; name: string; timezone: string; isDefault: boolean; rules: unknown[]; holidays?: unknown[] }
-interface BaseRow { id: string; name: string }
-interface ArticleRow { id: string; title: string; state: string; version: number; updatedAt: string }
-interface RuleRow { id: string; name: string; trigger: string; isActive: boolean; runCount: number; actions: { type: string }[] }
-interface RunRow { id: string; subjectType: string; createdAt: string; actionsRun: { type: string; ok: boolean }[] }
-interface TemplateRow { id: string; name: string; passingScore: number; criteria: { id: string; name: string; weight: number; isCritical: boolean }[] }
-interface EvaluationRow { id: string; score: number; passed: boolean; createdAt: string; template?: { name: string } }
+interface UserRow {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skills?: string[];
+  role: { key: string };
+}
+interface RoleRow {
+  id: string;
+  key: string;
+  name: string;
+  permissions: string[];
+}
+interface QueueRow {
+  id: string;
+  name: string;
+  strategy: string;
+  aiFirst: boolean;
+  team: { name: string } | null;
+  slaPolicy: { name: string } | null;
+  _count?: { conversations: number };
+}
+interface TeamRow {
+  id: string;
+  name: string;
+  members?: unknown[];
+  skills?: string[];
+  languages?: string[];
+}
+interface HoursRow {
+  id: string;
+  name: string;
+  timezone: string;
+  isDefault: boolean;
+  rules: unknown[];
+  holidays?: unknown[];
+}
+interface BaseRow {
+  id: string;
+  name: string;
+}
+interface ArticleRow {
+  id: string;
+  title: string;
+  state: string;
+  version: number;
+  updatedAt: string;
+}
+interface RuleRow {
+  id: string;
+  name: string;
+  trigger: string;
+  isActive: boolean;
+  runCount: number;
+  actions: { type: string }[];
+}
+interface RunRow {
+  id: string;
+  subjectType: string;
+  createdAt: string;
+  actionsRun: { type: string; ok: boolean }[];
+}
+interface TemplateRow {
+  id: string;
+  name: string;
+  passingScore: number;
+  criteria: { id: string; name: string; weight: number; isCritical: boolean }[];
+}
+interface EvaluationRow {
+  id: string;
+  score: number;
+  passed: boolean;
+  createdAt: string;
+  template?: { name: string };
+}

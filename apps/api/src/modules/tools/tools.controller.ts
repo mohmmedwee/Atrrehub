@@ -8,7 +8,11 @@ import { ToolsService } from './tools.service';
 
 const ToolSchema = z
   .object({
-    key: z.string().min(2).max(60).regex(/^[a-z][a-z0-9_]*$/),
+    key: z
+      .string()
+      .min(2)
+      .max(60)
+      .regex(/^[a-z][a-z0-9_]*$/),
     name: z.string().min(2).max(80),
     description: z.string().min(10).max(1000),
     method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).optional(),
@@ -44,7 +48,10 @@ export class ToolsController {
   @Patch(':id')
   @RequirePermissions('tool:manage')
   @ApiOperation({ summary: 'Update a custom tool' })
-  update(@Param('id') id: string, @Body(zodBody(ToolSchema.partial())) body: Record<string, unknown>) {
+  update(
+    @Param('id') id: string,
+    @Body(zodBody(ToolSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.tools.update(id, body);
   }
 
@@ -60,7 +67,10 @@ export class ToolsController {
   @RequirePermissions('tool:execute')
   @RateLimit(RATE_BUCKETS.ai)
   @ApiOperation({ summary: 'Invoke a tool directly, for testing' })
-  invoke(@Param('key') key: string, @Body(zodBody(z.record(z.unknown()))) body: Record<string, unknown>) {
+  invoke(
+    @Param('key') key: string,
+    @Body(zodBody(z.record(z.unknown()))) body: Record<string, unknown>,
+  ) {
     return this.tools.invoke(key, body);
   }
 

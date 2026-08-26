@@ -17,12 +17,20 @@ export interface Page<T> {
  * Fetch `limit + 1` rows, use the extra row purely to decide whether another
  * page exists, and return the last visible id as the next cursor.
  */
-export function paginate<T extends { id: string }>(rows: T[], limit: number, total?: number): Page<T> {
+export function paginate<T extends { id: string }>(
+  rows: T[],
+  limit: number,
+  total?: number,
+): Page<T> {
   const hasMore = rows.length > limit;
   const data = hasMore ? rows.slice(0, limit) : rows;
   return {
     data,
-    meta: { limit, cursor: hasMore ? (data.at(-1)?.id ?? null) : null, ...(total !== undefined ? { total } : {}) },
+    meta: {
+      limit,
+      cursor: hasMore ? (data.at(-1)?.id ?? null) : null,
+      ...(total !== undefined ? { total } : {}),
+    },
   };
 }
 
@@ -48,14 +56,19 @@ export function parseSort<T extends string>(
     .map((token) => {
       const desc = token.startsWith('-');
       const field = desc ? token.slice(1) : token;
-      return allowed.includes(field as T) ? { [field]: desc ? ('desc' as const) : ('asc' as const) } : null;
+      return allowed.includes(field as T)
+        ? { [field]: desc ? ('desc' as const) : ('asc' as const) }
+        : null;
     })
     .filter((entry): entry is Record<string, 'asc' | 'desc'> => entry !== null);
   return parsed.length ? parsed : [fallback];
 }
 
 /** Splits `open,pending` into a Prisma `in` filter, ignoring unknown values. */
-export function csvFilter<T extends string>(value: string | undefined, allowed: readonly T[]): T[] | undefined {
+export function csvFilter<T extends string>(
+  value: string | undefined,
+  allowed: readonly T[],
+): T[] | undefined {
   if (!value) return undefined;
   const values = value
     .split(',')

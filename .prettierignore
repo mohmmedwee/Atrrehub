@@ -5,3 +5,6 @@ build
 coverage
 pnpm-lock.yaml
 *.md
+
+# Helm templates are Go templates in YAML clothing; Prettier cannot parse them.
+infra/helm/**/templates/**

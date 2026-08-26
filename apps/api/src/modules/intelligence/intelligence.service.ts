@@ -28,7 +28,9 @@ export class IntelligenceService {
 
     const transcript = messages.data
       .filter((message) => !message.isPrivate)
-      .map((message) => `${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`)
+      .map(
+        (message) => `${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`,
+      )
       .join('\n');
     if (!transcript.trim()) return null;
 
@@ -68,7 +70,10 @@ export class IntelligenceService {
             topics: { type: 'array', items: { type: 'string' } },
             entities: {
               type: 'array',
-              items: { type: 'object', properties: { type: { type: 'string' }, value: { type: 'string' } } },
+              items: {
+                type: 'object',
+                properties: { type: { type: 'string' }, value: { type: 'string' } },
+              },
             },
             products: { type: 'array', items: { type: 'string' } },
             complaints: { type: 'array', items: { type: 'string' } },
@@ -76,7 +81,10 @@ export class IntelligenceService {
             churnRisk: { type: 'number' },
             preferences: { type: 'object', properties: {} },
             summary: { type: 'string', description: 'A short summary of the conversation' },
-            resolutionType: { type: 'string', enum: ['resolved', 'escalated', 'pending', 'abandoned'] },
+            resolutionType: {
+              type: 'string',
+              enum: ['resolved', 'escalated', 'pending', 'abandoned'],
+            },
           },
           required: ['intent', 'sentiment'],
         },
@@ -129,12 +137,16 @@ export class IntelligenceService {
       },
     });
 
-    await this.events.publish(DomainEvent.IntelExtracted, { type: 'conversation', id: conversationId }, {
-      conversationId,
-      intent: value.intent,
-      sentiment: value.sentiment,
-      topics: value.topics ?? [],
-    });
+    await this.events.publish(
+      DomainEvent.IntelExtracted,
+      { type: 'conversation', id: conversationId },
+      {
+        conversationId,
+        intent: value.intent,
+        sentiment: value.sentiment,
+        topics: value.topics ?? [],
+      },
+    );
 
     // Sentiment on the conversation is what routing and automation read.
     void conversation;
@@ -149,13 +161,23 @@ export class IntelligenceService {
   async trends(params: { from: Date; to: Date }) {
     const rows = await this.prisma.db.conversationIntelligence.findMany({
       where: { createdAt: { gte: params.from, lte: params.to } },
-      select: { intent: true, sentiment: true, sentimentScore: true, topics: true, complaints: true, churnRisk: true, resolutionType: true },
+      select: {
+        intent: true,
+        sentiment: true,
+        sentimentScore: true,
+        topics: true,
+        complaints: true,
+        churnRisk: true,
+        resolutionType: true,
+      },
     });
 
     const count = <T extends string>(values: T[]) => {
       const map = new Map<T, number>();
       for (const value of values) map.set(value, (map.get(value) ?? 0) + 1);
-      return [...map.entries()].sort((a, b) => b[1] - a[1]).map(([value, total]) => ({ value, count: total }));
+      return [...map.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([value, total]) => ({ value, count: total }));
     };
 
     return {
@@ -166,7 +188,9 @@ export class IntelligenceService {
       sentiment: count(rows.map((row) => row.sentiment ?? 'unknown')),
       resolutionTypes: count(rows.map((row) => row.resolutionType ?? 'unknown')),
       averageSentiment: rows.length
-        ? Math.round((rows.reduce((total, row) => total + (row.sentimentScore ?? 0), 0) / rows.length) * 100) / 100
+        ? Math.round(
+            (rows.reduce((total, row) => total + (row.sentimentScore ?? 0), 0) / rows.length) * 100,
+          ) / 100
         : 0,
       atRiskCount: rows.filter((row) => (row.churnRisk ?? 0) > 0.6).length,
     };

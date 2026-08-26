@@ -43,9 +43,18 @@ export class KnowledgeService {
     });
   }
 
-  async createBase(input: { name: string; key: string; description?: string; locale?: string; readRoles?: string[]; isPublic?: boolean; workspaceId?: string }) {
+  async createBase(input: {
+    name: string;
+    key: string;
+    description?: string;
+    locale?: string;
+    readRoles?: string[];
+    isPublic?: boolean;
+    workspaceId?: string;
+  }) {
     const existing = await this.prisma.db.knowledgeBase.findFirst({ where: { key: input.key } });
-    if (existing) throw AppError.conflict(`A knowledge base with the key "${input.key}" already exists`);
+    if (existing)
+      throw AppError.conflict(`A knowledge base with the key "${input.key}" already exists`);
 
     return this.prisma.db.knowledgeBase.create({
       data: {
@@ -64,19 +73,29 @@ export class KnowledgeService {
   async getBase(knowledgeBaseId: string) {
     const base = await this.prisma.db.knowledgeBase.findFirst({
       where: { id: knowledgeBaseId },
-      include: { categories: { orderBy: { position: 'asc' } }, _count: { select: { articles: true, documents: true } } },
+      include: {
+        categories: { orderBy: { position: 'asc' } },
+        _count: { select: { articles: true, documents: true } },
+      },
     });
     if (!base) throw AppError.notFound('Knowledge base', knowledgeBaseId);
     return base;
   }
 
   async updateBase(knowledgeBaseId: string, patch: Record<string, unknown>) {
-    return this.prisma.db.knowledgeBase.update({ where: { id: knowledgeBaseId }, data: patch as never });
+    return this.prisma.db.knowledgeBase.update({
+      where: { id: knowledgeBaseId },
+      data: patch as never,
+    });
   }
 
   async deleteBase(knowledgeBaseId: string) {
     await this.prisma.db.knowledgeBase.delete({ where: { id: knowledgeBaseId } });
-    await this.audit.record({ action: 'knowledge_base.deleted', resourceType: 'knowledge_base', resourceId: knowledgeBaseId });
+    await this.audit.record({
+      action: 'knowledge_base.deleted',
+      resourceType: 'knowledge_base',
+      resourceId: knowledgeBaseId,
+    });
   }
 
   /**
@@ -85,19 +104,33 @@ export class KnowledgeService {
    */
   async readableBaseIds(): Promise<string[]> {
     const principal = RequestContextStore.principal();
-    const bases = await this.prisma.db.knowledgeBase.findMany({ where: {}, select: { id: true, readRoles: true, isPublic: true } });
+    const bases = await this.prisma.db.knowledgeBase.findMany({
+      where: {},
+      select: { id: true, readRoles: true, isPublic: true },
+    });
     if (!principal) return bases.filter((base) => base.isPublic).map((base) => base.id);
     if (principal.permissions.includes('*')) return bases.map((base) => base.id);
 
     return bases
-      .filter((base) => base.isPublic || !base.readRoles.length || (principal.roleKey && base.readRoles.includes(principal.roleKey)))
+      .filter(
+        (base) =>
+          base.isPublic ||
+          !base.readRoles.length ||
+          (principal.roleKey && base.readRoles.includes(principal.roleKey)),
+      )
       .map((base) => base.id);
   }
 
   // ── Categories ─────────────────────────────────────────────────────────────
 
-  async createCategory(knowledgeBaseId: string, input: { name: string; slug?: string; parentId?: string; position?: number }) {
-    const slug = (input.slug ?? input.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  async createCategory(
+    knowledgeBaseId: string,
+    input: { name: string; slug?: string; parentId?: string; position?: number },
+  ) {
+    const slug = (input.slug ?? input.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
     return this.prisma.db.knowledgeCategory.create({
       data: {
         id: newId('category'),
@@ -116,18 +149,44 @@ export class KnowledgeService {
 
   // ── Articles ───────────────────────────────────────────────────────────────
 
-  async listArticles(params: CursorParams & { knowledgeBaseId?: string; state?: string; categoryId?: string; q?: string }) {
+  async listArticles(
+    params: CursorParams & {
+      knowledgeBaseId?: string;
+      state?: string;
+      categoryId?: string;
+      q?: string;
+    },
+  ) {
     const where: Prisma.ArticleWhereInput = {
       ...(params.knowledgeBaseId ? { knowledgeBaseId: params.knowledgeBaseId } : {}),
       ...(params.state ? { state: params.state as never } : {}),
       ...(params.categoryId ? { categoryId: params.categoryId } : {}),
       ...(params.q
-        ? { OR: [{ title: { contains: params.q, mode: 'insensitive' } }, { summary: { contains: params.q, mode: 'insensitive' } }] }
+        ? {
+            OR: [
+              { title: { contains: params.q, mode: 'insensitive' } },
+              { summary: { contains: params.q, mode: 'insensitive' } },
+            ],
+          }
         : {}),
     };
     const rows = await this.prisma.db.article.findMany({
       where,
-      select: { id: true, title: true, slug: true, summary: true, state: true, version: true, locale: true, tags: true, publishedAt: true, viewCount: true, updatedAt: true, knowledgeBaseId: true, categoryId: true },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        summary: true,
+        state: true,
+        version: true,
+        locale: true,
+        tags: true,
+        publishedAt: true,
+        viewCount: true,
+        updatedAt: true,
+        knowledgeBaseId: true,
+        categoryId: true,
+      },
       orderBy: { updatedAt: 'desc' },
       ...cursorArgs(params),
     });
@@ -146,10 +205,19 @@ export class KnowledgeService {
     keywords?: string[];
   }) {
     const principal = RequestContextStore.principal();
-    const slug = (input.slug ?? input.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+    const slug = (input.slug ?? input.title)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 80);
 
-    const clash = await this.prisma.db.article.findFirst({ where: { knowledgeBaseId: input.knowledgeBaseId, slug } });
-    if (clash) throw AppError.conflict(`An article with the slug "${slug}" already exists in this knowledge base`);
+    const clash = await this.prisma.db.article.findFirst({
+      where: { knowledgeBaseId: input.knowledgeBaseId, slug },
+    });
+    if (clash)
+      throw AppError.conflict(
+        `An article with the slug "${slug}" already exists in this knowledge base`,
+      );
 
     const article = await this.prisma.db.article.create({
       data: {
@@ -169,7 +237,12 @@ export class KnowledgeService {
       } as never,
     });
 
-    await this.audit.record({ action: 'article.created', resourceType: 'article', resourceId: article.id, after: { title: input.title } });
+    await this.audit.record({
+      action: 'article.created',
+      resourceType: 'article',
+      resourceId: article.id,
+      after: { title: input.title },
+    });
     return article;
   }
 
@@ -186,9 +259,21 @@ export class KnowledgeService {
    * Update an article. A content change snapshots the previous revision and
    * bumps the version, so publishing history stays auditable.
    */
-  async updateArticle(articleId: string, patch: { title?: string; body?: string; summary?: string; categoryId?: string; tags?: string[]; keywords?: string[]; changeNote?: string }) {
+  async updateArticle(
+    articleId: string,
+    patch: {
+      title?: string;
+      body?: string;
+      summary?: string;
+      categoryId?: string;
+      tags?: string[];
+      keywords?: string[];
+      changeNote?: string;
+    },
+  ) {
     const before = await this.getArticle(articleId);
-    const contentChanged = (patch.title && patch.title !== before.title) || (patch.body && patch.body !== before.body);
+    const contentChanged =
+      (patch.title && patch.title !== before.title) || (patch.body && patch.body !== before.body);
     const principal = RequestContextStore.principal();
     const organizationId = RequestContextStore.organizationId()!;
 
@@ -213,7 +298,9 @@ export class KnowledgeService {
         where: { id: articleId },
         data: {
           ...data,
-          ...(contentChanged ? { version: { increment: 1 }, authorId: principal?.id ?? before.authorId } : {}),
+          ...(contentChanged
+            ? { version: { increment: 1 }, authorId: principal?.id ?? before.authorId }
+            : {}),
         } as never,
       });
     });
@@ -223,7 +310,13 @@ export class KnowledgeService {
       await this.indexArticle(articleId);
     }
 
-    await this.audit.recordDiff('article.updated', 'article', articleId, before as never, after as never);
+    await this.audit.recordDiff(
+      'article.updated',
+      'article',
+      articleId,
+      before as never,
+      after as never,
+    );
     return after;
   }
 
@@ -234,21 +327,35 @@ export class KnowledgeService {
     });
     await this.indexArticle(articleId);
 
-    await this.events.publish(DomainEvent.KnowledgeArticlePublished, { type: 'article', id: articleId }, {
-      articleId,
-      version: article.version,
+    await this.events.publish(
+      DomainEvent.KnowledgeArticlePublished,
+      { type: 'article', id: articleId },
+      {
+        articleId,
+        version: article.version,
+      },
+    );
+    await this.audit.record({
+      action: 'article.published',
+      resourceType: 'article',
+      resourceId: articleId,
     });
-    await this.audit.record({ action: 'article.published', resourceType: 'article', resourceId: articleId });
     return article;
   }
 
   async unpublishArticle(articleId: string) {
-    const article = await this.prisma.db.article.update({ where: { id: articleId }, data: { state: 'draft' } });
+    const article = await this.prisma.db.article.update({
+      where: { id: articleId },
+      data: { state: 'draft' },
+    });
     // Unpublished knowledge must stop grounding AI answers immediately.
     const document = await this.prisma.db.document.findFirst({ where: { articleId } });
     if (document) {
       await this.rag.removeDocument(document.id);
-      await this.prisma.db.document.update({ where: { id: document.id }, data: { status: 'skipped', chunkCount: 0 } });
+      await this.prisma.db.document.update({
+        where: { id: document.id },
+        data: { status: 'skipped', chunkCount: 0 },
+      });
     }
     return article;
   }
@@ -257,7 +364,11 @@ export class KnowledgeService {
     const document = await this.prisma.db.document.findFirst({ where: { articleId } });
     if (document) await this.rag.removeDocument(document.id);
     await this.prisma.db.article.delete({ where: { id: articleId } });
-    await this.audit.record({ action: 'article.deleted', resourceType: 'article', resourceId: articleId });
+    await this.audit.record({
+      action: 'article.deleted',
+      resourceType: 'article',
+      resourceId: articleId,
+    });
   }
 
   /** Mirror a published article into the document/chunk index. */
@@ -289,12 +400,18 @@ export class KnowledgeService {
       },
     });
 
-    const chunks = chunkDocument(`# ${article.title}\n\n${article.summary ? `${article.summary}\n\n` : ''}${article.body}`);
+    const chunks = chunkDocument(
+      `# ${article.title}\n\n${article.summary ? `${article.summary}\n\n` : ''}${article.body}`,
+    );
     await this.rag.indexChunks(document.id, article.knowledgeBaseId, chunks, article.locale);
-    await this.events.publish(DomainEvent.RagIndexed, { type: 'document', id: document.id }, {
-      documentId: document.id,
-      chunkCount: chunks.length,
-    });
+    await this.events.publish(
+      DomainEvent.RagIndexed,
+      { type: 'document', id: document.id },
+      {
+        documentId: document.id,
+        chunkCount: chunks.length,
+      },
+    );
   }
 
   // ── Documents ──────────────────────────────────────────────────────────────
@@ -305,7 +422,20 @@ export class KnowledgeService {
         ...(params.knowledgeBaseId ? { knowledgeBaseId: params.knowledgeBaseId } : {}),
         ...(params.status ? { status: params.status as never } : {}),
       },
-      select: { id: true, title: true, type: true, uri: true, status: true, statusMessage: true, chunkCount: true, tokenCount: true, locale: true, indexedAt: true, createdAt: true, knowledgeBaseId: true },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        uri: true,
+        status: true,
+        statusMessage: true,
+        chunkCount: true,
+        tokenCount: true,
+        locale: true,
+        indexedAt: true,
+        createdAt: true,
+        knowledgeBaseId: true,
+      },
       orderBy: { createdAt: 'desc' },
       ...cursorArgs(params),
     });
@@ -380,7 +510,10 @@ export class KnowledgeService {
     const document = await this.prisma.db.document.findFirst({ where: { id: documentId } });
     if (!document) throw AppError.notFound('Document', documentId);
 
-    await this.prisma.db.document.update({ where: { id: documentId }, data: { status: 'processing' } });
+    await this.prisma.db.document.update({
+      where: { id: documentId },
+      data: { status: 'processing' },
+    });
 
     try {
       let text = document.text ?? '';
@@ -388,7 +521,11 @@ export class KnowledgeService {
 
       if (!text && document.storageKey) {
         const content = await this.storage.get(document.storageKey);
-        const parsed = await parseContent(content, document.contentType ?? 'text/plain', document.title);
+        const parsed = await parseContent(
+          content,
+          document.contentType ?? 'text/plain',
+          document.title,
+        );
         text = parsed.text;
         title = parsed.title ?? title;
       } else if (!text && document.uri) {
@@ -402,7 +539,10 @@ export class KnowledgeService {
       if (!text.trim()) {
         await this.prisma.db.document.update({
           where: { id: documentId },
-          data: { status: 'failed', statusMessage: 'No extractable text — the file may be scanned or empty' },
+          data: {
+            status: 'failed',
+            statusMessage: 'No extractable text — the file may be scanned or empty',
+          },
         });
         return { chunks: 0 };
       }
@@ -414,10 +554,14 @@ export class KnowledgeService {
       });
       await this.rag.indexChunks(documentId, document.knowledgeBaseId, chunks, document.locale);
 
-      await this.events.publish(DomainEvent.KnowledgeDocumentIngested, { type: 'document', id: documentId }, {
-        documentId,
-        chunks: chunks.length,
-      });
+      await this.events.publish(
+        DomainEvent.KnowledgeDocumentIngested,
+        { type: 'document', id: documentId },
+        {
+          documentId,
+          chunks: chunks.length,
+        },
+      );
       return { chunks: chunks.length };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -471,7 +615,14 @@ export class KnowledgeService {
     });
   }
 
-  async createSource(input: { knowledgeBaseId: string; type: SourceType; name: string; location?: string; config?: Record<string, unknown>; syncCron?: string }) {
+  async createSource(input: {
+    knowledgeBaseId: string;
+    type: SourceType;
+    name: string;
+    location?: string;
+    config?: Record<string, unknown>;
+    syncCron?: string;
+  }) {
     const source = await this.prisma.db.knowledgeSource.create({
       data: {
         id: newId('source'),
@@ -499,7 +650,11 @@ export class KnowledgeService {
     if (!source) throw AppError.notFound('Knowledge source', sourceId);
     if (!source.location) throw AppError.badRequest('This source has no location to crawl');
 
-    const config = (source.config ?? {}) as { maxPages?: number; maxDepth?: number; includePattern?: string };
+    const config = (source.config ?? {}) as {
+      maxPages?: number;
+      maxDepth?: number;
+      includePattern?: string;
+    };
     const maxPages = Math.min(config.maxPages ?? 50, 500);
     const maxDepth = Math.min(config.maxDepth ?? 2, 5);
     const include = config.includePattern ? new RegExp(config.includePattern) : null;
@@ -525,9 +680,19 @@ export class KnowledgeService {
           if (existing.contentHash === contentHash) continue;
           await this.prisma.db.document.update({
             where: { id: existing.id },
-            data: { text: parsed.text, contentHash, title: parsed.title ?? existing.title, status: 'processing', version: { increment: 1 } },
+            data: {
+              text: parsed.text,
+              contentHash,
+              title: parsed.title ?? existing.title,
+              status: 'processing',
+              version: { increment: 1 },
+            },
           });
-          await this.rag.indexChunks(existing.id, source.knowledgeBaseId, chunkDocument(parsed.text));
+          await this.rag.indexChunks(
+            existing.id,
+            source.knowledgeBaseId,
+            chunkDocument(parsed.text),
+          );
           updated += 1;
         } else {
           const document = await this.prisma.db.document.create({
@@ -543,7 +708,11 @@ export class KnowledgeService {
               status: 'processing',
             } as never,
           });
-          await this.rag.indexChunks(document.id, source.knowledgeBaseId, chunkDocument(parsed.text));
+          await this.rag.indexChunks(
+            document.id,
+            source.knowledgeBaseId,
+            chunkDocument(parsed.text),
+          );
           added += 1;
         }
 
@@ -563,9 +732,16 @@ export class KnowledgeService {
 
     await this.prisma.db.knowledgeSource.update({
       where: { id: sourceId },
-      data: { lastSyncAt: new Date(), lastSyncStatus: `added ${added}, updated ${updated}, failed ${failed}` },
+      data: {
+        lastSyncAt: new Date(),
+        lastSyncStatus: `added ${added}, updated ${updated}, failed ${failed}`,
+      },
     });
-    await this.events.publish(DomainEvent.KnowledgeSourceSynced, { type: 'source', id: sourceId }, { sourceId, added, updated, removed: 0 });
+    await this.events.publish(
+      DomainEvent.KnowledgeSourceSynced,
+      { type: 'source', id: sourceId },
+      { sourceId, added, updated, removed: 0 },
+    );
 
     return { added, updated, failed };
   }
@@ -588,7 +764,13 @@ function extractLinks(text: string, base: string, origin: string): string[] {
 
 function isPrivateHost(hostname: string): boolean {
   const lower = hostname.toLowerCase();
-  if (lower === 'localhost' || lower.endsWith('.localhost') || lower.endsWith('.internal') || lower.endsWith('.local')) return true;
+  if (
+    lower === 'localhost' ||
+    lower.endsWith('.localhost') ||
+    lower.endsWith('.internal') ||
+    lower.endsWith('.local')
+  )
+    return true;
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(lower)) {
     const [a, b] = lower.split('.').map(Number);
     return (
@@ -602,5 +784,7 @@ function isPrivateHost(hostname: string): boolean {
     );
   }
   // IPv6 loopback and unique-local addresses.
-  return lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80');
+  return (
+    lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80')
+  );
 }

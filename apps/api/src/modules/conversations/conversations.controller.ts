@@ -23,12 +23,30 @@ const ListQuery = CursorQuery.extend({
   tags: z
     .string()
     .optional()
-    .transform((v) => (v ? v.split(',').map((t) => t.trim()).filter(Boolean) : undefined)),
+    .transform((v) =>
+      v
+        ? v
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined,
+    ),
 });
 
 const CreateSchema = z
   .object({
-    channel: z.enum(['web_chat', 'email', 'voice', 'whatsapp', 'sms', 'telegram', 'messenger', 'instagram', 'teams', 'api']),
+    channel: z.enum([
+      'web_chat',
+      'email',
+      'voice',
+      'whatsapp',
+      'sms',
+      'telegram',
+      'messenger',
+      'instagram',
+      'teams',
+      'api',
+    ]),
     customerId: z.string().optional(),
     subject: z.string().max(300).optional(),
     queueId: z.string().optional(),
@@ -90,7 +108,9 @@ const ReplySchema = z
   .strict();
 
 const NoteSchema = z.object({ body: z.string().min(1).max(20_000) }).strict();
-const CsatSchema = z.object({ score: z.number().int().min(1).max(5), comment: z.string().max(2000).optional() }).strict();
+const CsatSchema = z
+  .object({ score: z.number().int().min(1).max(5), comment: z.string().max(2000).optional() })
+  .strict();
 
 @ApiTags('Conversations')
 @Controller('conversations')
@@ -110,8 +130,12 @@ export class ConversationsController {
   @Get('inbox')
   @RequirePermissions('conversation:read')
   @ApiOperation({ summary: 'The signed-in agent’s inbox' })
-  inbox(@CurrentUser() principal: Principal | undefined, @Query(zodQuery(ListQuery)) query: z.infer<typeof ListQuery>) {
-    if (principal?.type !== 'user') throw AppError.permissionDenied('The inbox requires a user session');
+  inbox(
+    @CurrentUser() principal: Principal | undefined,
+    @Query(zodQuery(ListQuery)) query: z.infer<typeof ListQuery>,
+  ) {
+    if (principal?.type !== 'user')
+      throw AppError.permissionDenied('The inbox requires a user session');
     return this.conversations.inbox(principal.id, query);
   }
 
@@ -146,7 +170,10 @@ export class ConversationsController {
   @Get(':id/messages')
   @RequirePermissions('conversation:read')
   @ApiOperation({ summary: 'List messages' })
-  messages(@Param('id') id: string, @Query(zodQuery(CursorQuery)) query: z.infer<typeof CursorQuery>) {
+  messages(
+    @Param('id') id: string,
+    @Query(zodQuery(CursorQuery)) query: z.infer<typeof CursorQuery>,
+  ) {
     return this.conversations.listMessages(id, query);
   }
 
@@ -179,7 +206,10 @@ export class ConversationsController {
   @Post(':id/status')
   @RequirePermissions('conversation:update')
   @ApiOperation({ summary: 'Move the conversation through its lifecycle' })
-  setStatus(@Param('id') id: string, @Body(zodBody(StatusSchema)) body: z.infer<typeof StatusSchema>) {
+  setStatus(
+    @Param('id') id: string,
+    @Body(zodBody(StatusSchema)) body: z.infer<typeof StatusSchema>,
+  ) {
     return this.conversations.setStatus(id, body.status, body.reason);
   }
 
@@ -197,7 +227,10 @@ export class ConversationsController {
   @Post(':id/transfer')
   @RequirePermissions('conversation:assign')
   @ApiOperation({ summary: 'Transfer to another agent, team or queue' })
-  transfer(@Param('id') id: string, @Body(zodBody(TransferSchema)) body: z.infer<typeof TransferSchema>) {
+  transfer(
+    @Param('id') id: string,
+    @Body(zodBody(TransferSchema)) body: z.infer<typeof TransferSchema>,
+  ) {
     return this.conversations.transfer(id, body, body.reason);
   }
 

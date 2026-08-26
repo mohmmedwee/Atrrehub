@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://atrrehub:atrrehub@localhost:5432/atrrehub?schema=public
+  REDIS_URL: redis://localhost:6379
+  JWT_SECRET: ci-only-jwt-secret-000000000000000000000000000000000
+  ENCRYPTION_KEY: ci-only-encryption-key-1111111111111111111111111111
+  WIDGET_TOKEN_SECRET: ci-only-widget-secret-22222222222
+  MAIL_DRIVER: log
+  AI_DEFAULT_PROVIDER: local
+  WORKERS_ENABLED: 'false'
+
+jobs:
+  quality:
+    name: Lint, typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @atrrehub/api db:generate
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm --filter @atrrehub/api test
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # pgvector is required for the RAG index.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: atrrehub
+          POSTGRES_PASSWORD: atrrehub
+          POSTGRES_DB: atrrehub
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U atrrehub"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @atrrehub/api db:deploy
+      # Tenant isolation is the guarantee that matters most, so it runs against
+      # a real database on every change.
+      - run: pnpm --filter @atrrehub/api test:e2e
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @atrrehub/api build
+      - run: pnpm --filter @atrrehub/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Fail on high and critical advisories; lower severities are reported.
+      - run: pnpm audit --audit-level high
+        continue-on-error: true
+      - name: Check for committed secrets
+        run: |
+          if git grep -nE '(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16})' -- ':!*.md' ':!.github/*'; then
+            echo "::error::A credential-shaped string was found in the tree"
+            exit 1
+          fi

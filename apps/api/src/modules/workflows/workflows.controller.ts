@@ -30,7 +30,11 @@ const GraphSchema = z.object({
 const CreateSchema = z
   .object({
     name: z.string().min(2).max(80),
-    key: z.string().min(2).max(60).regex(/^[a-z][a-z0-9_-]*$/),
+    key: z
+      .string()
+      .min(2)
+      .max(60)
+      .regex(/^[a-z][a-z0-9_-]*$/),
     description: z.string().max(500).optional(),
     graph: GraphSchema.optional(),
     workspaceId: z.string().optional(),
@@ -73,7 +77,10 @@ export class WorkflowsController {
   @Put(':id/graph')
   @RequirePermissions('workflow:manage')
   @ApiOperation({ summary: 'Save the graph and return validation issues' })
-  saveGraph(@Param('id') id: string, @Body(zodBody(GraphSchema)) body: z.infer<typeof GraphSchema>) {
+  saveGraph(
+    @Param('id') id: string,
+    @Body(zodBody(GraphSchema)) body: z.infer<typeof GraphSchema>,
+  ) {
     return this.workflows.saveGraph(id, body as never);
   }
 

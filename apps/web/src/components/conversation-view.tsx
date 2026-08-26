@@ -10,7 +10,13 @@ import { CopilotPanel } from '@/components/copilot-panel';
 import type { ConversationSummary, Message, Page } from '@/lib/types';
 
 /** The conversation thread, composer and AI copilot. */
-export function ConversationView({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
+export function ConversationView({
+  conversation,
+  onBack,
+}: {
+  conversation: ConversationSummary;
+  onBack: () => void;
+}) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState('');
   const [isNote, setIsNote] = useState(false);
@@ -24,7 +30,10 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
 
   const { data: signals } = useQuery({
     queryKey: ['signals', conversation.id],
-    queryFn: () => get<{ id: string; signal: string; severity: string; message: string; guidance: string | null }[]>(`/quality/signals/${conversation.id}`),
+    queryFn: () =>
+      get<
+        { id: string; signal: string; severity: string; message: string; guidance: string | null }[]
+      >(`/quality/signals/${conversation.id}`),
     // Live compliance guidance is only useful while the conversation is open.
     refetchInterval: 30_000,
   });
@@ -70,7 +79,11 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <button onClick={onBack} className="text-text-muted hover:text-text lg:hidden" aria-label="Back to queue">
+          <button
+            onClick={onBack}
+            className="text-text-muted hover:text-text lg:hidden"
+            aria-label="Back to queue"
+          >
             ←
           </button>
           <div className="min-w-0">
@@ -88,11 +101,21 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
         <div className="flex shrink-0 items-center gap-2">
           <Badge tone={statusTone[conversation.status]}>{conversation.status}</Badge>
           {conversation.status !== 'resolved' && conversation.status !== 'closed' ? (
-            <Button size="sm" variant="secondary" onClick={() => setStatus.mutate('resolved')} disabled={setStatus.isPending}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setStatus.mutate('resolved')}
+              disabled={setStatus.isPending}
+            >
               Resolve
             </Button>
           ) : (
-            <Button size="sm" variant="secondary" onClick={() => setStatus.mutate('active')} disabled={setStatus.isPending}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setStatus.mutate('active')}
+              disabled={setStatus.isPending}
+            >
               Reopen
             </Button>
           )}
@@ -104,14 +127,21 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
         <div className="shrink-0 space-y-1 border-b border-border bg-warning/5 px-4 py-2">
           {signals.slice(0, 2).map((signal) => (
             <p key={signal.id} className="text-xs text-warning">
-              <span className="font-semibold uppercase">{signal.signal.replace('_', ' ')}</span> — {signal.message}
-              {signal.guidance ? <span className="text-text-muted"> · {signal.guidance}</span> : null}
+              <span className="font-semibold uppercase">{signal.signal.replace('_', ' ')}</span> —{' '}
+              {signal.message}
+              {signal.guidance ? (
+                <span className="text-text-muted"> · {signal.guidance}</span>
+              ) : null}
             </p>
           ))}
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4" aria-live="polite" aria-relevant="additions">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         {isLoading ? <Spinner label="Loading messages" /> : null}
         <ul className="space-y-3">
           {messages.map((message) => (
@@ -122,7 +152,12 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
       </div>
 
       {copilotOpen ? (
-        <CopilotPanel conversationId={conversation.id} draft={draft} onUse={setDraft} onClose={() => setCopilotOpen(false)} />
+        <CopilotPanel
+          conversationId={conversation.id}
+          draft={draft}
+          onUse={setDraft}
+          onClose={() => setCopilotOpen(false)}
+        />
       ) : null}
 
       <footer className="shrink-0 border-t border-border bg-surface p-3">
@@ -142,7 +177,10 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
             Internal note
           </button>
           {!copilotOpen ? (
-            <button onClick={() => setCopilotOpen(true)} className="ms-auto text-xs text-accent hover:underline">
+            <button
+              onClick={() => setCopilotOpen(true)}
+              className="ms-auto text-xs text-accent hover:underline"
+            >
               Show copilot
             </button>
           ) : null}
@@ -163,10 +201,15 @@ export function ConversationView({ conversation, onBack }: { conversation: Conve
             placeholder={isNote ? 'Add a note only your team can see…' : 'Write a reply…'}
             aria-label={isNote ? 'Internal note' : 'Reply to customer'}
             className={`min-h-[52px] flex-1 resize-y rounded-md border px-3 py-2 text-sm focus:outline-none ${
-              isNote ? 'border-warning/40 bg-warning/5' : 'border-border bg-surface focus:border-accent'
+              isNote
+                ? 'border-warning/40 bg-warning/5'
+                : 'border-border bg-surface focus:border-accent'
             }`}
           />
-          <Button onClick={() => draft.trim() && send.mutate(draft.trim())} disabled={!draft.trim() || send.isPending}>
+          <Button
+            onClick={() => draft.trim() && send.mutate(draft.trim())}
+            disabled={!draft.trim() || send.isPending}
+          >
             {send.isPending ? 'Sending…' : isNote ? 'Add note' : 'Send'}
           </Button>
         </div>
@@ -182,7 +225,9 @@ function MessageBubble({ message }: { message: Message }) {
   if (isNote) {
     return (
       <li className="mx-auto max-w-2xl rounded-md border border-warning/30 bg-warning/5 px-3 py-2">
-        <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-warning">Internal note</p>
+        <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-warning">
+          Internal note
+        </p>
         <p className="whitespace-pre-wrap text-sm text-text">{message.body}</p>
         <p className="mt-1 text-xs text-text-muted">{relativeTime(message.createdAt)}</p>
       </li>
@@ -191,16 +236,21 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <li className={`flex ${isCustomer ? 'justify-start' : 'justify-end'}`}>
-      <div className={`max-w-[min(42rem,80%)] rounded-lg border px-3 py-2 ${
-        isCustomer ? 'border-border bg-surface' : 'border-accent/25 bg-accent/5'
-      }`}>
+      <div
+        className={`max-w-[min(42rem,80%)] rounded-lg border px-3 py-2 ${
+          isCustomer ? 'border-border bg-surface' : 'border-accent/25 bg-accent/5'
+        }`}
+      >
         <div className="mb-1 flex items-center gap-2 text-xs text-text-muted">
           <span className="font-medium text-text">
-            {message.authorName ?? (isCustomer ? 'Customer' : message.authorType === 'ai_agent' ? 'AI agent' : 'Agent')}
+            {message.authorName ??
+              (isCustomer ? 'Customer' : message.authorType === 'ai_agent' ? 'AI agent' : 'Agent')}
           </span>
           {message.authorType === 'ai_agent' ? <Badge tone="accent">AI</Badge> : null}
           <span>{relativeTime(message.createdAt)}</span>
-          {!isCustomer && message.deliveryState === 'failed' ? <Badge tone="danger">not delivered</Badge> : null}
+          {!isCustomer && message.deliveryState === 'failed' ? (
+            <Badge tone="danger">not delivered</Badge>
+          ) : null}
         </div>
 
         <p className="whitespace-pre-wrap text-sm">{message.body}</p>

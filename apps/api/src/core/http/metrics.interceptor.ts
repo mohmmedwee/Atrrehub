@@ -13,7 +13,12 @@ export class MetricsInterceptor implements NestInterceptor {
     if (context.getType() !== 'http') return next.handle();
 
     const http = context.switchToHttp();
-    const request = http.getRequest<{ method: string; routerPath?: string; routeOptions?: { url?: string }; url: string }>();
+    const request = http.getRequest<{
+      method: string;
+      routerPath?: string;
+      routeOptions?: { url?: string };
+      url: string;
+    }>();
     const method = request.method;
     // Prefer the route template so cardinality stays bounded by endpoint count.
     const route = request.routeOptions?.url ?? request.routerPath ?? 'unknown';

@@ -43,7 +43,9 @@ export function money(value: number): string {
 }
 
 export function compactNumber(value: number): string {
-  return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(
+    value,
+  );
 }
 
 export function initials(name: string | null | undefined): string {

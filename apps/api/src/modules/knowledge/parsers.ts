@@ -22,7 +22,8 @@ export async function parseContent(
 
   if (type.includes('html')) return parseHtmlContent(content.toString('utf8'));
   if (type.includes('json')) return parseJsonContent(content.toString('utf8'));
-  if (type.includes('csv') || type.includes('tab-separated')) return parseCsvContent(content.toString('utf8'));
+  if (type.includes('csv') || type.includes('tab-separated'))
+    return parseCsvContent(content.toString('utf8'));
   if (type.includes('wordprocessingml') || filename?.endsWith('.docx')) return parseDocx(content);
   if (type.includes('pdf')) return parsePdf(content);
   return { text: cleanText(content.toString('utf8')), title: filename };
@@ -30,20 +31,40 @@ export async function parseContent(
 
 /** Strip navigation and chrome, then recover block structure as markdown-ish text. */
 export function parseHtmlContent(html: string): ParsedDocument {
-  const root = parseHtml(html, { blockTextElements: { script: false, style: false, noscript: false } });
+  const root = parseHtml(html, {
+    blockTextElements: { script: false, style: false, noscript: false },
+  });
 
-  for (const selector of ['script', 'style', 'noscript', 'nav', 'header', 'footer', 'aside', 'form', 'iframe']) {
+  for (const selector of [
+    'script',
+    'style',
+    'noscript',
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    'form',
+    'iframe',
+  ]) {
     root.querySelectorAll(selector).forEach((node) => node.remove());
   }
 
   const title = root.querySelector('title')?.text?.trim() || root.querySelector('h1')?.text?.trim();
 
   // Prefer the main content region when the page marks one.
-  const main = root.querySelector('main') ?? root.querySelector('article') ?? root.querySelector('body') ?? root;
+  const main =
+    root.querySelector('main') ??
+    root.querySelector('article') ??
+    root.querySelector('body') ??
+    root;
 
   const lines: string[] = [];
   const walk = (node: { childNodes: unknown[] }) => {
-    for (const child of node.childNodes as { tagName?: string; text?: string; childNodes?: unknown[] }[]) {
+    for (const child of node.childNodes as {
+      tagName?: string;
+      text?: string;
+      childNodes?: unknown[];
+    }[]) {
       const tag = child.tagName?.toLowerCase();
 
       if (!tag) {
@@ -65,7 +86,21 @@ export function parseHtmlContent(html: string): ParsedDocument {
         lines.push('');
         continue;
       }
-      if (['p', 'div', 'section', 'td', 'th', 'tr', 'table', 'ul', 'ol', 'pre', 'blockquote'].includes(tag)) {
+      if (
+        [
+          'p',
+          'div',
+          'section',
+          'td',
+          'th',
+          'tr',
+          'table',
+          'ul',
+          'ol',
+          'pre',
+          'blockquote',
+        ].includes(tag)
+      ) {
         walk(child as { childNodes: unknown[] });
         lines.push('');
         continue;
@@ -209,7 +244,9 @@ async function parsePdf(content: Buffer): Promise<ParsedDocument> {
     text,
     metadata: {
       source: 'pdf',
-      ...(text ? {} : { parseFailed: true, reason: 'no extractable text — the file may be scanned' }),
+      ...(text
+        ? {}
+        : { parseFailed: true, reason: 'no extractable text — the file may be scanned' }),
     },
   };
 }
@@ -245,7 +282,9 @@ export function cleanText(text: string): string {
 
   // A line appearing on ~4% of lines or more is furniture, not content.
   const threshold = Math.max(3, Math.floor(lines.length / 25));
-  const boilerplate = new Set([...counts.entries()].filter(([, count]) => count >= threshold).map(([line]) => line));
+  const boilerplate = new Set(
+    [...counts.entries()].filter(([, count]) => count >= threshold).map(([line]) => line),
+  );
   if (!boilerplate.size) return normalized;
 
   return lines

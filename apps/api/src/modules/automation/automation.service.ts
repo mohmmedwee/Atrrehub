@@ -51,7 +51,10 @@ export class AutomationService {
   // ── Rules ──────────────────────────────────────────────────────────────────
 
   async list() {
-    return this.prisma.db.automationRule.findMany({ where: {}, orderBy: [{ trigger: 'asc' }, { position: 'asc' }] });
+    return this.prisma.db.automationRule.findMany({
+      where: {},
+      orderBy: [{ trigger: 'asc' }, { position: 'asc' }],
+    });
   }
 
   async create(input: {
@@ -104,7 +107,10 @@ export class AutomationService {
    * position order; a rule failing does not stop the rules after it, because
    * one bad webhook should not silently disable a tenant's whole automation.
    */
-  async evaluate(trigger: AutomationTrigger, subject: { type: string; id: string }): Promise<number> {
+  async evaluate(
+    trigger: AutomationTrigger,
+    subject: { type: string; id: string },
+  ): Promise<number> {
     const rules = await this.prisma.db.automationRule.findMany({
       where: { trigger, isActive: true },
       orderBy: { position: 'asc' },
@@ -117,13 +123,20 @@ export class AutomationService {
     let fired = 0;
     for (const rule of rules) {
       const started = Date.now();
-      const conditions = (rule.conditions ?? {}) as { all?: Condition[]; any?: Condition[]; expression?: string };
+      const conditions = (rule.conditions ?? {}) as {
+        all?: Condition[];
+        any?: Condition[];
+        expression?: string;
+      };
 
       let matched: boolean;
       try {
         matched = this.matches(conditions, scope);
       } catch (error) {
-        this.logger.warn('Automation condition failed to evaluate', { ruleId: rule.id, reason: String(error) });
+        this.logger.warn('Automation condition failed to evaluate', {
+          ruleId: rule.id,
+          reason: String(error),
+        });
         continue;
       }
       if (!matched) continue;
@@ -136,7 +149,10 @@ export class AutomationService {
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           actionsRun.push({ type: action.type, ok: false, error: message });
-          this.logger.error('Automation action failed', error, { ruleId: rule.id, action: action.type });
+          this.logger.error('Automation action failed', error, {
+            ruleId: rule.id,
+            action: action.type,
+          });
         }
       }
 
@@ -156,12 +172,16 @@ export class AutomationService {
         data: { runCount: { increment: 1 }, lastRunAt: new Date() },
       });
 
-      await this.events.publish(DomainEvent.AutomationFired, { type: 'automation', id: rule.id }, {
-        ruleId: rule.id,
-        subjectType: subject.type,
-        subjectId: subject.id,
-        actions: actionsRun.map((entry) => entry.type),
-      });
+      await this.events.publish(
+        DomainEvent.AutomationFired,
+        { type: 'automation', id: rule.id },
+        {
+          ruleId: rule.id,
+          subjectType: subject.type,
+          subjectId: subject.id,
+          actions: actionsRun.map((entry) => entry.type),
+        },
+      );
       fired += 1;
     }
 
@@ -169,12 +189,17 @@ export class AutomationService {
   }
 
   /** The facts a rule can test, assembled once per evaluation. */
-  private async buildScope(subject: { type: string; id: string }): Promise<Record<string, unknown> | null> {
+  private async buildScope(subject: {
+    type: string;
+    id: string;
+  }): Promise<Record<string, unknown> | null> {
     if (subject.type === 'conversation') {
       const conversation = await this.prisma.db.conversation.findFirst({
         where: { id: subject.id },
         include: {
-          customer: { select: { id: true, tier: true, tags: true, company: true, displayName: true } },
+          customer: {
+            select: { id: true, tier: true, tags: true, company: true, displayName: true },
+          },
           intelligence: true,
         },
       });
@@ -261,10 +286,20 @@ export class AutomationService {
       case 'neq':
         return String(value ?? '').toLowerCase() !== String(expected ?? '').toLowerCase();
       case 'in':
-        return Array.isArray(expected) && expected.some((entry) => String(entry).toLowerCase() === String(value ?? '').toLowerCase());
+        return (
+          Array.isArray(expected) &&
+          expected.some(
+            (entry) => String(entry).toLowerCase() === String(value ?? '').toLowerCase(),
+          )
+        );
       case 'contains':
-        if (Array.isArray(value)) return value.some((entry) => String(entry).toLowerCase() === String(expected ?? '').toLowerCase());
-        return String(value ?? '').toLowerCase().includes(String(expected ?? '').toLowerCase());
+        if (Array.isArray(value))
+          return value.some(
+            (entry) => String(entry).toLowerCase() === String(expected ?? '').toLowerCase(),
+          );
+        return String(value ?? '')
+          .toLowerCase()
+          .includes(String(expected ?? '').toLowerCase());
       case 'gt':
         return Number(value) > Number(expected);
       case 'lt':
@@ -278,7 +313,11 @@ export class AutomationService {
     }
   }
 
-  private async runAction(action: AutomationAction, subject: { type: string; id: string }, scope: Record<string, unknown>): Promise<void> {
+  private async runAction(
+    action: AutomationAction,
+    subject: { type: string; id: string },
+    scope: Record<string, unknown>,
+  ): Promise<void> {
     const config = action.config ?? {};
     const text = (key: string, fallback = ''): string => {
       const raw = config[key];
@@ -289,11 +328,10 @@ export class AutomationService {
       case 'assign': {
         if (subject.type !== 'conversation') return;
         const userId = text('userId');
-        await this.conversations.assign(
-          subject.id,
-          userId ? { type: 'user', id: userId } : null,
-          { reason: 'automation', queueId: (config.queueId as string) ?? undefined },
-        );
+        await this.conversations.assign(subject.id, userId ? { type: 'user', id: userId } : null, {
+          reason: 'automation',
+          queueId: (config.queueId as string) ?? undefined,
+        });
         return;
       }
 
@@ -313,7 +351,8 @@ export class AutomationService {
           priority: config.priority as string | undefined,
           category: config.category as string | undefined,
         };
-        if (subject.type === 'conversation') await this.tickets.createFromConversation(subject.id, payload as never);
+        if (subject.type === 'conversation')
+          await this.tickets.createFromConversation(subject.id, payload as never);
         else await this.tickets.create(payload as never);
         return;
       }
@@ -331,17 +370,25 @@ export class AutomationService {
       case 'set_priority': {
         const priority = config.priority as string;
         if (!priority) return;
-        if (subject.type === 'conversation') await this.conversations.update(subject.id, { priority });
-        else if (subject.type === 'ticket') await this.tickets.update(subject.id, { priority } as never);
+        if (subject.type === 'conversation')
+          await this.conversations.update(subject.id, { priority });
+        else if (subject.type === 'ticket')
+          await this.tickets.update(subject.id, { priority } as never);
         return;
       }
 
       case 'escalate': {
         if (subject.type !== 'conversation') return;
-        await this.conversations.update(subject.id, { priority: (config.priority as string) ?? 'urgent' });
+        await this.conversations.update(subject.id, {
+          priority: (config.priority as string) ?? 'urgent',
+        });
         await this.conversations.transfer(
           subject.id,
-          { teamId: config.teamId as string | undefined, queueId: config.queueId as string | undefined, userId: config.userId as string | undefined },
+          {
+            teamId: config.teamId as string | undefined,
+            queueId: config.queueId as string | undefined,
+            userId: config.userId as string | undefined,
+          },
           text('reason', 'Escalated by automation'),
         );
         return;
@@ -352,7 +399,9 @@ export class AutomationService {
         if (!tag) return;
         if (subject.type === 'conversation') {
           const conversation = await this.conversations.get(subject.id);
-          await this.conversations.update(subject.id, { tags: [...new Set([...conversation.tags, tag])] });
+          await this.conversations.update(subject.id, {
+            tags: [...new Set([...conversation.tags, tag])],
+          });
         } else if (subject.type === 'customer') {
           const customer = await this.customers.get(subject.id);
           await this.customers.update(subject.id, { tags: [...new Set([...customer.tags, tag])] });
@@ -361,10 +410,14 @@ export class AutomationService {
       }
 
       case 'update_customer': {
-        const customerId = (scope.customer as { id?: string })?.id ?? (subject.type === 'customer' ? subject.id : undefined);
+        const customerId =
+          (scope.customer as { id?: string })?.id ??
+          (subject.type === 'customer' ? subject.id : undefined);
         if (!customerId) return;
         const fields: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries((config.fields ?? {}) as Record<string, unknown>)) {
+        for (const [key, value] of Object.entries(
+          (config.fields ?? {}) as Record<string, unknown>,
+        )) {
           fields[key] = typeof value === 'string' ? interpolate(value, scope) : value;
         }
         await this.customers.update(customerId, fields as never);
@@ -380,7 +433,10 @@ export class AutomationService {
 
         await fetch(url, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', ...((config.headers ?? {}) as Record<string, string>) },
+          headers: {
+            'content-type': 'application/json',
+            ...((config.headers ?? {}) as Record<string, string>),
+          },
           body: JSON.stringify({ subject, scope, firedAt: new Date().toISOString() }),
           signal: AbortSignal.timeout(10_000),
           redirect: 'error',
@@ -395,7 +451,10 @@ export class AutomationService {
 
   /** Preview which rules would fire, without running their actions. */
   async simulate(trigger: AutomationTrigger, subject: { type: string; id: string }) {
-    const rules = await this.prisma.db.automationRule.findMany({ where: { trigger, isActive: true }, orderBy: { position: 'asc' } });
+    const rules = await this.prisma.db.automationRule.findMany({
+      where: { trigger, isActive: true },
+      orderBy: { position: 'asc' },
+    });
     const scope = await this.buildScope(subject);
     if (!scope) return { scope: null, matches: [] };
 
@@ -409,7 +468,13 @@ export class AutomationService {
         } catch (caught) {
           error = caught instanceof Error ? caught.message : String(caught);
         }
-        return { ruleId: rule.id, name: rule.name, matched, error, actions: (rule.actions as unknown as AutomationAction[]).map((a) => a.type) };
+        return {
+          ruleId: rule.id,
+          name: rule.name,
+          matched,
+          error,
+          actions: (rule.actions as unknown as AutomationAction[]).map((a) => a.type),
+        };
       }),
     };
   }

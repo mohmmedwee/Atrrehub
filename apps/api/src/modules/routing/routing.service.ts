@@ -112,21 +112,29 @@ export class RoutingService {
 
     const decision = await this.decide(conversation);
 
-    await this.events.publish(DomainEvent.RoutingEvaluated, { type: 'conversation', id: conversationId }, {
-      conversationId,
-      ruleId: decision.ruleId,
-      strategy: decision.strategy,
-    });
+    await this.events.publish(
+      DomainEvent.RoutingEvaluated,
+      { type: 'conversation', id: conversationId },
+      {
+        conversationId,
+        ruleId: decision.ruleId,
+        strategy: decision.strategy,
+      },
+    );
 
     if (decision.assignee) {
       await this.conversations.assign(conversationId, decision.assignee, {
         reason: decision.reason,
         queueId: decision.queueId ?? undefined,
       });
-      await this.events.publish(DomainEvent.RoutingAssigned, { type: 'conversation', id: conversationId }, {
-        conversationId,
-        assigneeId: decision.assignee.id,
-      });
+      await this.events.publish(
+        DomainEvent.RoutingAssigned,
+        { type: 'conversation', id: conversationId },
+        {
+          conversationId,
+          assigneeId: decision.assignee.id,
+        },
+      );
     } else {
       // Nobody is available: park it in the queue rather than dropping it.
       await this.prisma.db.conversation.update({
@@ -138,24 +146,35 @@ export class RoutingService {
           queuedAt: new Date(),
         },
       });
-      await this.events.publish(DomainEvent.RoutingUnassignable, { type: 'conversation', id: conversationId }, {
+      await this.events.publish(
+        DomainEvent.RoutingUnassignable,
+        { type: 'conversation', id: conversationId },
+        {
+          conversationId,
+          reason: decision.reason,
+        },
+      );
+      this.logger.debug('Conversation parked in queue', {
         conversationId,
         reason: decision.reason,
       });
-      this.logger.debug('Conversation parked in queue', { conversationId, reason: decision.reason });
     }
 
     void organizationId;
     return decision;
   }
 
-  private async decide(conversation: Awaited<ReturnType<ConversationsService['get']>>): Promise<RoutingDecision> {
+  private async decide(
+    conversation: Awaited<ReturnType<ConversationsService['get']>>,
+  ): Promise<RoutingDecision> {
     const rules = await this.prisma.db.routingRule.findMany({
       where: { isActive: true },
       orderBy: { position: 'asc' },
     });
 
-    const matched = rules.find((rule) => this.matches(rule.conditions as Record<string, unknown>, conversation));
+    const matched = rules.find((rule) =>
+      this.matches(rule.conditions as Record<string, unknown>, conversation),
+    );
 
     // Direct assignment short-circuits every other consideration.
     if (matched?.targetUserId) {
@@ -178,7 +197,10 @@ export class RoutingService {
       };
     }
 
-    const queueId = matched?.targetQueueId ?? conversation.queueId ?? (await this.defaultQueueId(conversation.channel));
+    const queueId =
+      matched?.targetQueueId ??
+      conversation.queueId ??
+      (await this.defaultQueueId(conversation.channel));
     const queue = queueId ? await this.prisma.db.queue.findFirst({ where: { id: queueId } }) : null;
 
     if (queue?.aiFirst && queue.aiAgentId) {
@@ -272,7 +294,10 @@ export class RoutingService {
     return true;
   }
 
-  private matches(conditions: Record<string, unknown>, conversation: Awaited<ReturnType<ConversationsService['get']>>): boolean {
+  private matches(
+    conditions: Record<string, unknown>,
+    conversation: Awaited<ReturnType<ConversationsService['get']>>,
+  ): boolean {
     return RoutingService.matchesConditions(conditions, {
       channel: conversation.channel,
       locale: conversation.locale,
@@ -286,7 +311,9 @@ export class RoutingService {
 
   private async defaultQueueId(channel: string): Promise<string | null> {
     const queue =
-      (await this.prisma.db.queue.findFirst({ where: { isActive: true, channels: { has: channel as never } } })) ??
+      (await this.prisma.db.queue.findFirst({
+        where: { isActive: true, channels: { has: channel as never } },
+      })) ??
       (await this.prisma.db.queue.findFirst({ where: { isActive: true, key: 'general' } })) ??
       (await this.prisma.db.queue.findFirst({ where: { isActive: true } }));
     return queue?.id ?? null;
@@ -308,7 +335,9 @@ export class RoutingService {
 
     const memberships = await this.prisma.db.membership.findMany({
       where: {
-        ...(filter.teamId ? { user: { teamMemberships: { some: { teamId: filter.teamId } } } } : {}),
+        ...(filter.teamId
+          ? { user: { teamMemberships: { some: { teamId: filter.teamId } } } }
+          : {}),
         user: {
           status: 'active',
           presence: 'available',
@@ -317,7 +346,17 @@ export class RoutingService {
           ...(filter.teamId ? { teamMemberships: { some: { teamId: filter.teamId } } } : {}),
         },
       },
-      include: { user: { select: { id: true, skills: true, languages: true, maxConcurrentChats: true, presence: true } } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            skills: true,
+            languages: true,
+            maxConcurrentChats: true,
+            presence: true,
+          },
+        },
+      },
     });
     if (!memberships.length) return [];
 
@@ -380,7 +419,10 @@ export class RoutingService {
    * Rotation is persisted per queue, so restarts and multiple API instances
    * continue the same cycle rather than always starting from the first agent.
    */
-  private async roundRobin(candidates: RoutingCandidate[], queueId: string | null): Promise<RoutingCandidate> {
+  private async roundRobin(
+    candidates: RoutingCandidate[],
+    queueId: string | null,
+  ): Promise<RoutingCandidate> {
     const ordered = [...candidates].sort((a, b) => a.userId.localeCompare(b.userId));
     if (!queueId) return ordered[0];
 

@@ -9,12 +9,27 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CustomersService } from '../customers/customers.service';
 import { DirectoryService } from '../directory/directory.service';
-import { cursorArgs, csvFilter, paginate, parseSort, type CursorParams } from '../../common/pagination';
+import {
+  cursorArgs,
+  csvFilter,
+  paginate,
+  parseSort,
+  type CursorParams,
+} from '../../common/pagination';
 
 const OPEN_STATUSES: TicketStatus[] = ['open', 'pending', 'on_hold', 'reopened'];
 
 /** Fields whose changes are worth recording on the ticket's own history. */
-const TRACKED_FIELDS = ['status', 'priority', 'assigneeId', 'teamId', 'queueId', 'category', 'subject', 'dueAt'] as const;
+const TRACKED_FIELDS = [
+  'status',
+  'priority',
+  'assigneeId',
+  'teamId',
+  'queueId',
+  'category',
+  'subject',
+  'dueAt',
+] as const;
 
 export interface TicketInput {
   subject: string;
@@ -113,12 +128,21 @@ export class TicketsService {
       });
     }
 
-    await this.events.publish(DomainEvent.TicketCreated, { type: 'ticket', id }, {
-      ticketId: id,
-      customerId: input.customerId,
-      priority: ticket.priority,
+    await this.events.publish(
+      DomainEvent.TicketCreated,
+      { type: 'ticket', id },
+      {
+        ticketId: id,
+        customerId: input.customerId,
+        priority: ticket.priority,
+      },
+    );
+    await this.audit.record({
+      action: 'ticket.created',
+      resourceType: 'ticket',
+      resourceId: id,
+      after: ticket,
     });
-    await this.audit.record({ action: 'ticket.created', resourceType: 'ticket', resourceId: id, after: ticket });
     return this.get(id);
   }
 
@@ -126,7 +150,9 @@ export class TicketsService {
     const ticket = await this.prisma.db.ticket.findFirst({
       where: { id: ticketId },
       include: {
-        customer: { select: { id: true, displayName: true, avatarUrl: true, tier: true, company: true } },
+        customer: {
+          select: { id: true, displayName: true, avatarUrl: true, tier: true, company: true },
+        },
         conversation: { select: { id: true, reference: true, channel: true, status: true } },
         _count: { select: { comments: true, attachments: true } },
       },
@@ -153,10 +179,33 @@ export class TicketsService {
   ) {
     const where: Prisma.TicketWhereInput = {
       ...(params.status
-        ? { status: { in: csvFilter(params.status, ['open', 'pending', 'on_hold', 'resolved', 'closed', 'reopened']) as never } }
+        ? {
+            status: {
+              in: csvFilter(params.status, [
+                'open',
+                'pending',
+                'on_hold',
+                'resolved',
+                'closed',
+                'reopened',
+              ]) as never,
+            },
+          }
         : {}),
       ...(params.open ? { status: { in: OPEN_STATUSES } } : {}),
-      ...(params.priority ? { priority: { in: csvFilter(params.priority, ['low', 'normal', 'high', 'urgent', 'critical']) as never } } : {}),
+      ...(params.priority
+        ? {
+            priority: {
+              in: csvFilter(params.priority, [
+                'low',
+                'normal',
+                'high',
+                'urgent',
+                'critical',
+              ]) as never,
+            },
+          }
+        : {}),
       ...(params.category ? { category: params.category } : {}),
       ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
       ...(params.teamId ? { teamId: params.teamId } : {}),
@@ -188,7 +237,11 @@ export class TicketsService {
    * Update a ticket. `expectedVersion` enables optimistic locking so two agents
    * editing the same ticket cannot silently overwrite each other.
    */
-  async update(ticketId: string, patch: Partial<TicketInput> & { status?: string }, expectedVersion?: number) {
+  async update(
+    ticketId: string,
+    patch: Partial<TicketInput> & { status?: string },
+    expectedVersion?: number,
+  ) {
     const before = await this.get(ticketId);
     if (expectedVersion !== undefined && before.version !== expectedVersion) {
       throw AppError.versionConflict('Ticket', expectedVersion, before.version);
@@ -203,7 +256,12 @@ export class TicketsService {
       data: {
         ...(patch as Prisma.TicketUpdateInput),
         ...(patch.customFields
-          ? { customFields: { ...(before.customFields as object), ...patch.customFields } as Prisma.InputJsonValue }
+          ? {
+              customFields: {
+                ...(before.customFields as object),
+                ...patch.customFields,
+              } as Prisma.InputJsonValue,
+            }
           : {}),
         ...(status === 'resolved' ? { resolvedAt: now } : {}),
         ...(status === 'closed' ? { closedAt: now, resolvedAt: before.resolvedAt ?? now } : {}),
@@ -216,24 +274,44 @@ export class TicketsService {
 
     await this.recordHistory(ticketId, before as never, after as never);
 
-    await this.events.publish(DomainEvent.TicketUpdated, { type: 'ticket', id: ticketId }, {
-      ticketId,
-      changed: Object.keys(patch),
-    });
+    await this.events.publish(
+      DomainEvent.TicketUpdated,
+      { type: 'ticket', id: ticketId },
+      {
+        ticketId,
+        changed: Object.keys(patch),
+      },
+    );
     if (status === 'resolved') {
-      await this.events.publish(DomainEvent.TicketResolved, { type: 'ticket', id: ticketId }, { ticketId });
+      await this.events.publish(
+        DomainEvent.TicketResolved,
+        { type: 'ticket', id: ticketId },
+        { ticketId },
+      );
     }
     if (status === 'closed') {
-      await this.events.publish(DomainEvent.TicketClosed, { type: 'ticket', id: ticketId }, { ticketId });
+      await this.events.publish(
+        DomainEvent.TicketClosed,
+        { type: 'ticket', id: ticketId },
+        { ticketId },
+      );
     }
     if (status === 'reopened') {
-      await this.events.publish(DomainEvent.TicketReopened, { type: 'ticket', id: ticketId }, { ticketId });
+      await this.events.publish(
+        DomainEvent.TicketReopened,
+        { type: 'ticket', id: ticketId },
+        { ticketId },
+      );
     }
     if (patch.assigneeId && patch.assigneeId !== before.assigneeId) {
-      await this.events.publish(DomainEvent.TicketAssigned, { type: 'ticket', id: ticketId }, {
-        ticketId,
-        assigneeId: patch.assigneeId,
-      });
+      await this.events.publish(
+        DomainEvent.TicketAssigned,
+        { type: 'ticket', id: ticketId },
+        {
+          ticketId,
+          assigneeId: patch.assigneeId,
+        },
+      );
     }
 
     return this.get(ticketId);
@@ -242,7 +320,12 @@ export class TicketsService {
   async delete(ticketId: string) {
     const ticket = await this.get(ticketId);
     await this.prisma.db.ticket.delete({ where: { id: ticketId } });
-    await this.audit.record({ action: 'ticket.deleted', resourceType: 'ticket', resourceId: ticketId, before: ticket });
+    await this.audit.record({
+      action: 'ticket.deleted',
+      resourceType: 'ticket',
+      resourceId: ticketId,
+      before: ticket,
+    });
   }
 
   /**
@@ -268,28 +351,36 @@ export class TicketsService {
 
   // ── History ────────────────────────────────────────────────────────────────
 
-  private async recordHistory(ticketId: string, before: Record<string, unknown>, after: Record<string, unknown>) {
+  private async recordHistory(
+    ticketId: string,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+  ) {
     const organizationId = RequestContextStore.organizationId()!;
     const principal = RequestContextStore.principal();
 
-    const rows = TRACKED_FIELDS.filter((field) => String(before[field] ?? '') !== String(after[field] ?? '')).map(
-      (field) => ({
-        id: newId('history'),
-        organizationId,
-        ticketId,
-        actorType: (principal?.type === 'api_key' ? 'user' : (principal?.type ?? 'system')) as never,
-        actorId: principal?.id ?? null,
-        field,
-        fromValue: before[field] === null || before[field] === undefined ? null : String(before[field]),
-        toValue: after[field] === null || after[field] === undefined ? null : String(after[field]),
-      }),
-    );
+    const rows = TRACKED_FIELDS.filter(
+      (field) => String(before[field] ?? '') !== String(after[field] ?? ''),
+    ).map((field) => ({
+      id: newId('history'),
+      organizationId,
+      ticketId,
+      actorType: (principal?.type === 'api_key' ? 'user' : (principal?.type ?? 'system')) as never,
+      actorId: principal?.id ?? null,
+      field,
+      fromValue:
+        before[field] === null || before[field] === undefined ? null : String(before[field]),
+      toValue: after[field] === null || after[field] === undefined ? null : String(after[field]),
+    }));
     if (rows.length) await this.prisma.raw.ticketHistory.createMany({ data: rows });
   }
 
   async history(ticketId: string) {
     await this.get(ticketId);
-    return this.prisma.db.ticketHistory.findMany({ where: { ticketId }, orderBy: { createdAt: 'asc' } });
+    return this.prisma.db.ticketHistory.findMany({
+      where: { ticketId },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   // ── Comments ───────────────────────────────────────────────────────────────
@@ -303,7 +394,9 @@ export class TicketsService {
         ticketId,
         body,
         isInternal,
-        authorType: (principal?.type === 'user' || principal?.type === 'api_key' ? 'user' : 'system') as never,
+        authorType: (principal?.type === 'user' || principal?.type === 'api_key'
+          ? 'user'
+          : 'system') as never,
         authorId: principal?.id ?? null,
       } as never,
     });
@@ -381,14 +474,17 @@ export class TicketsService {
     if (!conversation) throw AppError.notFound('Conversation', conversationId);
 
     return this.create({
-      subject: overrides.subject ?? conversation.subject ?? `Conversation ${conversation.reference}`,
+      subject:
+        overrides.subject ?? conversation.subject ?? `Conversation ${conversation.reference}`,
       description: overrides.description ?? conversation.messages[0]?.body,
       customerId: conversation.customerId ?? undefined,
       conversationId,
       priority: overrides.priority ?? conversation.priority,
       queueId: overrides.queueId ?? conversation.queueId ?? undefined,
       teamId: overrides.teamId ?? conversation.teamId ?? undefined,
-      assigneeId: overrides.assigneeId ?? (conversation.assigneeType === 'user' ? (conversation.assigneeId ?? undefined) : undefined),
+      assigneeId:
+        overrides.assigneeId ??
+        (conversation.assigneeType === 'user' ? (conversation.assigneeId ?? undefined) : undefined),
       source: conversation.channel,
       workspaceId: conversation.workspaceId ?? undefined,
       ...overrides,

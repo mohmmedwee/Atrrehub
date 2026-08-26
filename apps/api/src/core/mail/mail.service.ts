@@ -94,7 +94,13 @@ export class MailService {
   }
 
   /** Shared chrome so every transactional email looks like one product. */
-  renderLayout(options: { title: string; body: string; ctaLabel?: string; ctaUrl?: string; brandColor?: string }): string {
+  renderLayout(options: {
+    title: string;
+    body: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+    brandColor?: string;
+  }): string {
     const accent = options.brandColor ?? '#2563eb';
     const cta =
       options.ctaLabel && options.ctaUrl

@@ -8,7 +8,13 @@ import { newId, newReference } from '../../core/ids/id.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CustomersService } from '../customers/customers.service';
-import { cursorArgs, csvFilter, paginate, parseSort, type CursorParams } from '../../common/pagination';
+import {
+  cursorArgs,
+  csvFilter,
+  paginate,
+  parseSort,
+  type CursorParams,
+} from '../../common/pagination';
 
 /**
  * Legal conversation transitions.
@@ -131,11 +137,16 @@ export class ConversationsService {
     }
 
     await this.recordEvent(id, 'created', { channel: input.channel });
-    await this.events.publish(DomainEvent.ConversationCreated, { type: 'conversation', id }, {
-      conversationId: id,
-      channel: input.channel,
-      customerId: input.customerId,
-    }, { organizationId });
+    await this.events.publish(
+      DomainEvent.ConversationCreated,
+      { type: 'conversation', id },
+      {
+        conversationId: id,
+        channel: input.channel,
+        customerId: input.customerId,
+      },
+      { organizationId },
+    );
 
     return this.get(id);
   }
@@ -173,12 +184,51 @@ export class ConversationsService {
   ) {
     const where: Prisma.ConversationWhereInput = {
       ...(params.status
-        ? { status: { in: csvFilter(params.status, ['new', 'queued', 'assigned', 'active', 'waiting', 'resolved', 'closed']) as never } }
+        ? {
+            status: {
+              in: csvFilter(params.status, [
+                'new',
+                'queued',
+                'assigned',
+                'active',
+                'waiting',
+                'resolved',
+                'closed',
+              ]) as never,
+            },
+          }
         : {}),
       ...(params.channel
-        ? { channel: { in: csvFilter(params.channel, ['web_chat', 'email', 'voice', 'whatsapp', 'sms', 'telegram', 'messenger', 'instagram', 'teams', 'api']) as never } }
+        ? {
+            channel: {
+              in: csvFilter(params.channel, [
+                'web_chat',
+                'email',
+                'voice',
+                'whatsapp',
+                'sms',
+                'telegram',
+                'messenger',
+                'instagram',
+                'teams',
+                'api',
+              ]) as never,
+            },
+          }
         : {}),
-      ...(params.priority ? { priority: { in: csvFilter(params.priority, ['low', 'normal', 'high', 'urgent', 'critical']) as never } } : {}),
+      ...(params.priority
+        ? {
+            priority: {
+              in: csvFilter(params.priority, [
+                'low',
+                'normal',
+                'high',
+                'urgent',
+                'critical',
+              ]) as never,
+            },
+          }
+        : {}),
       ...(params.queueId ? { queueId: params.queueId } : {}),
       ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
       ...(params.customerId ? { customerId: params.customerId } : {}),
@@ -202,7 +252,9 @@ export class ConversationsService {
         queue: { select: { id: true, name: true } },
         intelligence: { select: { sentiment: true, sentimentScore: true, intent: true } },
       },
-      orderBy: parseSort(params.sort, ['createdAt', 'updatedAt', 'lastMessageAt', 'priority'], { lastMessageAt: 'desc' }),
+      orderBy: parseSort(params.sort, ['createdAt', 'updatedAt', 'lastMessageAt', 'priority'], {
+        lastMessageAt: 'desc',
+      }),
       ...cursorArgs(params),
     });
 
@@ -211,7 +263,11 @@ export class ConversationsService {
 
   /** The signed-in agent's working set. */
   async inbox(userId: string, params: CursorParams & { status?: string }) {
-    return this.list({ ...params, assigneeId: userId, status: params.status ?? 'assigned,active,waiting' });
+    return this.list({
+      ...params,
+      assigneeId: userId,
+      status: params.status ?? 'assigned,active,waiting',
+    });
   }
 
   async setStatus(conversationId: string, to: ConversationStatus, reason?: string) {
@@ -238,19 +294,27 @@ export class ConversationsService {
     });
 
     await this.recordEvent(conversationId, 'status_changed', { from, to, reason });
-    await this.events.publish(DomainEvent.ConversationStatusChanged, { type: 'conversation', id: conversationId }, {
-      conversationId,
-      from,
-      to,
-    });
+    await this.events.publish(
+      DomainEvent.ConversationStatusChanged,
+      { type: 'conversation', id: conversationId },
+      {
+        conversationId,
+        from,
+        to,
+      },
+    );
 
     if (to === 'resolved') {
       const principal = RequestContextStore.principal();
-      await this.events.publish(DomainEvent.ConversationResolved, { type: 'conversation', id: conversationId }, {
-        conversationId,
-        resolvedBy: principal?.id,
-        resolutionType: reason ?? 'manual',
-      });
+      await this.events.publish(
+        DomainEvent.ConversationResolved,
+        { type: 'conversation', id: conversationId },
+        {
+          conversationId,
+          resolvedBy: principal?.id,
+          resolutionType: reason ?? 'manual',
+        },
+      );
       if (conversation.customerId) {
         await this.customers.recordActivity(conversation.customerId, {
           kind: 'conversation_resolved',
@@ -261,7 +325,11 @@ export class ConversationsService {
       }
     }
     if (to === 'closed') {
-      await this.events.publish(DomainEvent.ConversationClosed, { type: 'conversation', id: conversationId }, { conversationId });
+      await this.events.publish(
+        DomainEvent.ConversationClosed,
+        { type: 'conversation', id: conversationId },
+        { conversationId },
+      );
     }
 
     return updated;
@@ -277,8 +345,11 @@ export class ConversationsService {
     const now = new Date();
 
     if (assignee?.type === 'user') {
-      const membership = await this.prisma.db.membership.findFirst({ where: { userId: assignee.id } });
-      if (!membership) throw AppError.badRequest('The assignee is not a member of this organization');
+      const membership = await this.prisma.db.membership.findFirst({
+        where: { userId: assignee.id },
+      });
+      if (!membership)
+        throw AppError.badRequest('The assignee is not a member of this organization');
     }
 
     const updated = await this.prisma.db.conversation.update({
@@ -359,22 +430,35 @@ export class ConversationsService {
     }
 
     await this.recordEvent(conversationId, 'transferred', { ...target, reason });
-    await this.events.publish(DomainEvent.ConversationTransferred, { type: 'conversation', id: conversationId }, {
-      conversationId,
-      from: conversation.assigneeId,
-      to: target.userId ?? target.teamId ?? target.queueId,
-      reason,
-    });
+    await this.events.publish(
+      DomainEvent.ConversationTransferred,
+      { type: 'conversation', id: conversationId },
+      {
+        conversationId,
+        from: conversation.assigneeId,
+        to: target.userId ?? target.teamId ?? target.queueId,
+        reason,
+      },
+    );
     return this.get(conversationId);
   }
 
-  async update(conversationId: string, patch: { subject?: string; priority?: string; tags?: string[]; locale?: string }) {
+  async update(
+    conversationId: string,
+    patch: { subject?: string; priority?: string; tags?: string[]; locale?: string },
+  ) {
     const before = await this.get(conversationId);
     const after = await this.prisma.db.conversation.update({
       where: { id: conversationId },
       data: { ...patch, version: { increment: 1 } } as never,
     });
-    await this.audit.recordDiff('conversation.updated', 'conversation', conversationId, before as never, after as never);
+    await this.audit.recordDiff(
+      'conversation.updated',
+      'conversation',
+      conversationId,
+      before as never,
+      after as never,
+    );
     return after;
   }
 
@@ -446,17 +530,23 @@ export class ConversationsService {
           ...(input.direction === 'inbound' && conversation.status === 'waiting'
             ? { status: 'active' as const, waitingSince: null }
             : {}),
-          ...(input.direction === 'inbound' && conversation.status === 'new' ? { status: 'queued' as const, queuedAt: now } : {}),
+          ...(input.direction === 'inbound' && conversation.status === 'new'
+            ? { status: 'queued' as const, queuedAt: now }
+            : {}),
         },
       }),
     ]);
 
-    await this.events.publish(DomainEvent.MessageCreated, { type: 'message', id: message.id }, {
-      conversationId: input.conversationId,
-      messageId: message.id,
-      direction: input.direction,
-      authorType: input.authorType,
-    });
+    await this.events.publish(
+      DomainEvent.MessageCreated,
+      { type: 'message', id: message.id },
+      {
+        conversationId: input.conversationId,
+        messageId: message.id,
+        direction: input.direction,
+        authorType: input.authorType,
+      },
+    );
 
     return message;
   }
@@ -482,10 +572,14 @@ export class ConversationsService {
       where: { id: messageId },
       data: { deliveryState: state as never, deliveryError: error ?? null },
     });
-    await this.events.publish(DomainEvent.MessageDeliveryUpdated, { type: 'message', id: messageId }, {
-      messageId,
-      state,
-    });
+    await this.events.publish(
+      DomainEvent.MessageDeliveryUpdated,
+      { type: 'message', id: messageId },
+      {
+        messageId,
+        state,
+      },
+    );
     return message;
   }
 
@@ -514,7 +608,9 @@ export class ConversationsService {
         organizationId,
         conversationId,
         type,
-        actorType: (principal?.type === 'api_key' ? 'user' : (principal?.type ?? 'system')) as never,
+        actorType: (principal?.type === 'api_key'
+          ? 'user'
+          : (principal?.type ?? 'system')) as never,
         actorId: principal?.id ?? null,
         data: data as Prisma.InputJsonValue,
       },
@@ -538,13 +634,29 @@ export class ConversationsService {
       _min: { queuedAt: true },
     });
 
-    const byQueue = new Map<string, { queueId: string; total: number; byStatus: Record<string, number>; oldestQueuedAt: Date | null }>();
+    const byQueue = new Map<
+      string,
+      {
+        queueId: string;
+        total: number;
+        byStatus: Record<string, number>;
+        oldestQueuedAt: Date | null;
+      }
+    >();
     for (const row of grouped) {
       const key = row.queueId ?? 'unassigned';
-      const entry = byQueue.get(key) ?? { queueId: key, total: 0, byStatus: {}, oldestQueuedAt: null };
+      const entry = byQueue.get(key) ?? {
+        queueId: key,
+        total: 0,
+        byStatus: {},
+        oldestQueuedAt: null,
+      };
       entry.total += row._count._all;
       entry.byStatus[row.status] = row._count._all;
-      if (row._min.queuedAt && (!entry.oldestQueuedAt || row._min.queuedAt < entry.oldestQueuedAt)) {
+      if (
+        row._min.queuedAt &&
+        (!entry.oldestQueuedAt || row._min.queuedAt < entry.oldestQueuedAt)
+      ) {
         entry.oldestQueuedAt = row._min.queuedAt;
       }
       byQueue.set(key, entry);

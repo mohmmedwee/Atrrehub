@@ -8,7 +8,11 @@ import { newId } from '../../core/ids/id.service';
 import { AppLogger } from '../../core/logger/logger.service';
 import { MetricsService } from '../../core/metrics/metrics.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { NodeExecutors, type NodeExecutionResult, type NodeRuntimeContext } from './nodes/node-executors';
+import {
+  NodeExecutors,
+  type NodeExecutionResult,
+  type NodeRuntimeContext,
+} from './nodes/node-executors';
 import { NODE_TYPES, type WorkflowEdge, type WorkflowGraph, type WorkflowNode } from './graph';
 import { evaluateCondition } from './expressions';
 
@@ -45,7 +49,9 @@ export class RuntimeService {
 
   // ── Starting ───────────────────────────────────────────────────────────────
 
-  async start(input: StartExecutionInput): Promise<{ executionId: string; status: ExecutionStatus }> {
+  async start(
+    input: StartExecutionInput,
+  ): Promise<{ executionId: string; status: ExecutionStatus }> {
     const organizationId = RequestContextStore.organizationId()!;
 
     // An idempotency key makes retrying a trigger safe: the same key returns
@@ -62,7 +68,12 @@ export class RuntimeService {
         id: newId('execution'),
         workflowVersionId: input.workflowVersionId ?? null,
         workflowId: input.workflowVersionId
-          ? (await this.prisma.db.workflowVersion.findFirst({ where: { id: input.workflowVersionId }, select: { workflowId: true } }))?.workflowId ?? null
+          ? ((
+              await this.prisma.db.workflowVersion.findFirst({
+                where: { id: input.workflowVersionId },
+                select: { workflowId: true },
+              })
+            )?.workflowId ?? null)
           : null,
         agentId: input.agentId ?? null,
         agentVersionId: input.agentVersionId ?? null,
@@ -75,11 +86,16 @@ export class RuntimeService {
       } as never,
     });
 
-    await this.events.publish(DomainEvent.ExecutionStarted, { type: 'execution', id: execution.id }, {
-      executionId: execution.id,
-      workflowId: execution.workflowId,
-      version: input.workflowVersionId,
-    }, { organizationId });
+    await this.events.publish(
+      DomainEvent.ExecutionStarted,
+      { type: 'execution', id: execution.id },
+      {
+        executionId: execution.id,
+        workflowId: execution.workflowId,
+        version: input.workflowVersionId,
+      },
+      { organizationId },
+    );
 
     return { executionId: execution.id, status: execution.status };
   }
@@ -99,7 +115,8 @@ export class RuntimeService {
       include: { workflowVersion: true },
     });
     if (!execution) throw AppError.notFound('Execution', executionId);
-    if (['succeeded', 'failed', 'cancelled', 'timed_out'].includes(execution.status)) return execution.status;
+    if (['succeeded', 'failed', 'cancelled', 'timed_out'].includes(execution.status))
+      return execution.status;
 
     const version = execution.workflowVersion;
     if (!version) {
@@ -127,7 +144,11 @@ export class RuntimeService {
 
     while (currentId) {
       if (sequence >= MAX_STEPS) {
-        await this.fail(executionId, `The workflow exceeded ${MAX_STEPS} steps and was stopped`, currentId);
+        await this.fail(
+          executionId,
+          `The workflow exceeded ${MAX_STEPS} steps and was stopped`,
+          currentId,
+        );
         return 'failed';
       }
       if (Date.now() > deadline) {
@@ -144,7 +165,11 @@ export class RuntimeService {
 
       const node = nodesById.get(currentId);
       if (!node) {
-        await this.fail(executionId, `The workflow references an unknown node "${currentId}"`, currentId);
+        await this.fail(
+          executionId,
+          `The workflow references an unknown node "${currentId}"`,
+          currentId,
+        );
         return 'failed';
       }
 
@@ -204,12 +229,16 @@ export class RuntimeService {
         },
       });
 
-      await this.events.publish(DomainEvent.ExecutionStepFinished, { type: 'execution', id: executionId }, {
-        executionId,
-        nodeId: node.id,
-        status: result.error ? 'failed' : 'succeeded',
-        durationMs,
-      });
+      await this.events.publish(
+        DomainEvent.ExecutionStepFinished,
+        { type: 'execution', id: executionId },
+        {
+          executionId,
+          nodeId: node.id,
+          status: result.error ? 'failed' : 'succeeded',
+          durationMs,
+        },
+      );
 
       // Node output is addressable by node id, so later nodes can reference it.
       state = {
@@ -221,43 +250,84 @@ export class RuntimeService {
 
       if (result.error) {
         // An error edge lets a workflow handle failure itself.
-        const errorEdge = graph.edges.find((edge) => edge.from === node.id && edge.branch === 'error');
+        const errorEdge = graph.edges.find(
+          (edge) => edge.from === node.id && edge.branch === 'error',
+        );
         if (!errorEdge) {
-          this.metrics.workflowFailures.inc({ workflow: execution.workflowId ?? 'inline', node_type: node.type });
-          await this.fail(executionId, result.error, node.id, state, { promptTokens, completionTokens, costUsd });
+          this.metrics.workflowFailures.inc({
+            workflow: execution.workflowId ?? 'inline',
+            node_type: node.type,
+          });
+          await this.fail(executionId, result.error, node.id, state, {
+            promptTokens,
+            completionTokens,
+            costUsd,
+          });
           return 'failed';
         }
         currentId = errorEdge.to;
-        await this.persistProgress(executionId, currentId, state, { promptTokens, completionTokens, costUsd });
+        await this.persistProgress(executionId, currentId, state, {
+          promptTokens,
+          completionTokens,
+          costUsd,
+        });
         continue;
       }
 
       if (result.suspend) {
-        await this.suspend(executionId, node.id, state, result.suspend, { promptTokens, completionTokens, costUsd });
+        await this.suspend(executionId, node.id, state, result.suspend, {
+          promptTokens,
+          completionTokens,
+          costUsd,
+        });
         return 'suspended';
       }
 
       if (result.terminal) {
-        await this.finish(executionId, 'succeeded', { output: result.output, state }, { promptTokens, completionTokens, costUsd });
+        await this.finish(
+          executionId,
+          'succeeded',
+          { output: result.output, state },
+          { promptTokens, completionTokens, costUsd },
+        );
         return 'succeeded';
       }
 
       const nextId = this.nextNode(graph, node, result, state);
       if (!nextId) {
-        await this.finish(executionId, 'succeeded', { output: result.output, state }, { promptTokens, completionTokens, costUsd });
+        await this.finish(
+          executionId,
+          'succeeded',
+          { output: result.output, state },
+          { promptTokens, completionTokens, costUsd },
+        );
         return 'succeeded';
       }
 
       currentId = nextId;
-      await this.persistProgress(executionId, currentId, state, { promptTokens, completionTokens, costUsd });
+      await this.persistProgress(executionId, currentId, state, {
+        promptTokens,
+        completionTokens,
+        costUsd,
+      });
     }
 
-    await this.finish(executionId, 'succeeded', { state }, { promptTokens, completionTokens, costUsd });
+    await this.finish(
+      executionId,
+      'succeeded',
+      { state },
+      { promptTokens, completionTokens, costUsd },
+    );
     return 'succeeded';
   }
 
   /** Pick the outgoing edge to follow, honouring branches and conditions. */
-  private nextNode(graph: WorkflowGraph, node: WorkflowNode, result: NodeExecutionResult, state: Record<string, unknown>): string | null {
+  private nextNode(
+    graph: WorkflowGraph,
+    node: WorkflowNode,
+    result: NodeExecutionResult,
+    state: Record<string, unknown>,
+  ): string | null {
     const outgoing = graph.edges.filter((edge) => edge.from === node.id && edge.branch !== 'error');
     if (!outgoing.length) return null;
 
@@ -335,31 +405,44 @@ export class RuntimeService {
       },
     });
 
-    await this.events.publish(DomainEvent.ExecutionSuspended, { type: 'execution', id: executionId }, {
-      executionId,
-      reason: suspend.reason,
-      resumeToken,
-    });
+    await this.events.publish(
+      DomainEvent.ExecutionSuspended,
+      { type: 'execution', id: executionId },
+      {
+        executionId,
+        reason: suspend.reason,
+        resumeToken,
+      },
+    );
   }
 
   /**
    * Resume a suspended execution. Advancing past the suspending node before
    * running means a resume cannot re-trigger the same wait.
    */
-  async resume(executionId: string, payload: Record<string, unknown> = {}): Promise<ExecutionStatus> {
+  async resume(
+    executionId: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<ExecutionStatus> {
     const execution = await this.prisma.db.execution.findFirst({
       where: { id: executionId },
       include: { workflowVersion: true },
     });
     if (!execution) throw AppError.notFound('Execution', executionId);
     if (execution.status !== 'suspended') {
-      throw AppError.conflict(`Only a suspended execution can be resumed; this one is ${execution.status}`);
+      throw AppError.conflict(
+        `Only a suspended execution can be resumed; this one is ${execution.status}`,
+      );
     }
 
     const graph = execution.workflowVersion?.graph as unknown as WorkflowGraph | undefined;
-    const nextId = graph && execution.currentNodeId
-      ? graph.edges.find((edge: WorkflowEdge) => edge.from === execution.currentNodeId && edge.branch !== 'error')?.to
-      : undefined;
+    const nextId =
+      graph && execution.currentNodeId
+        ? graph.edges.find(
+            (edge: WorkflowEdge) =>
+              edge.from === execution.currentNodeId && edge.branch !== 'error',
+          )?.to
+        : undefined;
 
     await this.prisma.db.execution.update({
       where: { id: executionId },
@@ -380,10 +463,16 @@ export class RuntimeService {
     return this.run(executionId);
   }
 
-  async resumeByToken(resumeToken: string, payload: Record<string, unknown> = {}): Promise<ExecutionStatus> {
+  async resumeByToken(
+    resumeToken: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<ExecutionStatus> {
     const execution = await this.prisma.raw.execution.findUnique({ where: { resumeToken } });
     if (!execution) throw AppError.notFound('Execution');
-    return RequestContextStore.runAsSystem(() => this.resume(execution.id, payload), execution.organizationId);
+    return RequestContextStore.runAsSystem(
+      () => this.resume(execution.id, payload),
+      execution.organizationId,
+    );
   }
 
   /** Resume executions whose timers have elapsed. Runs on the worker tier. */
@@ -397,7 +486,10 @@ export class RuntimeService {
     let resumed = 0;
     for (const execution of due) {
       try {
-        await RequestContextStore.runAsSystem(() => this.resume(execution.id), execution.organizationId);
+        await RequestContextStore.runAsSystem(
+          () => this.resume(execution.id),
+          execution.organizationId,
+        );
         resumed += 1;
       } catch (error) {
         this.logger.error('Failed to resume a due execution', error, { executionId: execution.id });
@@ -434,11 +526,15 @@ export class RuntimeService {
     });
 
     this.logger.warn('Workflow execution failed', { executionId, nodeId, error });
-    await this.events.publish(DomainEvent.ExecutionFailed, { type: 'execution', id: executionId }, {
-      executionId,
-      nodeId,
-      error,
-    });
+    await this.events.publish(
+      DomainEvent.ExecutionFailed,
+      { type: 'execution', id: executionId },
+      {
+        executionId,
+        nodeId,
+        error,
+      },
+    );
   }
 
   private async finish(
@@ -447,7 +543,10 @@ export class RuntimeService {
     output: Record<string, unknown>,
     usage?: { promptTokens: number; completionTokens: number; costUsd: number },
   ) {
-    const execution = await this.prisma.db.execution.findFirst({ where: { id: executionId }, select: { startedAt: true } });
+    const execution = await this.prisma.db.execution.findFirst({
+      where: { id: executionId },
+      select: { startedAt: true },
+    });
     const finishedAt = new Date();
 
     await this.prisma.db.execution.update({
@@ -456,7 +555,9 @@ export class RuntimeService {
         status,
         output: this.snapshot(output) as Prisma.InputJsonValue,
         finishedAt,
-        durationMs: execution?.startedAt ? finishedAt.getTime() - execution.startedAt.getTime() : null,
+        durationMs: execution?.startedAt
+          ? finishedAt.getTime() - execution.startedAt.getTime()
+          : null,
         ...(usage
           ? {
               promptTokens: usage.promptTokens,
@@ -467,12 +568,16 @@ export class RuntimeService {
       },
     });
 
-    await this.events.publish(DomainEvent.ExecutionFinished, { type: 'execution', id: executionId }, {
-      executionId,
-      status,
-      tokens: (usage?.promptTokens ?? 0) + (usage?.completionTokens ?? 0),
-      costUsd: usage?.costUsd ?? 0,
-    });
+    await this.events.publish(
+      DomainEvent.ExecutionFinished,
+      { type: 'execution', id: executionId },
+      {
+        executionId,
+        status,
+        tokens: (usage?.promptTokens ?? 0) + (usage?.completionTokens ?? 0),
+        costUsd: usage?.costUsd ?? 0,
+      },
+    );
   }
 
   async cancel(executionId: string): Promise<void> {
@@ -545,7 +650,12 @@ export class RuntimeService {
     };
   }
 
-  async list(params: { status?: string; agentId?: string; conversationId?: string; limit?: number }) {
+  async list(params: {
+    status?: string;
+    agentId?: string;
+    conversationId?: string;
+    limit?: number;
+  }) {
     return this.prisma.db.execution.findMany({
       where: {
         ...(params.status ? { status: params.status as never } : {}),
@@ -555,9 +665,18 @@ export class RuntimeService {
       orderBy: { createdAt: 'desc' },
       take: Math.min(params.limit ?? 50, 200),
       select: {
-        id: true, status: true, triggerType: true, agentId: true, conversationId: true,
-        durationMs: true, promptTokens: true, completionTokens: true, costUsd: true,
-        error: true, createdAt: true, finishedAt: true,
+        id: true,
+        status: true,
+        triggerType: true,
+        agentId: true,
+        conversationId: true,
+        durationMs: true,
+        promptTokens: true,
+        completionTokens: true,
+        costUsd: true,
+        error: true,
+        createdAt: true,
+        finishedAt: true,
       },
     });
   }
@@ -568,12 +687,15 @@ export class RuntimeService {
    */
   private snapshot(value: unknown, depth = 0): unknown {
     if (depth > 6 || value === null || value === undefined) return value ?? null;
-    if (typeof value === 'string') return value.length > 20_000 ? `${value.slice(0, 20_000)}…[truncated]` : value;
-    if (Array.isArray(value)) return value.slice(0, 100).map((item) => this.snapshot(item, depth + 1));
+    if (typeof value === 'string')
+      return value.length > 20_000 ? `${value.slice(0, 20_000)}…[truncated]` : value;
+    if (Array.isArray(value))
+      return value.slice(0, 100).map((item) => this.snapshot(item, depth + 1));
     if (value instanceof Date) return value.toISOString();
     if (typeof value === 'object') {
       const out: Record<string, unknown> = {};
-      for (const [key, item] of Object.entries(value).slice(0, 100)) out[key] = this.snapshot(item, depth + 1);
+      for (const [key, item] of Object.entries(value).slice(0, 100))
+        out[key] = this.snapshot(item, depth + 1);
       return out;
     }
     return value;

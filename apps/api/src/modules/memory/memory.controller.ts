@@ -27,8 +27,13 @@ export class MemoryController {
 
   @Post('customers/:id/consent')
   @RequirePermissions('customer:update')
-  @ApiOperation({ summary: 'Set AI memory consent; withdrawing it removes identifiable memory already held' })
-  setConsent(@Param('id') id: string, @Body(zodBody(z.object({ consent: z.boolean() }).strict())) body: { consent: boolean }) {
+  @ApiOperation({
+    summary: 'Set AI memory consent; withdrawing it removes identifiable memory already held',
+  })
+  setConsent(
+    @Param('id') id: string,
+    @Body(zodBody(z.object({ consent: z.boolean() }).strict())) body: { consent: boolean },
+  ) {
     return this.memory.setConsent(id, body.consent);
   }
 

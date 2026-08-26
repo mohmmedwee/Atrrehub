@@ -33,7 +33,19 @@ export class DirectoryService {
     return this.prisma.db.team.findMany({
       where: {},
       include: {
-        members: { include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true, presence: true } } } },
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+                presence: true,
+              },
+            },
+          },
+        },
         _count: { select: { queues: true } },
       },
       orderBy: { name: 'asc' },
@@ -61,7 +73,12 @@ export class DirectoryService {
       } as never,
     });
     if (input.memberIds?.length) await this.setTeamMembers(team.id, input.memberIds);
-    await this.audit.record({ action: 'team.created', resourceType: 'team', resourceId: team.id, after: team });
+    await this.audit.record({
+      action: 'team.created',
+      resourceType: 'team',
+      resourceId: team.id,
+      after: team,
+    });
     return this.getTeam(team.id);
   }
 
@@ -69,7 +86,13 @@ export class DirectoryService {
     const team = await this.prisma.db.team.findFirst({
       where: { id: teamId },
       include: {
-        members: { include: { user: { select: { id: true, firstName: true, lastName: true, email: true, presence: true } } } },
+        members: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, email: true, presence: true },
+            },
+          },
+        },
         queues: { select: { id: true, name: true, key: true } },
       },
     });
@@ -92,7 +115,12 @@ export class DirectoryService {
   async deleteTeam(teamId: string) {
     const team = await this.getTeam(teamId);
     await this.prisma.db.team.delete({ where: { id: teamId } });
-    await this.audit.record({ action: 'team.deleted', resourceType: 'team', resourceId: teamId, before: team });
+    await this.audit.record({
+      action: 'team.deleted',
+      resourceType: 'team',
+      resourceId: teamId,
+      before: team,
+    });
   }
 
   /** Replaces the roster in one transaction so membership never half-applies. */
@@ -103,7 +131,8 @@ export class DirectoryService {
     });
     const valid = new Set(members.map((m) => m.userId));
     const invalid = userIds.filter((id) => !valid.has(id));
-    if (invalid.length) throw AppError.badRequest(`Not members of this organization: ${invalid.join(', ')}`);
+    if (invalid.length)
+      throw AppError.badRequest(`Not members of this organization: ${invalid.join(', ')}`);
 
     await this.prisma.raw.$transaction([
       this.prisma.raw.teamMember.deleteMany({ where: { teamId } }),
@@ -130,8 +159,15 @@ export class DirectoryService {
   async createQueue(input: Record<string, unknown> & { name: string; key: string }) {
     const existing = await this.prisma.db.queue.findFirst({ where: { key: input.key } });
     if (existing) throw AppError.conflict(`A queue with the key "${input.key}" already exists`);
-    const queue = await this.prisma.db.queue.create({ data: { id: newId('queue'), ...input } as never });
-    await this.audit.record({ action: 'queue.created', resourceType: 'queue', resourceId: queue.id, after: queue });
+    const queue = await this.prisma.db.queue.create({
+      data: { id: newId('queue'), ...input } as never,
+    });
+    await this.audit.record({
+      action: 'queue.created',
+      resourceType: 'queue',
+      resourceId: queue.id,
+      after: queue,
+    });
     return queue;
   }
 
@@ -146,7 +182,10 @@ export class DirectoryService {
 
   async updateQueue(queueId: string, patch: Record<string, unknown>) {
     const before = await this.getQueue(queueId);
-    const after = await this.prisma.db.queue.update({ where: { id: queueId }, data: patch as never });
+    const after = await this.prisma.db.queue.update({
+      where: { id: queueId },
+      data: patch as never,
+    });
     await this.audit.recordDiff('queue.updated', 'queue', queueId, before as never, after as never);
     return after;
   }
@@ -157,7 +196,11 @@ export class DirectoryService {
     });
     if (open > 0) throw AppError.conflict(`${open} open conversation(s) are still in this queue`);
     await this.prisma.db.queue.delete({ where: { id: queueId } });
-    await this.audit.record({ action: 'queue.deleted', resourceType: 'queue', resourceId: queueId });
+    await this.audit.record({
+      action: 'queue.deleted',
+      resourceType: 'queue',
+      resourceId: queueId,
+    });
   }
 
   // ── Business hours & holidays ──────────────────────────────────────────────
@@ -170,9 +213,15 @@ export class DirectoryService {
     });
   }
 
-  async createBusinessHours(input: { name: string; timezone: string; rules: BusinessHoursRule[]; isDefault?: boolean }) {
+  async createBusinessHours(input: {
+    name: string;
+    timezone: string;
+    rules: BusinessHoursRule[];
+    isDefault?: boolean;
+  }) {
     this.assertValidRules(input.rules);
-    if (input.isDefault) await this.prisma.db.businessHours.updateMany({ where: {}, data: { isDefault: false } });
+    if (input.isDefault)
+      await this.prisma.db.businessHours.updateMany({ where: {}, data: { isDefault: false } });
     const created = await this.prisma.db.businessHours.create({
       data: {
         id: newId('businessHours'),
@@ -182,16 +231,33 @@ export class DirectoryService {
         isDefault: input.isDefault ?? false,
       } as never,
     });
-    await this.audit.record({ action: 'business_hours.created', resourceType: 'business_hours', resourceId: created.id, after: created });
+    await this.audit.record({
+      action: 'business_hours.created',
+      resourceType: 'business_hours',
+      resourceId: created.id,
+      after: created,
+    });
     return created;
   }
 
-  async updateBusinessHours(id: string, patch: { name?: string; timezone?: string; rules?: BusinessHoursRule[]; isDefault?: boolean }) {
+  async updateBusinessHours(
+    id: string,
+    patch: { name?: string; timezone?: string; rules?: BusinessHoursRule[]; isDefault?: boolean },
+  ) {
     if (patch.rules) this.assertValidRules(patch.rules);
-    if (patch.isDefault) await this.prisma.db.businessHours.updateMany({ where: {}, data: { isDefault: false } });
-    const updated = await this.prisma.db.businessHours.update({ where: { id }, data: patch as never });
+    if (patch.isDefault)
+      await this.prisma.db.businessHours.updateMany({ where: {}, data: { isDefault: false } });
+    const updated = await this.prisma.db.businessHours.update({
+      where: { id },
+      data: patch as never,
+    });
     await this.invalidateCalendar(id);
-    await this.audit.record({ action: 'business_hours.updated', resourceType: 'business_hours', resourceId: id, after: updated });
+    await this.audit.record({
+      action: 'business_hours.updated',
+      resourceType: 'business_hours',
+      resourceId: id,
+      after: updated,
+    });
     return updated;
   }
 
@@ -203,7 +269,10 @@ export class DirectoryService {
     await this.invalidateCalendar(id);
   }
 
-  async addHoliday(businessHoursId: string, input: { name: string; date: string; recurring?: boolean }) {
+  async addHoliday(
+    businessHoursId: string,
+    input: { name: string; date: string; recurring?: boolean },
+  ) {
     const holiday = await this.prisma.db.holiday.create({
       data: {
         id: newId('holiday'),
@@ -226,7 +295,8 @@ export class DirectoryService {
 
   private assertValidRules(rules: BusinessHoursRule[]): void {
     for (const rule of rules) {
-      if (rule.day < 0 || rule.day > 6) throw AppError.badRequest('day must be between 0 (Sunday) and 6 (Saturday)');
+      if (rule.day < 0 || rule.day > 6)
+        throw AppError.badRequest('day must be between 0 (Sunday) and 6 (Saturday)');
       if (!/^\d{2}:\d{2}$/.test(rule.start) || !/^\d{2}:\d{2}$/.test(rule.end)) {
         throw AppError.badRequest('start and end must be formatted HH:mm');
       }
@@ -245,8 +315,14 @@ export class DirectoryService {
 
     const calendar = await this.redis.remember(key, CALENDAR_CACHE_TTL, async () => {
       const record = businessHoursId
-        ? await this.prisma.db.businessHours.findFirst({ where: { id: businessHoursId }, include: { holidays: true } })
-        : await this.prisma.db.businessHours.findFirst({ where: { isDefault: true }, include: { holidays: true } });
+        ? await this.prisma.db.businessHours.findFirst({
+            where: { id: businessHoursId },
+            include: { holidays: true },
+          })
+        : await this.prisma.db.businessHours.findFirst({
+            where: { isDefault: true },
+            include: { holidays: true },
+          });
 
       // No calendar configured means 24×7: never let a missing config invent an SLA breach.
       if (!record) return { timezone: 'UTC', rules: [], holidays: [] };
@@ -284,7 +360,12 @@ export class DirectoryService {
 
   async createTag(input: { name: string; color?: string; category?: string }) {
     return this.prisma.db.tag.create({
-      data: { id: newId('tag'), name: input.name, color: input.color ?? '#64748b', category: input.category ?? null } as never,
+      data: {
+        id: newId('tag'),
+        name: input.name,
+        color: input.color ?? '#64748b',
+        category: input.category ?? null,
+      } as never,
     });
   }
 
@@ -308,8 +389,11 @@ export class DirectoryService {
     isRequired?: boolean;
     position?: number;
   }) {
-    const existing = await this.prisma.db.customField.findFirst({ where: { entity: input.entity, key: input.key } });
-    if (existing) throw AppError.conflict(`A "${input.key}" field already exists on ${input.entity}`);
+    const existing = await this.prisma.db.customField.findFirst({
+      where: { entity: input.entity, key: input.key },
+    });
+    if (existing)
+      throw AppError.conflict(`A "${input.key}" field already exists on ${input.entity}`);
     return this.prisma.db.customField.create({
       data: {
         id: newId('customField'),
@@ -332,17 +416,22 @@ export class DirectoryService {
    * Validates a custom-field payload against the tenant's field definitions.
    * Unknown keys are rejected so a typo cannot silently create shadow data.
    */
-  async validateCustomFields(entity: string, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async validateCustomFields(
+    entity: string,
+    values: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
     const fields = await this.listCustomFields(entity);
     const byKey = new Map(fields.map((f) => [f.key, f]));
 
     const unknown = Object.keys(values).filter((key) => !byKey.has(key));
-    if (unknown.length) throw AppError.badRequest(`Unknown custom fields on ${entity}: ${unknown.join(', ')}`);
+    if (unknown.length)
+      throw AppError.badRequest(`Unknown custom fields on ${entity}: ${unknown.join(', ')}`);
 
     for (const field of fields) {
       const value = values[field.key];
       if (value === undefined || value === null) {
-        if (field.isRequired) throw AppError.badRequest(`Custom field "${field.label}" is required`);
+        if (field.isRequired)
+          throw AppError.badRequest(`Custom field "${field.label}" is required`);
         continue;
       }
       const typeOk =
@@ -354,7 +443,8 @@ export class DirectoryService {
         (field.type === 'multiselect' &&
           Array.isArray(value) &&
           value.every((v) => (field.options as string[]).includes(String(v))));
-      if (!typeOk) throw AppError.badRequest(`Custom field "${field.label}" expects a ${field.type} value`);
+      if (!typeOk)
+        throw AppError.badRequest(`Custom field "${field.label}" expects a ${field.type} value`);
     }
     return values;
   }
@@ -366,7 +456,13 @@ export class DirectoryService {
     });
   }
 
-  async createSavedReply(input: { title: string; body: string; shortcut?: string; locale?: string; tags?: string[] }) {
+  async createSavedReply(input: {
+    title: string;
+    body: string;
+    shortcut?: string;
+    locale?: string;
+    tags?: string[];
+  }) {
     const principal = RequestContextStore.principal();
     return this.prisma.db.savedReply.create({
       data: {

@@ -41,23 +41,33 @@ export class AnalyticsService {
     return this.redis.remember(this.cacheKey('executive', range), CACHE_SECONDS, async () => {
       const where = { createdAt: { gte: range.from, lte: range.to } };
 
-      const [total, resolved, aiHandled, aiResolved, csat, slaAttainment, aiSpend, openNow] = await Promise.all([
-        this.prisma.db.conversation.count({ where }),
-        this.prisma.db.conversation.count({ where: { ...where, status: { in: ['resolved', 'closed'] } } }),
-        this.prisma.db.conversation.count({ where: { ...where, aiHandled: true } }),
-        // AI resolution means the AI closed it without ever reaching a person.
-        this.prisma.db.conversation.count({
-          where: { ...where, aiHandled: true, status: { in: ['resolved', 'closed'] }, assigneeType: { not: 'user' } },
-        }),
-        this.prisma.db.conversation.aggregate({
-          where: { ...where, csatScore: { not: null } },
-          _avg: { csatScore: true },
-          _count: { csatScore: true },
-        }),
-        this.sla.attainment(range),
-        this.prisma.db.aiUsage.aggregate({ where, _sum: { costUsd: true, totalTokens: true } }),
-        this.prisma.db.conversation.count({ where: { status: { in: ['new', 'queued', 'assigned', 'active', 'waiting'] } } }),
-      ]);
+      const [total, resolved, aiHandled, aiResolved, csat, slaAttainment, aiSpend, openNow] =
+        await Promise.all([
+          this.prisma.db.conversation.count({ where }),
+          this.prisma.db.conversation.count({
+            where: { ...where, status: { in: ['resolved', 'closed'] } },
+          }),
+          this.prisma.db.conversation.count({ where: { ...where, aiHandled: true } }),
+          // AI resolution means the AI closed it without ever reaching a person.
+          this.prisma.db.conversation.count({
+            where: {
+              ...where,
+              aiHandled: true,
+              status: { in: ['resolved', 'closed'] },
+              assigneeType: { not: 'user' },
+            },
+          }),
+          this.prisma.db.conversation.aggregate({
+            where: { ...where, csatScore: { not: null } },
+            _avg: { csatScore: true },
+            _count: { csatScore: true },
+          }),
+          this.sla.attainment(range),
+          this.prisma.db.aiUsage.aggregate({ where, _sum: { costUsd: true, totalTokens: true } }),
+          this.prisma.db.conversation.count({
+            where: { status: { in: ['new', 'queued', 'assigned', 'active', 'waiting'] } },
+          }),
+        ]);
 
       return {
         range,
@@ -111,13 +121,28 @@ export class AnalyticsService {
         qaByAgent.set(key, [...(qaByAgent.get(key) ?? []), evaluation.score]);
       }
 
-      const byAgent = new Map<string, {
-        handled: number; resolved: number; handleMs: number[]; responseMs: number[]; csat: number[]; oneTouch: number;
-      }>();
+      const byAgent = new Map<
+        string,
+        {
+          handled: number;
+          resolved: number;
+          handleMs: number[];
+          responseMs: number[];
+          csat: number[];
+          oneTouch: number;
+        }
+      >();
 
       for (const conversation of conversations) {
         const key = conversation.assigneeId!;
-        const entry = byAgent.get(key) ?? { handled: 0, resolved: 0, handleMs: [], responseMs: [], csat: [], oneTouch: 0 };
+        const entry = byAgent.get(key) ?? {
+          handled: 0,
+          resolved: 0,
+          handleMs: [],
+          responseMs: [],
+          csat: [],
+          oneTouch: 0,
+        };
         entry.handled += 1;
 
         if (conversation.resolvedAt) {
@@ -128,7 +153,9 @@ export class AnalyticsService {
           if (conversation.messageCount <= 2) entry.oneTouch += 1;
         }
         if (conversation.firstResponseAt) {
-          entry.responseMs.push(conversation.firstResponseAt.getTime() - conversation.createdAt.getTime());
+          entry.responseMs.push(
+            conversation.firstResponseAt.getTime() - conversation.createdAt.getTime(),
+          );
         }
         if (conversation.csatScore !== null) entry.csat.push(conversation.csatScore);
 
@@ -172,7 +199,12 @@ export class AnalyticsService {
       const where = { createdAt: { gte: range.from, lte: range.to } };
 
       const [executions, usage, guardrails, retrieval, handoffs] = await Promise.all([
-        this.prisma.db.execution.groupBy({ by: ['status'], where, _count: { _all: true }, _avg: { durationMs: true } }),
+        this.prisma.db.execution.groupBy({
+          by: ['status'],
+          where,
+          _count: { _all: true },
+          _avg: { durationMs: true },
+        }),
         this.prisma.db.aiUsage.groupBy({
           by: ['model'],
           where,
@@ -180,15 +212,27 @@ export class AnalyticsService {
           _avg: { latencyMs: true },
           _count: { _all: true },
         }),
-        this.prisma.db.guardrailEvent.groupBy({ by: ['check', 'action'], where, _count: { _all: true } }),
-        this.prisma.db.retrievalLog.aggregate({ where, _avg: { latencyMs: true, topScore: true }, _count: { _all: true } }),
-        this.prisma.db.conversation.count({ where: { ...where, aiHandled: true, assigneeType: 'user' } }),
+        this.prisma.db.guardrailEvent.groupBy({
+          by: ['check', 'action'],
+          where,
+          _count: { _all: true },
+        }),
+        this.prisma.db.retrievalLog.aggregate({
+          where,
+          _avg: { latencyMs: true, topScore: true },
+          _count: { _all: true },
+        }),
+        this.prisma.db.conversation.count({
+          where: { ...where, aiHandled: true, assigneeType: 'user' },
+        }),
       ]);
 
       const totalExecutions = executions.reduce((total, row) => total + row._count._all, 0);
       const succeeded = executions.find((row) => row.status === 'succeeded')?._count._all ?? 0;
       const failed = executions.find((row) => row.status === 'failed')?._count._all ?? 0;
-      const aiConversations = await this.prisma.db.conversation.count({ where: { ...where, aiHandled: true } });
+      const aiConversations = await this.prisma.db.conversation.count({
+        where: { ...where, aiHandled: true },
+      });
 
       return {
         range,
@@ -198,7 +242,10 @@ export class AnalyticsService {
           failed,
           successRate: percent(succeeded, totalExecutions),
           averageDurationMs: Math.round(
-            executions.reduce((total, row) => total + (row._avg.durationMs ?? 0) * row._count._all, 0) / (totalExecutions || 1),
+            executions.reduce(
+              (total, row) => total + (row._avg.durationMs ?? 0) * row._count._all,
+              0,
+            ) / (totalExecutions || 1),
           ),
           byStatus: executions.map((row) => ({ status: row.status, count: row._count._all })),
         },
@@ -211,7 +258,11 @@ export class AnalyticsService {
           costUsd: Math.round(Number(row._sum.costUsd ?? 0) * 10_000) / 10_000,
           averageLatencyMs: Math.round(row._avg.latencyMs ?? 0),
         })),
-        guardrails: guardrails.map((row) => ({ check: row.check, action: row.action, count: row._count._all })),
+        guardrails: guardrails.map((row) => ({
+          check: row.check,
+          action: row.action,
+          count: row._count._all,
+        })),
         retrieval: {
           queries: retrieval._count._all,
           averageLatencyMs: Math.round(retrieval._avg.latencyMs ?? 0),
@@ -226,19 +277,45 @@ export class AnalyticsService {
     return this.redis.remember(this.cacheKey('channels', range), CACHE_SECONDS, async () => {
       const conversations = await this.prisma.db.conversation.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
-        select: { channel: true, status: true, createdAt: true, firstResponseAt: true, resolvedAt: true, csatScore: true },
+        select: {
+          channel: true,
+          status: true,
+          createdAt: true,
+          firstResponseAt: true,
+          resolvedAt: true,
+          csatScore: true,
+        },
       });
 
-      const byChannel = new Map<string, { total: number; resolved: number; responseMs: number[]; resolveMs: number[]; csat: number[] }>();
+      const byChannel = new Map<
+        string,
+        {
+          total: number;
+          resolved: number;
+          responseMs: number[];
+          resolveMs: number[];
+          csat: number[];
+        }
+      >();
       for (const conversation of conversations) {
-        const entry = byChannel.get(conversation.channel) ?? { total: 0, resolved: 0, responseMs: [], resolveMs: [], csat: [] };
+        const entry = byChannel.get(conversation.channel) ?? {
+          total: 0,
+          resolved: 0,
+          responseMs: [],
+          resolveMs: [],
+          csat: [],
+        };
         entry.total += 1;
         if (conversation.resolvedAt) {
           entry.resolved += 1;
-          entry.resolveMs.push(conversation.resolvedAt.getTime() - conversation.createdAt.getTime());
+          entry.resolveMs.push(
+            conversation.resolvedAt.getTime() - conversation.createdAt.getTime(),
+          );
         }
         if (conversation.firstResponseAt) {
-          entry.responseMs.push(conversation.firstResponseAt.getTime() - conversation.createdAt.getTime());
+          entry.responseMs.push(
+            conversation.firstResponseAt.getTime() - conversation.createdAt.getTime(),
+          );
         }
         if (conversation.csatScore !== null) entry.csat.push(conversation.csatScore);
         byChannel.set(conversation.channel, entry);
@@ -259,7 +336,10 @@ export class AnalyticsService {
   }
 
   /** A daily time series for charting. */
-  async timeSeries(range: DateRange, metric: 'conversations' | 'resolutions' | 'ai_cost' | 'messages') {
+  async timeSeries(
+    range: DateRange,
+    metric: 'conversations' | 'resolutions' | 'ai_cost' | 'messages',
+  ) {
     const buckets = new Map<string, number>();
     const day = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -269,14 +349,18 @@ export class AnalyticsService {
         select: { createdAt: true, costUsd: true },
       });
       for (const row of rows) {
-        buckets.set(day(row.createdAt), (buckets.get(day(row.createdAt)) ?? 0) + Number(row.costUsd));
+        buckets.set(
+          day(row.createdAt),
+          (buckets.get(day(row.createdAt)) ?? 0) + Number(row.costUsd),
+        );
       }
     } else if (metric === 'messages') {
       const rows = await this.prisma.db.message.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
         select: { createdAt: true },
       });
-      for (const row of rows) buckets.set(day(row.createdAt), (buckets.get(day(row.createdAt)) ?? 0) + 1);
+      for (const row of rows)
+        buckets.set(day(row.createdAt), (buckets.get(day(row.createdAt)) ?? 0) + 1);
     } else {
       const rows = await this.prisma.db.conversation.findMany({
         where:
@@ -293,10 +377,17 @@ export class AnalyticsService {
 
     // Emit every day in the range, including zeros, so a chart has no gaps.
     const series: { date: string; value: number }[] = [];
-    for (let cursor = new Date(range.from); cursor <= range.to; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    for (
+      let cursor = new Date(range.from);
+      cursor <= range.to;
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+    ) {
       const key = day(cursor);
       const value = buckets.get(key) ?? 0;
-      series.push({ date: key, value: metric === 'ai_cost' ? Math.round(value * 10_000) / 10_000 : value });
+      series.push({
+        date: key,
+        value: metric === 'ai_cost' ? Math.round(value * 10_000) / 10_000 : value,
+      });
     }
     return { metric, series };
   }
@@ -325,7 +416,11 @@ export class AnalyticsService {
 
     return {
       byStatus: byStatus.map((row) => ({ status: row.status, count: row._count._all })),
-      queues: byQueue.map((row) => ({ queueId: row.queueId, waiting: row._count._all, oldestQueuedAt: row._min.queuedAt })),
+      queues: byQueue.map((row) => ({
+        queueId: row.queueId,
+        waiting: row._count._all,
+        oldestQueuedAt: row._min.queuedAt,
+      })),
       availableAgents: agents,
       longestWaitMs: oldest?.queuedAt ? Date.now() - oldest.queuedAt.getTime() : 0,
     };
@@ -337,5 +432,7 @@ function percent(part: number, whole: number): number {
 }
 
 function average(values: number[]): number {
-  return values.length ? Math.round(values.reduce((total, value) => total + value, 0) / values.length) : 0;
+  return values.length
+    ? Math.round(values.reduce((total, value) => total + value, 0) / values.length)
+    : 0;
 }

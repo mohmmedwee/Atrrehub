@@ -99,10 +99,14 @@ export class AuthService {
     );
 
     RequestContextStore.patch({ organizationId: organization.id });
-    await this.events.publish(DomainEvent.OrganizationCreated, { type: 'organization', id: organization.id }, {
-      name: organization.name,
-      plan: organization.plan,
-    });
+    await this.events.publish(
+      DomainEvent.OrganizationCreated,
+      { type: 'organization', id: organization.id },
+      {
+        name: organization.name,
+        plan: organization.plan,
+      },
+    );
     await this.audit.record({
       action: 'auth.register',
       resourceType: 'user',
@@ -163,14 +167,22 @@ export class AuthService {
     const membership = input.organizationId
       ? user.memberships.find((m) => m.organizationId === input.organizationId)
       : user.memberships[0];
-    if (!membership) throw AppError.unauthenticated('This account does not belong to any organization');
+    if (!membership)
+      throw AppError.unauthenticated('This account does not belong to any organization');
 
     let mfaVerified = false;
     if (user.mfaEnabled) {
       if (!input.mfaCode) {
-        throw new AppError('unauthenticated', 'A multi-factor code is required', { meta: { mfaRequired: true } });
+        throw new AppError('unauthenticated', 'A multi-factor code is required', {
+          meta: { mfaRequired: true },
+        });
       }
-      mfaVerified = await this.verifyMfaCode(user.id, user.mfaSecret, user.mfaRecoveryCodes, input.mfaCode);
+      mfaVerified = await this.verifyMfaCode(
+        user.id,
+        user.mfaSecret,
+        user.mfaRecoveryCodes,
+        input.mfaCode,
+      );
       if (!mfaVerified) {
         await this.recordFailedLogin(user.id, user.failedLoginCount);
         throw AppError.unauthenticated('The multi-factor code is invalid');
@@ -246,7 +258,9 @@ export class AuthService {
       mfa: params.mfaVerified,
       typ: 'access',
     };
-    const accessToken = await this.jwt.signAsync(claims, { expiresIn: security.accessTtl as never });
+    const accessToken = await this.jwt.signAsync(claims, {
+      expiresIn: security.accessTtl as never,
+    });
     const refreshToken = `rt_${this.crypto.randomToken(48)}`;
 
     await this.prisma.raw.session.create({
@@ -347,7 +361,10 @@ export class AuthService {
       where: { refreshTokenHash: this.crypto.hashToken(refreshToken) },
     });
     if (!session) return;
-    await this.prisma.raw.session.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
+    await this.prisma.raw.session.update({
+      where: { id: session.id },
+      data: { revokedAt: new Date() },
+    });
     await this.audit.record({
       action: 'auth.logout',
       resourceType: 'user',
@@ -385,7 +402,14 @@ export class AuthService {
     return this.prisma.raw.session.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { lastUsedAt: 'desc' },
-      select: { id: true, userAgent: true, ipAddress: true, createdAt: true, lastUsedAt: true, expiresAt: true },
+      select: {
+        id: true,
+        userAgent: true,
+        ipAddress: true,
+        createdAt: true,
+        lastUsedAt: true,
+        expiresAt: true,
+      },
     });
   }
 
@@ -430,12 +454,23 @@ export class AuthService {
     });
     // A password change invalidates every existing session.
     await this.revokeAllSessions(record.userId, 'password_reset');
-    await this.audit.record({ action: 'auth.password_reset', resourceType: 'user', resourceId: record.userId });
+    await this.audit.record({
+      action: 'auth.password_reset',
+      resourceType: 'user',
+      resourceId: record.userId,
+    });
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     const user = await this.prisma.raw.user.findUniqueOrThrow({ where: { id: userId } });
-    if (!user.passwordHash || !(await this.crypto.verifyPassword(currentPassword, user.passwordHash))) {
+    if (
+      !user.passwordHash ||
+      !(await this.crypto.verifyPassword(currentPassword, user.passwordHash))
+    ) {
       throw AppError.unauthenticated('The current password is incorrect');
     }
     await this.prisma.raw.user.update({
@@ -443,7 +478,11 @@ export class AuthService {
       data: { passwordHash: await this.crypto.hashPassword(newPassword) },
     });
     await this.revokeAllSessions(userId, 'password_changed');
-    await this.audit.record({ action: 'auth.password_changed', resourceType: 'user', resourceId: userId });
+    await this.audit.record({
+      action: 'auth.password_changed',
+      resourceType: 'user',
+      resourceId: userId,
+    });
   }
 
   // ── Email verification ─────────────────────────────────────────────────────
@@ -488,14 +527,20 @@ export class AuthService {
     if (!record || record.purpose !== purpose || record.usedAt || record.expiresAt < new Date()) {
       throw AppError.badRequest('This link is invalid or has expired');
     }
-    await this.prisma.raw.verificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } });
+    await this.prisma.raw.verificationToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    });
     return record;
   }
 
   // ── Multi-factor authentication ────────────────────────────────────────────
 
   /** Returns the provisioning URI for the authenticator app; not yet enabled. */
-  async beginMfaSetup(userId: string, email: string): Promise<{ secret: string; otpauthUrl: string }> {
+  async beginMfaSetup(
+    userId: string,
+    email: string,
+  ): Promise<{ secret: string; otpauthUrl: string }> {
     const secret = authenticator.generateSecret();
     await this.prisma.raw.user.update({
       where: { id: userId },
@@ -519,7 +564,11 @@ export class AuthService {
         mfaRecoveryCodes: recoveryCodes.map((c) => this.crypto.hashToken(c)),
       },
     });
-    await this.audit.record({ action: 'auth.mfa_enabled', resourceType: 'user', resourceId: userId });
+    await this.audit.record({
+      action: 'auth.mfa_enabled',
+      resourceType: 'user',
+      resourceId: userId,
+    });
     return { recoveryCodes };
   }
 
@@ -532,7 +581,11 @@ export class AuthService {
       where: { id: userId },
       data: { mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: [] },
     });
-    await this.audit.record({ action: 'auth.mfa_disabled', resourceType: 'user', resourceId: userId });
+    await this.audit.record({
+      action: 'auth.mfa_disabled',
+      resourceType: 'user',
+      resourceId: userId,
+    });
   }
 
   /** Accepts a TOTP code or a single-use recovery code, consuming the latter. */
@@ -542,7 +595,10 @@ export class AuthService {
     recoveryHashes: string[],
     code: string,
   ): Promise<boolean> {
-    if (encryptedSecret && authenticator.verify({ token: code, secret: this.crypto.decrypt(encryptedSecret) })) {
+    if (
+      encryptedSecret &&
+      authenticator.verify({ token: code, secret: this.crypto.decrypt(encryptedSecret) })
+    ) {
       return true;
     }
     const hash = this.crypto.hashToken(code);

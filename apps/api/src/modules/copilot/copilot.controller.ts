@@ -9,7 +9,15 @@ import { CopilotService } from './copilot.service';
 const AssistSchema = z
   .object({
     conversationId: z.string().min(3),
-    action: z.enum(['suggest_reply', 'rewrite', 'summarize', 'translate', 'adjust_tone', 'next_best_action', 'customer_summary']),
+    action: z.enum([
+      'suggest_reply',
+      'rewrite',
+      'summarize',
+      'translate',
+      'adjust_tone',
+      'next_best_action',
+      'customer_summary',
+    ]),
     draft: z.string().max(20_000).optional(),
     targetLocale: z.string().max(20).optional(),
     tone: z.enum(['formal', 'friendly', 'concise', 'empathetic', 'apologetic']).optional(),
@@ -24,7 +32,9 @@ export class CopilotController {
 
   @Post('assist')
   @RequirePermissions('copilot:execute')
-  @ApiOperation({ summary: 'Suggest, rewrite, summarize, translate, adjust tone or recommend the next action' })
+  @ApiOperation({
+    summary: 'Suggest, rewrite, summarize, translate, adjust tone or recommend the next action',
+  })
   assist(@Body(zodBody(AssistSchema)) body: z.infer<typeof AssistSchema>) {
     return this.copilot.assist(body);
   }

@@ -42,7 +42,9 @@ export class AuditService {
         data: {
           id: newId('audit'),
           organizationId,
-          actorType: (context?.principal?.type === 'api_key' ? 'user' : (context?.principal?.type ?? 'system')) as never,
+          actorType: (context?.principal?.type === 'api_key'
+            ? 'user'
+            : (context?.principal?.type ?? 'system')) as never,
           actorId: input.actorId ?? context?.principal?.id ?? null,
           actorLabel: input.actorLabel ?? context?.principal?.label ?? null,
           action: input.action,
@@ -80,7 +82,13 @@ export class AuditService {
       }
     }
     if (!Object.keys(changedAfter).length) return;
-    await this.record({ action, resourceType, resourceId, before: changedBefore, after: changedAfter });
+    await this.record({
+      action,
+      resourceType,
+      resourceId,
+      before: changedBefore,
+      after: changedAfter,
+    });
   }
 
   async search(params: {
@@ -102,7 +110,12 @@ export class AuditService {
       ...(params.resourceType ? { resourceType: params.resourceType } : {}),
       ...(params.resourceId ? { resourceId: params.resourceId } : {}),
       ...(params.from || params.to
-        ? { createdAt: { ...(params.from ? { gte: params.from } : {}), ...(params.to ? { lte: params.to } : {}) } }
+        ? {
+            createdAt: {
+              ...(params.from ? { gte: params.from } : {}),
+              ...(params.to ? { lte: params.to } : {}),
+            },
+          }
         : {}),
     };
 

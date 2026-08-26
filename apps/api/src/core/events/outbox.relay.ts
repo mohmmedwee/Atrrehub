@@ -65,7 +65,11 @@ export class OutboxRelay {
           delivered += 1;
         } catch (error) {
           const attempts = event.attempts + 1;
-          this.logger.error('Outbox delivery failed', error, { eventId: event.id, type: event.type, attempts });
+          this.logger.error('Outbox delivery failed', error, {
+            eventId: event.id,
+            type: event.type,
+            attempts,
+          });
           await this.prisma.raw.outboxEvent.update({
             where: { id: event.id },
             data: {

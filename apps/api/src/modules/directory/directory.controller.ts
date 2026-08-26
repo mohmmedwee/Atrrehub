@@ -30,12 +30,36 @@ const QueueSchema = z
     description: z.string().max(300).optional(),
     teamId: z.string().nullable().optional(),
     channels: z
-      .array(z.enum(['web_chat', 'email', 'voice', 'whatsapp', 'sms', 'telegram', 'messenger', 'instagram', 'teams', 'api']))
+      .array(
+        z.enum([
+          'web_chat',
+          'email',
+          'voice',
+          'whatsapp',
+          'sms',
+          'telegram',
+          'messenger',
+          'instagram',
+          'teams',
+          'api',
+        ]),
+      )
       .optional(),
     languages: z.array(z.string().max(10)).max(20).optional(),
     skills: z.array(z.string().max(40)).max(50).optional(),
     strategy: z
-      .enum(['round_robin', 'least_loaded', 'skill_based', 'language', 'priority', 'customer_tier', 'team', 'ai_intent', 'sentiment', 'direct'])
+      .enum([
+        'round_robin',
+        'least_loaded',
+        'skill_based',
+        'language',
+        'priority',
+        'customer_tier',
+        'team',
+        'ai_intent',
+        'sentiment',
+        'direct',
+      ])
       .optional(),
     priority: z.enum(['low', 'normal', 'high', 'urgent', 'critical']).optional(),
     slaPolicyId: z.string().nullable().optional(),
@@ -70,7 +94,10 @@ const HolidaySchema = z
 const TagSchema = z
   .object({
     name: z.string().min(1).max(60),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
     category: z.string().max(40).optional(),
   })
   .strict();
@@ -90,10 +117,13 @@ const CustomFieldSchema = z
     position: z.number().int().min(0).max(999).optional(),
   })
   .strict()
-  .refine((value) => !['select', 'multiselect'].includes(value.type) || (value.options?.length ?? 0) > 0, {
-    message: 'select and multiselect fields need at least one option',
-    path: ['options'],
-  });
+  .refine(
+    (value) => !['select', 'multiselect'].includes(value.type) || (value.options?.length ?? 0) > 0,
+    {
+      message: 'select and multiselect fields need at least one option',
+      path: ['options'],
+    },
+  );
 
 const SavedReplySchema = z
   .object({
@@ -136,7 +166,10 @@ export class DirectoryController {
   @Patch('teams/:id')
   @RequirePermissions('team:manage')
   @ApiOperation({ summary: 'Update a team or its roster' })
-  updateTeam(@Param('id') id: string, @Body(zodBody(TeamSchema.partial())) body: Record<string, unknown>) {
+  updateTeam(
+    @Param('id') id: string,
+    @Body(zodBody(TeamSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.directory.updateTeam(id, body);
   }
 
@@ -174,7 +207,10 @@ export class DirectoryController {
   @Patch('queues/:id')
   @RequirePermissions('queue:manage')
   @ApiOperation({ summary: 'Update a queue' })
-  updateQueue(@Param('id') id: string, @Body(zodBody(QueueSchema.partial())) body: Record<string, unknown>) {
+  updateQueue(
+    @Param('id') id: string,
+    @Body(zodBody(QueueSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.directory.updateQueue(id, body);
   }
 
@@ -198,7 +234,9 @@ export class DirectoryController {
   @Post('business-hours')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Create a business-hours calendar' })
-  createBusinessHours(@Body(zodBody(BusinessHoursSchema)) body: z.infer<typeof BusinessHoursSchema>) {
+  createBusinessHours(
+    @Body(zodBody(BusinessHoursSchema)) body: z.infer<typeof BusinessHoursSchema>,
+  ) {
     return this.directory.createBusinessHours(body);
   }
 
@@ -223,7 +261,10 @@ export class DirectoryController {
   @Post('business-hours/:id/holidays')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Add a holiday' })
-  addHoliday(@Param('id') id: string, @Body(zodBody(HolidaySchema)) body: z.infer<typeof HolidaySchema>) {
+  addHoliday(
+    @Param('id') id: string,
+    @Body(zodBody(HolidaySchema)) body: z.infer<typeof HolidaySchema>,
+  ) {
     return this.directory.addHoliday(id, body);
   }
 
@@ -298,7 +339,10 @@ export class DirectoryController {
   @Patch('saved-replies/:id')
   @RequirePermissions('taxonomy:manage')
   @ApiOperation({ summary: 'Update a saved reply' })
-  updateSavedReply(@Param('id') id: string, @Body(zodBody(SavedReplySchema.partial())) body: Record<string, unknown>) {
+  updateSavedReply(
+    @Param('id') id: string,
+    @Body(zodBody(SavedReplySchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.directory.updateSavedReply(id, body);
   }
 

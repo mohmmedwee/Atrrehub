@@ -31,7 +31,9 @@ export class AnalyticsController {
 
   @Get('executive')
   @RequirePermissions('analytics:read')
-  @ApiOperation({ summary: 'Executive dashboard: volume, resolution, AI deflection, CSAT, SLA, cost' })
+  @ApiOperation({
+    summary: 'Executive dashboard: volume, resolution, AI deflection, CSAT, SLA, cost',
+  })
   executive(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.analytics.executive(resolveRange(query));
   }
@@ -45,7 +47,9 @@ export class AnalyticsController {
 
   @Get('ai')
   @RequirePermissions('analytics:read')
-  @ApiOperation({ summary: 'AI performance: deflection, handoff, tokens, cost, latency, guardrails' })
+  @ApiOperation({
+    summary: 'AI performance: deflection, handoff, tokens, cost, latency, guardrails',
+  })
   ai(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.analytics.aiPerformance(resolveRange(query));
   }

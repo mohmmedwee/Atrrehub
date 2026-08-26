@@ -58,7 +58,11 @@ export class BusinessHoursCalculator {
     let total = 0;
     let cursor = start.startOf('day');
     // Bounded so a corrupt input cannot spin: two years of working days is ample.
-    for (let guard = 0; cursor <= end && guard < 800; guard += 1, cursor = cursor.plus({ days: 1 })) {
+    for (
+      let guard = 0;
+      cursor <= end && guard < 800;
+      guard += 1, cursor = cursor.plus({ days: 1 })
+    ) {
       for (const window of this.windowsOn(cursor)) {
         const overlap = span.intersection(window);
         if (overlap) total += overlap.toDuration().toMillis();

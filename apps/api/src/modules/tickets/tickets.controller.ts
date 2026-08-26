@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { CursorQuery } from '../../common/pagination';
@@ -45,7 +56,14 @@ const ListQuery = CursorQuery.extend({
   labels: z
     .string()
     .optional()
-    .transform((v) => (v ? v.split(',').map((t) => t.trim()).filter(Boolean) : undefined)),
+    .transform((v) =>
+      v
+        ? v
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined,
+    ),
 });
 
 const BulkSchema = z
@@ -55,7 +73,9 @@ const BulkSchema = z
   })
   .strict();
 
-const CommentSchema = z.object({ body: z.string().min(1).max(50_000), isInternal: z.boolean().optional() }).strict();
+const CommentSchema = z
+  .object({ body: z.string().min(1).max(50_000), isInternal: z.boolean().optional() })
+  .strict();
 
 const TemplateSchema = z
   .object({
@@ -113,7 +133,10 @@ export class TicketsController {
   @Post('templates/:id/instantiate')
   @RequirePermissions('ticket:create')
   @ApiOperation({ summary: 'Create a ticket from a template' })
-  fromTemplate(@Param('id') id: string, @Body(zodBody(CreateSchema.partial())) body: Record<string, unknown>) {
+  fromTemplate(
+    @Param('id') id: string,
+    @Body(zodBody(CreateSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.tickets.createFromTemplate(id, body);
   }
 
@@ -151,7 +174,11 @@ export class TicketsController {
     @Headers('if-match') ifMatch?: string,
   ) {
     const expectedVersion = ifMatch ? Number(ifMatch.replace(/"/g, '')) : undefined;
-    return this.tickets.update(id, body as never, Number.isFinite(expectedVersion) ? expectedVersion : undefined);
+    return this.tickets.update(
+      id,
+      body as never,
+      Number.isFinite(expectedVersion) ? expectedVersion : undefined,
+    );
   }
 
   @Delete(':id')
@@ -172,7 +199,10 @@ export class TicketsController {
   @Post(':id/comments')
   @RequirePermissions('ticket:update')
   @ApiOperation({ summary: 'Add a comment' })
-  addComment(@Param('id') id: string, @Body(zodBody(CommentSchema)) body: z.infer<typeof CommentSchema>) {
+  addComment(
+    @Param('id') id: string,
+    @Body(zodBody(CommentSchema)) body: z.infer<typeof CommentSchema>,
+  ) {
     return this.tickets.addComment(id, body.body, body.isInternal);
   }
 

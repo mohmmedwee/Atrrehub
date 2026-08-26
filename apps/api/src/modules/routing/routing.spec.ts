@@ -44,11 +44,15 @@ describe('routing rule matching', () => {
   it('routes on AI intent and sentiment', () => {
     expect(matchesConditions({ intent: 'refund_request' }, subject())).toBe(true);
     expect(matchesConditions({ sentimentBelow: 0.3 }, subject({ sentimentScore: 0.2 }))).toBe(true);
-    expect(matchesConditions({ sentimentBelow: 0.3 }, subject({ sentimentScore: 0.5 }))).toBe(false);
+    expect(matchesConditions({ sentimentBelow: 0.3 }, subject({ sentimentScore: 0.5 }))).toBe(
+      false,
+    );
   });
 
   it('does not match a sentiment rule when no sentiment has been extracted yet', () => {
-    expect(matchesConditions({ sentimentBelow: 0.3 }, subject({ sentimentScore: null }))).toBe(false);
+    expect(matchesConditions({ sentimentBelow: 0.3 }, subject({ sentimentScore: null }))).toBe(
+      false,
+    );
   });
 
   it('does not match a tier rule for a customer with no tier', () => {

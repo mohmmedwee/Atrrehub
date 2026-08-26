@@ -66,7 +66,9 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(202)
   @ApiOperation({ summary: 'Send a password reset link' })
-  async forgotPassword(@Body(zodBody(ForgotPasswordSchema)) body: z.infer<typeof ForgotPasswordSchema>) {
+  async forgotPassword(
+    @Body(zodBody(ForgotPasswordSchema)) body: z.infer<typeof ForgotPasswordSchema>,
+  ) {
     await this.auth.forgotPassword(body.email);
     return { accepted: true };
   }
@@ -75,7 +77,9 @@ export class AuthController {
   @Post('reset-password')
   @HttpCode(204)
   @ApiOperation({ summary: 'Set a new password using a reset token' })
-  async resetPassword(@Body(zodBody(ResetPasswordSchema)) body: z.infer<typeof ResetPasswordSchema>) {
+  async resetPassword(
+    @Body(zodBody(ResetPasswordSchema)) body: z.infer<typeof ResetPasswordSchema>,
+  ) {
     await this.auth.resetPassword(body.token, body.password);
   }
 

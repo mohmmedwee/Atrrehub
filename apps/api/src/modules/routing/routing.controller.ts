@@ -55,7 +55,10 @@ export class RoutingController {
   @Patch('rules/:id')
   @RequirePermissions('routing:manage')
   @ApiOperation({ summary: 'Update a routing rule' })
-  updateRule(@Param('id') id: string, @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>) {
+  updateRule(
+    @Param('id') id: string,
+    @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.routing.updateRule(id, body);
   }
 

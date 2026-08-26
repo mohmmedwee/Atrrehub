@@ -1,0 +1,97 @@
+# Defaults suit a small production install. Private-cloud deployments override
+# image registry, replica counts, secrets and the datastore endpoints.
+
+image:
+  registry: ghcr.io
+  repository: atrrehub
+  tag: '0.1.0'
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+api:
+  replicas: 3
+  port: 4000
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: '2', memory: 2Gi }
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+
+# Workers run as their own deployment so a long ingestion job can never
+# compete with request latency, and each scales on its own signal.
+worker:
+  replicas: 2
+  concurrency: 5
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: '2', memory: 2Gi }
+
+web:
+  replicas: 2
+  port: 3000
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: '1', memory: 1Gi }
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 26m
+    # Realtime needs long-lived upgrades.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
+  hosts:
+    api: api.atrrehub.example
+    web: app.atrrehub.example
+  tls:
+    enabled: true
+    secretName: atrrehub-tls
+
+config:
+  logLevel: info
+  corsOrigins: 'https://app.atrrehub.example'
+  publicApiUrl: 'https://api.atrrehub.example'
+  publicWebUrl: 'https://app.atrrehub.example'
+  aiDefaultProvider: local
+  otelEnabled: true
+  otelEndpoint: 'http://otel-collector:4318'
+  storageDriver: s3
+  s3Bucket: atrrehub
+  s3Region: us-east-1
+
+# Never commit real values. Point at an existing secret, or supply values via
+# --set-string / a sealed secret / an external-secrets operator.
+secrets:
+  existingSecret: ''
+  databaseUrl: ''
+  redisUrl: ''
+  jwtSecret: ''
+  encryptionKey: ''
+  widgetTokenSecret: ''
+  openaiApiKey: ''
+  anthropicApiKey: ''
+
+postgresql:
+  enabled: false
+  # When disabled, secrets.databaseUrl must address an external cluster with
+  # pgvector available.
+
+redis:
+  enabled: false
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+  seccompProfile: { type: RuntimeDefault }
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: ['ALL'] }
+
+networkPolicy:
+  enabled: true

@@ -25,7 +25,10 @@ export class ChannelRegistry {
   adapter(channel: ChannelType): ChannelAdapter {
     const adapter = this.adapters.get(channel);
     if (!adapter) {
-      throw new AppError('not_implemented', `The ${channel} channel is not enabled in this deployment`);
+      throw new AppError(
+        'not_implemented',
+        `The ${channel} channel is not enabled in this deployment`,
+      );
     }
     return adapter;
   }
@@ -49,7 +52,10 @@ export class ChannelRegistry {
   }
 
   /** The active account for a channel, used when inbound traffic names no account. */
-  async defaultAccount(channel: ChannelType, workspaceId?: string | null): Promise<ChannelAccountContext | null> {
+  async defaultAccount(
+    channel: ChannelType,
+    workspaceId?: string | null,
+  ): Promise<ChannelAccountContext | null> {
     const account = await this.prisma.db.channelAccount.findFirst({
       where: { channel, isActive: true, ...(workspaceId ? { workspaceId } : {}) },
       orderBy: { createdAt: 'asc' },
@@ -70,7 +76,9 @@ export class ChannelRegistry {
       organizationId: account.organizationId,
       workspaceId: account.workspaceId,
       queueId: account.queueId,
-      credentials: this.crypto.decryptObject((account.credentials ?? {}) as Record<string, unknown>),
+      credentials: this.crypto.decryptObject(
+        (account.credentials ?? {}) as Record<string, unknown>,
+      ),
       config: (account.config ?? {}) as Record<string, unknown>,
     };
   }

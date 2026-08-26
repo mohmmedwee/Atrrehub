@@ -54,7 +54,9 @@ export class EventBus {
       workspaceId: options.workspaceId ?? context?.workspaceId ?? null,
       type,
       version: 1,
-      actorType: (context?.principal?.type === 'api_key' ? 'user' : (context?.principal?.type ?? 'system')) as any,
+      actorType: (context?.principal?.type === 'api_key'
+        ? 'user'
+        : (context?.principal?.type ?? 'system')) as any,
       actorId: context?.principal?.id ?? null,
       subjectType: subject.type,
       subjectId: subject.id,

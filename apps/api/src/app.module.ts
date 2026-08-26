@@ -41,6 +41,7 @@ import { SlaModule } from './modules/sla/sla.module';
 import { TicketsModule } from './modules/tickets/tickets.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { WidgetModule } from './modules/widget/widget.module';
+import { WorkersModule } from './workers/workers.module';
 
 @Module({
   imports: [
@@ -50,7 +51,12 @@ import { WidgetModule } from './modules/widget/widget.module';
       envFilePath: ['.env', '../../.env'],
       load: [() => buildConfig(validateEnv(process.env))],
     }),
-    EventEmitterModule.forRoot({ wildcard: true, delimiter: '.', maxListeners: 50, verboseMemoryLeak: false }),
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+      maxListeners: 50,
+      verboseMemoryLeak: false,
+    }),
     ScheduleModule.forRoot(),
     CoreModule,
     AuditModule,
@@ -79,6 +85,7 @@ import { WidgetModule } from './modules/widget/widget.module';
     QualityModule,
     AnalyticsModule,
     WidgetModule,
+    WorkersModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.

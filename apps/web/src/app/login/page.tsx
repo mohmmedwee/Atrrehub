@@ -81,28 +81,63 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-text-muted">AI-native contact center platform</p>
         </div>
 
-        <form onSubmit={submit} className="space-y-3 rounded-lg border border-border bg-surface p-5">
+        <form
+          onSubmit={submit}
+          className="space-y-3 rounded-lg border border-border bg-surface p-5"
+        >
           {mode === 'register' ? (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="First name">
-                  <input className={inputClass} value={form.firstName} onChange={update('firstName')} required autoComplete="given-name" />
+                  <input
+                    className={inputClass}
+                    value={form.firstName}
+                    onChange={update('firstName')}
+                    required
+                    autoComplete="given-name"
+                  />
                 </Field>
                 <Field label="Last name">
-                  <input className={inputClass} value={form.lastName} onChange={update('lastName')} required autoComplete="family-name" />
+                  <input
+                    className={inputClass}
+                    value={form.lastName}
+                    onChange={update('lastName')}
+                    required
+                    autoComplete="family-name"
+                  />
                 </Field>
               </div>
               <Field label="Organization">
-                <input className={inputClass} value={form.organizationName} onChange={update('organizationName')} required placeholder="Acme Support" />
+                <input
+                  className={inputClass}
+                  value={form.organizationName}
+                  onChange={update('organizationName')}
+                  required
+                  placeholder="Acme Support"
+                />
               </Field>
             </>
           ) : null}
 
           <Field label="Email">
-            <input className={inputClass} type="email" value={form.email} onChange={update('email')} required autoComplete="email" />
+            <input
+              className={inputClass}
+              type="email"
+              value={form.email}
+              onChange={update('email')}
+              required
+              autoComplete="email"
+            />
           </Field>
 
-          <Field label="Password" hint={mode === 'register' ? 'At least 12 characters, with upper case, lower case and a digit' : undefined}>
+          <Field
+            label="Password"
+            hint={
+              mode === 'register'
+                ? 'At least 12 characters, with upper case, lower case and a digit'
+                : undefined
+            }
+          >
             <input
               className={inputClass}
               type="password"
@@ -115,12 +150,21 @@ export default function LoginPage() {
 
           {mfaRequired ? (
             <Field label="Authentication code">
-              <input className={inputClass} value={form.mfaCode} onChange={update('mfaCode')} inputMode="numeric" autoComplete="one-time-code" />
+              <input
+                className={inputClass}
+                value={form.mfaCode}
+                onChange={update('mfaCode')}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
             </Field>
           ) : null}
 
           {error ? (
-            <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+            <p
+              role="alert"
+              className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger"
+            >
               {error}
             </p>
           ) : null}

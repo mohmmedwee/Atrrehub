@@ -61,7 +61,22 @@ export class AiController {
   @RequirePermissions('agent:execute')
   @RateLimit(RATE_BUCKETS.ai)
   @ApiOperation({ summary: 'Send a prompt through the gateway to verify routing' })
-  async test(@Body(zodBody(z.object({ prompt: z.string().min(1).max(4000), role: z.enum(['chat', 'fast', 'reasoning']).default('chat') }).strict())) body: { prompt: string; role: 'chat' | 'fast' | 'reasoning' }) {
+  async test(
+    @Body(
+      zodBody(
+        z
+          .object({
+            prompt: z.string().min(1).max(4000),
+            role: z.enum(['chat', 'fast', 'reasoning']).default('chat'),
+          })
+          .strict(),
+      ),
+    )
+    body: {
+      prompt: string;
+      role: 'chat' | 'fast' | 'reasoning';
+    },
+  ) {
     const response = await this.gateway.complete(
       { messages: [{ role: 'user', content: body.prompt }] },
       { role: body.role, operation: 'test' },

@@ -9,7 +9,11 @@ import { RequestContextStore } from '../context/request-context';
  */
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  use(request: FastifyRequest['raw'] & { headers: Record<string, any> }, reply: FastifyReply['raw'], next: () => void) {
+  use(
+    request: FastifyRequest['raw'] & { headers: Record<string, any> },
+    reply: FastifyReply['raw'],
+    next: () => void,
+  ) {
     const headerId = request.headers['x-request-id'];
     const requestId = (Array.isArray(headerId) ? headerId[0] : headerId) ?? `req_${ulid()}`;
     const forwarded = request.headers['x-forwarded-for'];

@@ -47,7 +47,10 @@ export class GuardrailsController {
   @Patch('policies/:id')
   @RequirePermissions('guardrail:manage')
   @ApiOperation({ summary: 'Update a guardrail policy' })
-  update(@Param('id') id: string, @Body(zodBody(PolicySchema.partial())) body: Record<string, unknown>) {
+  update(
+    @Param('id') id: string,
+    @Body(zodBody(PolicySchema.partial())) body: Record<string, unknown>,
+  ) {
     return this.guardrails.updatePolicy(id, body);
   }
 

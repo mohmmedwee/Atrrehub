@@ -23,7 +23,9 @@ export class RoutingListener {
       await this.routing.route(event.data.conversationId);
     } catch (error) {
       // A routing failure must leave the conversation queued, not lost.
-      this.logger.error('Automatic routing failed', error, { conversationId: event.data.conversationId });
+      this.logger.error('Automatic routing failed', error, {
+        conversationId: event.data.conversationId,
+      });
     }
   }
 
@@ -41,7 +43,11 @@ export class RoutingListener {
     if (!conversation?.queueId) return;
     try {
       const assigned = await this.routing.drainQueue(conversation.queueId, 5);
-      if (assigned) this.logger.debug('Drained queue after capacity freed', { queueId: conversation.queueId, assigned });
+      if (assigned)
+        this.logger.debug('Drained queue after capacity freed', {
+          queueId: conversation.queueId,
+          assigned,
+        });
     } catch (error) {
       this.logger.error('Queue drain failed', error, { queueId: conversation.queueId });
     }

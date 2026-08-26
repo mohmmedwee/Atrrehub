@@ -24,10 +24,32 @@ import {
 
 /** Model defaults per role when a tenant has not configured its own routes. */
 const DEFAULT_MODELS: Record<ModelRole, Partial<Record<AiProvider, string>>> = {
-  chat: { openai: 'gpt-4o', anthropic: 'claude-sonnet-4-5', azure_openai: 'gpt-4o', gemini: 'gemini-2.0-flash', local: 'local' },
-  fast: { openai: 'gpt-4o-mini', anthropic: 'claude-haiku-4-5', azure_openai: 'gpt-4o-mini', gemini: 'gemini-2.0-flash', local: 'local' },
-  reasoning: { openai: 'gpt-4o', anthropic: 'claude-sonnet-4-5', azure_openai: 'gpt-4o', gemini: 'gemini-2.0-flash', local: 'local' },
-  embedding: { openai: 'text-embedding-3-small', azure_openai: 'text-embedding-3-small', local: 'local' },
+  chat: {
+    openai: 'gpt-4o',
+    anthropic: 'claude-sonnet-4-5',
+    azure_openai: 'gpt-4o',
+    gemini: 'gemini-2.0-flash',
+    local: 'local',
+  },
+  fast: {
+    openai: 'gpt-4o-mini',
+    anthropic: 'claude-haiku-4-5',
+    azure_openai: 'gpt-4o-mini',
+    gemini: 'gemini-2.0-flash',
+    local: 'local',
+  },
+  reasoning: {
+    openai: 'gpt-4o',
+    anthropic: 'claude-sonnet-4-5',
+    azure_openai: 'gpt-4o',
+    gemini: 'gemini-2.0-flash',
+    local: 'local',
+  },
+  embedding: {
+    openai: 'text-embedding-3-small',
+    azure_openai: 'text-embedding-3-small',
+    local: 'local',
+  },
   rerank: { local: 'local' },
 };
 
@@ -76,12 +98,19 @@ export class AiGateway implements OnModuleInit {
     if (openai.isConfigured()) this.providers.set('openai', openai);
 
     const azure = new OpenAiProvider(
-      { apiKey: ai.azure.apiKey, baseUrl: ai.openai.baseUrl, azure: { endpoint: ai.azure.endpoint, apiVersion: ai.azure.apiVersion } },
+      {
+        apiKey: ai.azure.apiKey,
+        baseUrl: ai.openai.baseUrl,
+        azure: { endpoint: ai.azure.endpoint, apiVersion: ai.azure.apiVersion },
+      },
       true,
     );
     if (azure.isConfigured()) this.providers.set('azure_openai', azure);
 
-    const anthropic = new AnthropicProvider({ apiKey: ai.anthropic.apiKey, baseUrl: ai.anthropic.baseUrl });
+    const anthropic = new AnthropicProvider({
+      apiKey: ai.anthropic.apiKey,
+      baseUrl: ai.anthropic.baseUrl,
+    });
     if (anthropic.isConfigured()) this.providers.set('anthropic', anthropic);
 
     this.logger.info('AI gateway ready', { providers: [...this.providers.keys()] });
@@ -99,7 +128,10 @@ export class AiGateway implements OnModuleInit {
    * actually configured, and finally the local provider so a call can always
    * be served.
    */
-  private async chain(role: ModelRole, override?: string): Promise<{ provider: AiProvider; model: string }[]> {
+  private async chain(
+    role: ModelRole,
+    override?: string,
+  ): Promise<{ provider: AiProvider; model: string }[]> {
     const organizationId = RequestContextStore.organizationId();
     const chain: { provider: AiProvider; model: string }[] = [];
 
@@ -109,7 +141,10 @@ export class AiGateway implements OnModuleInit {
       });
       if (route) {
         chain.push({ provider: route.provider, model: override ?? route.model });
-        for (const fallback of (route.fallbacks ?? []) as { provider: AiProvider; model: string }[]) {
+        for (const fallback of (route.fallbacks ?? []) as {
+          provider: AiProvider;
+          model: string;
+        }[]) {
           chain.push(fallback);
         }
       }
@@ -117,7 +152,8 @@ export class AiGateway implements OnModuleInit {
 
     const preferred = this.config.get('ai', { infer: true })!.defaultProvider as AiProvider;
     for (const provider of [preferred, ...this.providers.keys()]) {
-      const model = override && provider === preferred ? override : DEFAULT_MODELS[role]?.[provider];
+      const model =
+        override && provider === preferred ? override : DEFAULT_MODELS[role]?.[provider];
       if (model && !chain.some((entry) => entry.provider === provider)) {
         chain.push({ provider, model });
       }
@@ -155,11 +191,21 @@ export class AiGateway implements OnModuleInit {
       const started = Date.now();
 
       try {
-        const response = await this.withRetry(() => adapter.complete({ ...request, model: entry.model }));
+        const response = await this.withRetry(() =>
+          adapter.complete({ ...request, model: entry.model }),
+        );
         const latencyMs = Date.now() - started;
 
-        this.metrics.aiDuration.observe({ provider: entry.provider, model: entry.model, operation: 'complete' }, latencyMs / 1000);
-        await this.recordUsage({ ...options, role, provider: entry.provider }, response, latencyMs, false);
+        this.metrics.aiDuration.observe(
+          { provider: entry.provider, model: entry.model, operation: 'complete' },
+          latencyMs / 1000,
+        );
+        await this.recordUsage(
+          { ...options, role, provider: entry.provider },
+          response,
+          latencyMs,
+          false,
+        );
 
         if (index > 0) {
           this.logger.warn('AI request served by a fallback provider', {
@@ -184,14 +230,20 @@ export class AiGateway implements OnModuleInit {
 
   /** Completion constrained to a JSON schema, parsed and returned as an object. */
   async completeStructured<T>(
-    request: Omit<CompletionRequest, 'model'> & { model?: string; responseSchema: Record<string, unknown> },
+    request: Omit<CompletionRequest, 'model'> & {
+      model?: string;
+      responseSchema: Record<string, unknown>;
+    },
     options: GatewayCallOptions = {},
   ): Promise<{ value: T; response: CompletionResponse }> {
     const response = await this.complete(request, options);
     try {
       // Models sometimes wrap JSON in prose or a fenced block.
       const text = response.content.trim();
-      const json = text.startsWith('{') || text.startsWith('[') ? text : (/\{[\s\S]*\}|\[[\s\S]*\]/.exec(text)?.[0] ?? text);
+      const json =
+        text.startsWith('{') || text.startsWith('[')
+          ? text
+          : (/\{[\s\S]*\}|\[[\s\S]*\]/.exec(text)?.[0] ?? text);
       return { value: JSON.parse(json) as T, response };
     } catch {
       throw AppError.dependency('The model did not return valid JSON for the requested schema');
@@ -224,7 +276,10 @@ export class AiGateway implements OnModuleInit {
         }
         return;
       } catch (error) {
-        this.logger.warn('Streaming provider failed, trying the next', { provider: entry.provider, error: String(error) });
+        this.logger.warn('Streaming provider failed, trying the next', {
+          provider: entry.provider,
+          error: String(error),
+        });
       }
     }
     throw AppError.dependency('No AI provider could serve a streaming completion');
@@ -233,7 +288,8 @@ export class AiGateway implements OnModuleInit {
   // ── Embeddings and reranking ───────────────────────────────────────────────
 
   async embed(input: string[], options: GatewayCallOptions = {}): Promise<EmbeddingResponse> {
-    if (!input.length) return { embeddings: [], model: 'none', usage: { promptTokens: 0, totalTokens: 0 } };
+    if (!input.length)
+      return { embeddings: [], model: 'none', usage: { promptTokens: 0, totalTokens: 0 } };
     await this.assertWithinBudget();
 
     const dimensions = this.config.get('ai', { infer: true })!.embeddingDimensions;
@@ -254,7 +310,10 @@ export class AiGateway implements OnModuleInit {
           );
         }
         const latencyMs = Date.now() - started;
-        this.metrics.aiDuration.observe({ provider: entry.provider, model: entry.model, operation: 'embed' }, latencyMs / 1000);
+        this.metrics.aiDuration.observe(
+          { provider: entry.provider, model: entry.model, operation: 'embed' },
+          latencyMs / 1000,
+        );
         await this.recordUsage(
           { ...options, role: 'embedding', provider: entry.provider, operation: 'embed' },
           { usage: { ...response.usage, completionTokens: 0 }, model: response.model },
@@ -264,13 +323,20 @@ export class AiGateway implements OnModuleInit {
         return response;
       } catch (error) {
         lastError = error;
-        this.logger.warn('Embedding provider failed, trying the next', { provider: entry.provider, error: String(error) });
+        this.logger.warn('Embedding provider failed, trying the next', {
+          provider: entry.provider,
+          error: String(error),
+        });
       }
     }
     throw AppError.dependency('Every embedding provider failed', lastError);
   }
 
-  async rerank(query: string, documents: string[], topN?: number): Promise<{ index: number; score: number }[]> {
+  async rerank(
+    query: string,
+    documents: string[],
+    topN?: number,
+  ): Promise<{ index: number; score: number }[]> {
     const chain = await this.chain('rerank');
     for (const entry of chain) {
       const adapter = this.providers.get(entry.provider);
@@ -279,7 +345,10 @@ export class AiGateway implements OnModuleInit {
         const response = await adapter.rerank({ query, documents, model: entry.model, topN });
         return response.results;
       } catch (error) {
-        this.logger.warn('Rerank provider failed', { provider: entry.provider, error: String(error) });
+        this.logger.warn('Rerank provider failed', {
+          provider: entry.provider,
+          error: String(error),
+        });
       }
     }
     // Preserve the incoming order rather than failing the whole retrieval.
@@ -359,10 +428,22 @@ export class AiGateway implements OnModuleInit {
     if (!organizationId) return;
 
     const provider = options.provider ?? 'local';
-    const costUsd = cached ? 0 : estimateCostUsd(response.model, response.usage.promptTokens, response.usage.completionTokens);
+    const costUsd = cached
+      ? 0
+      : estimateCostUsd(
+          response.model,
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+        );
 
-    this.metrics.aiTokens.inc({ provider, model: response.model, kind: 'prompt' }, response.usage.promptTokens);
-    this.metrics.aiTokens.inc({ provider, model: response.model, kind: 'completion' }, response.usage.completionTokens);
+    this.metrics.aiTokens.inc(
+      { provider, model: response.model, kind: 'prompt' },
+      response.usage.promptTokens,
+    );
+    this.metrics.aiTokens.inc(
+      { provider, model: response.model, kind: 'completion' },
+      response.usage.completionTokens,
+    );
     this.metrics.aiCost.inc({ provider, model: response.model }, costUsd);
 
     // Usage accounting must never break the call it is measuring.
@@ -385,32 +466,49 @@ export class AiGateway implements OnModuleInit {
           agentId: options.agentId ?? null,
           executionId: options.executionId ?? null,
           conversationId: options.conversationId ?? null,
-          userId: RequestContextStore.principal()?.type === 'user' ? (RequestContextStore.principal()?.id ?? null) : null,
+          userId:
+            RequestContextStore.principal()?.type === 'user'
+              ? (RequestContextStore.principal()?.id ?? null)
+              : null,
         },
       });
 
-      await this.events.publish(DomainEvent.AiCompletionFinished, { type: 'ai_usage', id: organizationId }, {
-        model: response.model,
-        promptTokens: response.usage.promptTokens,
-        completionTokens: response.usage.completionTokens,
-        costUsd,
-        latencyMs,
-      });
+      await this.events.publish(
+        DomainEvent.AiCompletionFinished,
+        { type: 'ai_usage', id: organizationId },
+        {
+          model: response.model,
+          promptTokens: response.usage.promptTokens,
+          completionTokens: response.usage.completionTokens,
+          costUsd,
+          latencyMs,
+        },
+      );
     } catch (error) {
       this.logger.error('Failed to record AI usage', error);
     }
   }
 
-  private async cacheKey(role: ModelRole, request: Omit<CompletionRequest, 'model'>): Promise<string> {
+  private async cacheKey(
+    role: ModelRole,
+    request: Omit<CompletionRequest, 'model'>,
+  ): Promise<string> {
     const { createHash } = await import('node:crypto');
-    const digest = createHash('sha256').update(JSON.stringify({ role, messages: request.messages, temperature: request.temperature })).digest('hex');
+    const digest = createHash('sha256')
+      .update(
+        JSON.stringify({ role, messages: request.messages, temperature: request.temperature }),
+      )
+      .digest('hex');
     return this.redis.key(RequestContextStore.organizationId(), 'ai-cache', digest);
   }
 
   // ── Administration ─────────────────────────────────────────────────────────
 
   async listRoutes(organizationId: string) {
-    const routes = await this.prisma.db.modelRoute.findMany({ where: { organizationId }, orderBy: { role: 'asc' } });
+    const routes = await this.prisma.db.modelRoute.findMany({
+      where: { organizationId },
+      orderBy: { role: 'asc' },
+    });
     const configured = this.configuredProviders();
     return {
       routes,
@@ -436,7 +534,9 @@ export class AiGateway implements OnModuleInit {
   }) {
     const organizationId = RequestContextStore.organizationId()!;
     if (!this.providers.has(input.provider)) {
-      throw AppError.badRequest(`The ${input.provider} provider is not configured in this deployment`);
+      throw AppError.badRequest(
+        `The ${input.provider} provider is not configured in this deployment`,
+      );
     }
     return this.prisma.raw.modelRoute.upsert({
       where: { organizationId_role: { organizationId, role: input.role } },

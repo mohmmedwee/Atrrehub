@@ -43,7 +43,10 @@ export interface ToolExecutionContext {
  */
 @Injectable()
 export class ToolsService {
-  private readonly builtins: Record<string, { schema: ToolSchema; run: (args: any, context: ToolExecutionContext) => Promise<unknown> }>;
+  private readonly builtins: Record<
+    string,
+    { schema: ToolSchema; run: (args: any, context: ToolExecutionContext) => Promise<unknown> }
+  >;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -66,11 +69,15 @@ export class ToolsService {
       customer_lookup: {
         schema: {
           name: 'customer_lookup',
-          description: 'Find a customer by email address, phone number or name, and return their profile and recent history.',
+          description:
+            'Find a customer by email address, phone number or name, and return their profile and recent history.',
           parameters: {
             type: 'object',
             properties: {
-              query: { type: 'string', description: 'Email address, phone number, or name to search for' },
+              query: {
+                type: 'string',
+                description: 'Email address, phone number, or name to search for',
+              },
             },
             required: ['query'],
           },
@@ -93,7 +100,8 @@ export class ToolsService {
       knowledge_search: {
         schema: {
           name: 'knowledge_search',
-          description: 'Search the organization knowledge base for policies, procedures and product information.',
+          description:
+            'Search the organization knowledge base for policies, procedures and product information.',
           parameters: {
             type: 'object',
             properties: {
@@ -105,10 +113,18 @@ export class ToolsService {
         },
         run: async (args: { query: string; topK?: number }) => {
           const scope = await this.knowledge.readableBaseIds();
-          const hits = await this.rag.retrieve(args.query, { knowledgeBaseIds: scope, topK: args.topK ?? 5 });
+          const hits = await this.rag.retrieve(args.query, {
+            knowledgeBaseIds: scope,
+            topK: args.topK ?? 5,
+          });
           return {
             found: hits.length,
-            passages: hits.map((hit) => ({ title: hit.title, heading: hit.heading, content: hit.content, score: hit.score })),
+            passages: hits.map((hit) => ({
+              title: hit.title,
+              heading: hit.heading,
+              content: hit.content,
+              score: hit.score,
+            })),
           };
         },
       },
@@ -116,7 +132,8 @@ export class ToolsService {
       create_ticket: {
         schema: {
           name: 'create_ticket',
-          description: 'Open a support ticket for work that cannot be resolved in the conversation.',
+          description:
+            'Open a support ticket for work that cannot be resolved in the conversation.',
           parameters: {
             type: 'object',
             properties: {
@@ -128,7 +145,10 @@ export class ToolsService {
             required: ['subject'],
           },
         },
-        run: async (args: { subject: string; description?: string; priority?: string; category?: string }, context: ToolExecutionContext) => {
+        run: async (
+          args: { subject: string; description?: string; priority?: string; category?: string },
+          context: ToolExecutionContext,
+        ) => {
           const ticket = context.conversationId
             ? await this.tickets.createFromConversation(context.conversationId, args as never)
             : await this.tickets.create({ ...args, customerId: context.customerId } as never);
@@ -144,14 +164,22 @@ export class ToolsService {
             type: 'object',
             properties: {
               ticketId: { type: 'string' },
-              status: { type: 'string', enum: ['open', 'pending', 'on_hold', 'resolved', 'closed'] },
+              status: {
+                type: 'string',
+                enum: ['open', 'pending', 'on_hold', 'resolved', 'closed'],
+              },
               priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent', 'critical'] },
               category: { type: 'string' },
             },
             required: ['ticketId'],
           },
         },
-        run: async (args: { ticketId: string; status?: string; priority?: string; category?: string }) => {
+        run: async (args: {
+          ticketId: string;
+          status?: string;
+          priority?: string;
+          category?: string;
+        }) => {
           const { ticketId, ...patch } = args;
           const ticket = await this.tickets.update(ticketId, patch as never);
           return { ticketId: ticket.id, status: ticket.status, priority: ticket.priority };
@@ -161,7 +189,8 @@ export class ToolsService {
       update_customer: {
         schema: {
           name: 'update_customer',
-          description: 'Update a customer profile with information gathered during the conversation.',
+          description:
+            'Update a customer profile with information gathered during the conversation.',
           parameters: {
             type: 'object',
             properties: {
@@ -175,7 +204,8 @@ export class ToolsService {
         },
         run: async (args: Record<string, unknown>, context: ToolExecutionContext) => {
           const customerId = (args.customerId as string) ?? context.customerId;
-          if (!customerId) throw AppError.badRequest('No customer is associated with this conversation');
+          if (!customerId)
+            throw AppError.badRequest('No customer is associated with this conversation');
           const { customerId: _ignored, ...patch } = args;
           const customer = await this.customers.update(customerId, patch as never);
           return { customerId: customer.id, name: customer.displayName };
@@ -193,7 +223,8 @@ export class ToolsService {
           },
         },
         run: async (args: { body: string }, context: ToolExecutionContext) => {
-          if (!context.conversationId) throw AppError.badRequest('There is no conversation to send a message to');
+          if (!context.conversationId)
+            throw AppError.badRequest('There is no conversation to send a message to');
           const message = await this.conversations.addMessage({
             conversationId: context.conversationId,
             body: args.body,
@@ -211,7 +242,9 @@ export class ToolsService {
           description: 'Read the recent messages of the current conversation.',
           parameters: {
             type: 'object',
-            properties: { limit: { type: 'integer', description: 'How many messages to read (default 20)' } },
+            properties: {
+              limit: { type: 'integer', description: 'How many messages to read (default 20)' },
+            },
           },
         },
         run: async (args: { limit?: number }, context: ToolExecutionContext) => {
@@ -239,7 +272,10 @@ export class ToolsService {
   // ── Definitions ────────────────────────────────────────────────────────────
 
   async list() {
-    const custom = await this.prisma.db.toolDefinition.findMany({ where: {}, orderBy: { name: 'asc' } });
+    const custom = await this.prisma.db.toolDefinition.findMany({
+      where: {},
+      orderBy: { name: 'asc' },
+    });
     return [
       ...Object.entries(this.builtins).map(([key, tool]) => ({
         id: `builtin:${key}`,
@@ -271,7 +307,8 @@ export class ToolsService {
 
     // Refuse a tool that could never legally be called, rather than failing later.
     const egress = isEgressAllowed(input.url);
-    if (!egress.allowed) throw AppError.badRequest(`The tool endpoint was refused: ${egress.reason}`);
+    if (!egress.allowed)
+      throw AppError.badRequest(`The tool endpoint was refused: ${egress.reason}`);
 
     const principal = RequestContextStore.principal();
     return this.prisma.db.toolDefinition.create({
@@ -285,7 +322,10 @@ export class ToolsService {
         url: input.url,
         headers: (input.headers ?? {}) as Prisma.InputJsonValue,
         auth: this.crypto.encryptObject(input.auth ?? {}) as Prisma.InputJsonValue,
-        inputSchema: (input.inputSchema ?? { type: 'object', properties: {} }) as Prisma.InputJsonValue,
+        inputSchema: (input.inputSchema ?? {
+          type: 'object',
+          properties: {},
+        }) as Prisma.InputJsonValue,
         outputSchema: (input.outputSchema ?? {}) as Prisma.InputJsonValue,
         timeoutMs: Math.min(input.timeoutMs ?? 10_000, 30_000),
         requiresApproval: input.requiresApproval ?? false,
@@ -297,7 +337,8 @@ export class ToolsService {
   async update(toolId: string, patch: Record<string, unknown>) {
     if (typeof patch.url === 'string') {
       const egress = isEgressAllowed(patch.url);
-      if (!egress.allowed) throw AppError.badRequest(`The tool endpoint was refused: ${egress.reason}`);
+      if (!egress.allowed)
+        throw AppError.badRequest(`The tool endpoint was refused: ${egress.reason}`);
     }
     if (patch.auth) patch.auth = this.crypto.encryptObject(patch.auth as Record<string, unknown>);
     return this.prisma.db.toolDefinition.update({ where: { id: toolId }, data: patch as never });
@@ -318,12 +359,17 @@ export class ToolsService {
         schemas.push(builtin.schema);
         continue;
       }
-      const custom = await this.prisma.db.toolDefinition.findFirst({ where: { key, isActive: true } });
+      const custom = await this.prisma.db.toolDefinition.findFirst({
+        where: { key, isActive: true },
+      });
       if (custom) {
         schemas.push({
           name: custom.key,
           description: custom.description,
-          parameters: (custom.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
+          parameters: (custom.inputSchema ?? { type: 'object', properties: {} }) as Record<
+            string,
+            unknown
+          >,
         });
       }
     }
@@ -333,14 +379,25 @@ export class ToolsService {
   async findByKey(key: string) {
     const builtin = this.builtins[key];
     if (builtin) {
-      return { id: `builtin:${key}`, key, kind: 'builtin' as const, url: null, requiresApproval: false, isActive: true };
+      return {
+        id: `builtin:${key}`,
+        key,
+        kind: 'builtin' as const,
+        url: null,
+        requiresApproval: false,
+        isActive: true,
+      };
     }
     return this.prisma.db.toolDefinition.findFirst({ where: { key } });
   }
 
   // ── Invocation ─────────────────────────────────────────────────────────────
 
-  async invoke(key: string, args: Record<string, unknown>, context: ToolExecutionContext = {}): Promise<ToolInvocationResult> {
+  async invoke(
+    key: string,
+    args: Record<string, unknown>,
+    context: ToolExecutionContext = {},
+  ): Promise<ToolInvocationResult> {
     const started = Date.now();
 
     const builtin = this.builtins[key];
@@ -372,11 +429,23 @@ export class ToolsService {
 
   /** Call a custom HTTP tool with a hard timeout and a response size cap. */
   private async invokeHttp(
-    tool: { url: string | null; method: string; headers: unknown; auth: unknown; timeoutMs: number },
+    tool: {
+      url: string | null;
+      method: string;
+      headers: unknown;
+      auth: unknown;
+      timeoutMs: number;
+    },
     args: Record<string, unknown>,
   ): Promise<ToolInvocationResult> {
     const started = Date.now();
-    if (!tool.url) return { ok: false, output: null, error: 'The tool has no endpoint configured', durationMs: 0 };
+    if (!tool.url)
+      return {
+        ok: false,
+        output: null,
+        error: 'The tool has no endpoint configured',
+        durationMs: 0,
+      };
 
     const auth = this.crypto.decryptObject((tool.auth ?? {}) as Record<string, unknown>);
     const headers: Record<string, string> = {
@@ -406,7 +475,10 @@ export class ToolsService {
     if (isBodyless) {
       const parsed = new URL(tool.url);
       for (const [key, value] of Object.entries(args)) {
-        parsed.searchParams.set(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+        parsed.searchParams.set(
+          key,
+          typeof value === 'object' ? JSON.stringify(value) : String(value),
+        );
       }
       url = parsed.toString();
     }
@@ -441,7 +513,8 @@ export class ToolsService {
       return {
         ok: false,
         output: null,
-        error: message.includes('abort') || message.includes('timeout') ? 'The tool timed out' : message,
+        error:
+          message.includes('abort') || message.includes('timeout') ? 'The tool timed out' : message,
         durationMs: Date.now() - started,
       };
     }
@@ -458,12 +531,16 @@ export class ToolsService {
     if (!organizationId || !toolId) {
       // Built-in calls are still worth an event even without a definition row.
       await this.events
-        .publish(DomainEvent.ToolInvoked, { type: 'tool', id: key }, {
-          toolId: key,
-          executionId: context.executionId,
-          status: result.ok ? 'succeeded' : 'failed',
-          durationMs: result.durationMs,
-        })
+        .publish(
+          DomainEvent.ToolInvoked,
+          { type: 'tool', id: key },
+          {
+            toolId: key,
+            executionId: context.executionId,
+            status: result.ok ? 'succeeded' : 'failed',
+            durationMs: result.durationMs,
+          },
+        )
         .catch(() => undefined);
       return;
     }
@@ -484,18 +561,26 @@ export class ToolsService {
           durationMs: result.durationMs,
         },
       });
-      await this.events.publish(DomainEvent.ToolInvoked, { type: 'tool', id: toolId }, {
-        toolId,
-        executionId: context.executionId,
-        status: result.ok ? 'succeeded' : 'failed',
-        durationMs: result.durationMs,
-      });
+      await this.events.publish(
+        DomainEvent.ToolInvoked,
+        { type: 'tool', id: toolId },
+        {
+          toolId,
+          executionId: context.executionId,
+          status: result.ok ? 'succeeded' : 'failed',
+          durationMs: result.durationMs,
+        },
+      );
     } catch (error) {
       this.logger.error('Failed to record a tool invocation', error, { key });
     }
   }
 
   async invocations(limit = 50) {
-    return this.prisma.db.toolInvocation.findMany({ where: {}, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) });
+    return this.prisma.db.toolInvocation.findMany({
+      where: {},
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200),
+    });
   }
 }

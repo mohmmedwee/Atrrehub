@@ -22,12 +22,43 @@ export interface CriterionInput {
 
 /** The scorecard from the plan: greeting 10, accuracy 25, compliance 30, tone 15, resolution 10, closing 10. */
 export const DEFAULT_QC_CRITERIA: CriterionInput[] = [
-  { category: 'Greeting', name: 'Greeting', weight: 10, rubric: 'Did the agent greet the customer politely and identify themselves and the company?' },
-  { category: 'Accuracy', name: 'Accuracy', weight: 25, rubric: 'Was every factual statement correct and consistent with company policy?' },
-  { category: 'Compliance', name: 'Compliance', weight: 30, rubric: 'Did the agent follow required disclosures, verification and data-handling rules?', isCritical: true },
-  { category: 'Tone', name: 'Tone', weight: 15, rubric: 'Was the agent empathetic, professional and free of dismissive or defensive language?' },
-  { category: 'Resolution', name: 'Resolution', weight: 10, rubric: 'Was the customer’s issue actually resolved, or a clear next step agreed?' },
-  { category: 'Closing', name: 'Closing', weight: 10, rubric: 'Did the agent confirm resolution, offer further help and close courteously?' },
+  {
+    category: 'Greeting',
+    name: 'Greeting',
+    weight: 10,
+    rubric: 'Did the agent greet the customer politely and identify themselves and the company?',
+  },
+  {
+    category: 'Accuracy',
+    name: 'Accuracy',
+    weight: 25,
+    rubric: 'Was every factual statement correct and consistent with company policy?',
+  },
+  {
+    category: 'Compliance',
+    name: 'Compliance',
+    weight: 30,
+    rubric: 'Did the agent follow required disclosures, verification and data-handling rules?',
+    isCritical: true,
+  },
+  {
+    category: 'Tone',
+    name: 'Tone',
+    weight: 15,
+    rubric: 'Was the agent empathetic, professional and free of dismissive or defensive language?',
+  },
+  {
+    category: 'Resolution',
+    name: 'Resolution',
+    weight: 10,
+    rubric: 'Was the customer’s issue actually resolved, or a clear next step agreed?',
+  },
+  {
+    category: 'Closing',
+    name: 'Closing',
+    weight: 10,
+    rubric: 'Did the agent confirm resolution, offer further help and close courteously?',
+  },
 ];
 
 /**
@@ -54,7 +85,10 @@ export class QualityService {
   async listTemplates() {
     return this.prisma.db.qcTemplate.findMany({
       where: {},
-      include: { criteria: { orderBy: { position: 'asc' } }, _count: { select: { evaluations: true } } },
+      include: {
+        criteria: { orderBy: { position: 'asc' } },
+        _count: { select: { evaluations: true } },
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -140,17 +174,24 @@ export class QualityService {
     const template = templateId
       ? await this.getTemplate(templateId)
       : await this.prisma.db.qcTemplate.findFirst({
-          where: { isActive: true, OR: [{ channels: { isEmpty: true } }, { channels: { has: conversation.channel } }] },
+          where: {
+            isActive: true,
+            OR: [{ channels: { isEmpty: true } }, { channels: { has: conversation.channel } }],
+          },
           include: { criteria: { orderBy: { position: 'asc' } } },
         });
     if (!template) throw AppError.notFound('An applicable QC template');
 
     const transcript = messages.data
       .filter((message) => !message.isPrivate)
-      .map((message, index) => `[${index + 1}] ${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`)
+      .map(
+        (message, index) =>
+          `[${index + 1}] ${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`,
+      )
       .join('\n');
 
-    if (!transcript.trim()) throw AppError.badRequest('The conversation has no messages to evaluate');
+    if (!transcript.trim())
+      throw AppError.badRequest('The conversation has no messages to evaluate');
 
     const { value, response } = await this.gateway.completeStructured<{
       scores: { criterion: string; score: number; reasoning: string; evidence: string[] }[];
@@ -167,7 +208,10 @@ export class QualityService {
               'Cite the message numbers that justify each score as evidence. Be specific and fair.',
               '',
               'Criteria:',
-              ...template.criteria.map((criterion) => `- ${criterion.name} (weight ${criterion.weight}%): ${criterion.rubric}`),
+              ...template.criteria.map(
+                (criterion) =>
+                  `- ${criterion.name} (weight ${criterion.weight}%): ${criterion.rubric}`,
+              ),
             ].join('\n'),
           },
           { role: 'user', content: transcript },
@@ -209,7 +253,10 @@ export class QualityService {
       };
     });
 
-    const weighted = scored.reduce((total, entry) => total + (entry.score * entry.criterion.weight) / 100, 0);
+    const weighted = scored.reduce(
+      (total, entry) => total + (entry.score * entry.criterion.weight) / 100,
+      0,
+    );
 
     // A failed critical criterion caps the total — a compliance breach cannot
     // be averaged away by a warm greeting.
@@ -250,12 +297,16 @@ export class QualityService {
       });
     });
 
-    await this.events.publish(DomainEvent.QcEvaluated, { type: 'conversation', id: conversationId }, {
-      evaluationId,
-      subjectId: conversation.assigneeId,
-      score: Math.round(overall * 10) / 10,
-      templateId: template.id,
-    });
+    await this.events.publish(
+      DomainEvent.QcEvaluated,
+      { type: 'conversation', id: conversationId },
+      {
+        evaluationId,
+        subjectId: conversation.assigneeId,
+        score: Math.round(overall * 10) / 10,
+        templateId: template.id,
+      },
+    );
 
     return this.getEvaluation(evaluationId);
   }
@@ -265,7 +316,11 @@ export class QualityService {
       where: { id: evaluationId },
       include: {
         template: { select: { id: true, name: true, passingScore: true } },
-        scores: { include: { criterion: { select: { name: true, category: true, weight: true, isCritical: true } } } },
+        scores: {
+          include: {
+            criterion: { select: { name: true, category: true, weight: true, isCritical: true } },
+          },
+        },
         disputes: true,
       },
     });
@@ -273,7 +328,12 @@ export class QualityService {
     return evaluation;
   }
 
-  async listEvaluations(params: { subjectId?: string; templateId?: string; passed?: boolean; limit?: number }) {
+  async listEvaluations(params: {
+    subjectId?: string;
+    templateId?: string;
+    passed?: boolean;
+    limit?: number;
+  }) {
     return this.prisma.db.qcEvaluation.findMany({
       where: {
         ...(params.subjectId ? { subjectId: params.subjectId } : {}),
@@ -346,10 +406,22 @@ export class QualityService {
   async raiseDispute(evaluationId: string, reason: string) {
     const principal = RequestContextStore.principal();
     const dispute = await this.prisma.db.qcDispute.create({
-      data: { id: newId('qcDispute'), evaluationId, raisedById: principal?.id ?? 'unknown', reason } as never,
+      data: {
+        id: newId('qcDispute'),
+        evaluationId,
+        raisedById: principal?.id ?? 'unknown',
+        reason,
+      } as never,
     });
-    await this.prisma.db.qcEvaluation.update({ where: { id: evaluationId }, data: { status: 'disputed' } });
-    await this.events.publish(DomainEvent.QcDisputed, { type: 'qc_evaluation', id: evaluationId }, { evaluationId, reason });
+    await this.prisma.db.qcEvaluation.update({
+      where: { id: evaluationId },
+      data: { status: 'disputed' },
+    });
+    await this.events.publish(
+      DomainEvent.QcDisputed,
+      { type: 'qc_evaluation', id: evaluationId },
+      { evaluationId, reason },
+    );
     return dispute;
   }
 
@@ -380,7 +452,10 @@ export class QualityService {
         },
       });
     } else {
-      await this.prisma.db.qcEvaluation.update({ where: { id: dispute.evaluationId }, data: { status: 'final' } });
+      await this.prisma.db.qcEvaluation.update({
+        where: { id: dispute.evaluationId },
+        data: { status: 'final' },
+      });
     }
 
     return dispute;
@@ -397,7 +472,10 @@ export class QualityService {
       select: { conversationId: true, kind: true, score: true, evaluatorId: true },
     });
 
-    const byConversation = new Map<string, { ai?: number; manual: { evaluatorId: string | null; score: number }[] }>();
+    const byConversation = new Map<
+      string,
+      { ai?: number; manual: { evaluatorId: string | null; score: number }[] }
+    >();
     for (const evaluation of evaluations) {
       if (!evaluation.conversationId) continue;
       const entry = byConversation.get(evaluation.conversationId) ?? { manual: [] };
@@ -418,7 +496,8 @@ export class QualityService {
     return [...drift.entries()].map(([evaluatorId, deltas]) => ({
       evaluatorId,
       samples: deltas.length,
-      averageDelta: Math.round((deltas.reduce((sum, delta) => sum + delta, 0) / deltas.length) * 10) / 10,
+      averageDelta:
+        Math.round((deltas.reduce((sum, delta) => sum + delta, 0) / deltas.length) * 10) / 10,
       maxDelta: Math.round(Math.max(...deltas.map(Math.abs)) * 10) / 10,
     }));
   }
@@ -436,7 +515,9 @@ export class QualityService {
     if (messages.data.length < 2) return { signals: [] };
 
     const recent = messages.data
-      .map((message) => `${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`)
+      .map(
+        (message) => `${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`,
+      )
       .join('\n');
 
     const { value } = await this.gateway.completeStructured<{
@@ -459,7 +540,17 @@ export class QualityService {
               items: {
                 type: 'object',
                 properties: {
-                  signal: { type: 'string', enum: ['compliance', 'tone', 'frustration', 'missing_information', 'required_statement', 'agent_behaviour'] },
+                  signal: {
+                    type: 'string',
+                    enum: [
+                      'compliance',
+                      'tone',
+                      'frustration',
+                      'missing_information',
+                      'required_statement',
+                      'agent_behaviour',
+                    ],
+                  },
                   severity: { type: 'string', enum: ['info', 'warning', 'critical'] },
                   message: { type: 'string' },
                   guidance: { type: 'string' },
@@ -495,19 +586,29 @@ export class QualityService {
     // ends is a report, not guidance.
     for (const signal of signals) {
       this.realtime.emitToConversation(organizationId, conversationId, 'qc:signal', signal);
-      await this.events.publish(DomainEvent.QcRealtimeAlert, { type: 'conversation', id: conversationId }, {
-        conversationId,
-        signal: signal.signal,
-        severity: signal.severity,
-      });
+      await this.events.publish(
+        DomainEvent.QcRealtimeAlert,
+        { type: 'conversation', id: conversationId },
+        {
+          conversationId,
+          signal: signal.signal,
+          severity: signal.severity,
+        },
+      );
     }
 
-    this.logger.debug('Real-time quality signals raised', { conversationId, count: signals.length });
+    this.logger.debug('Real-time quality signals raised', {
+      conversationId,
+      count: signals.length,
+    });
     return { signals };
   }
 
   async listSignals(conversationId: string) {
-    return this.prisma.db.realtimeSignal.findMany({ where: { conversationId }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.db.realtimeSignal.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async acknowledgeSignal(signalId: string) {

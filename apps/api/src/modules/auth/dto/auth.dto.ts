@@ -32,7 +32,9 @@ export const LoginSchema = z
 
 export const RefreshSchema = z.object({ refreshToken: z.string().min(10) }).strict();
 
-export const ForgotPasswordSchema = z.object({ email: z.string().email().toLowerCase().trim() }).strict();
+export const ForgotPasswordSchema = z
+  .object({ email: z.string().email().toLowerCase().trim() })
+  .strict();
 
 export const ResetPasswordSchema = z
   .object({ token: z.string().min(10), password: PasswordSchema })

@@ -31,7 +31,10 @@ export class IamService {
 
   // ── Users ──────────────────────────────────────────────────────────────────
 
-  async listUsers(organizationId: string, params: CursorParams & { search?: string; roleKey?: string; status?: string }) {
+  async listUsers(
+    organizationId: string,
+    params: CursorParams & { search?: string; roleKey?: string; status?: string },
+  ) {
     const where: Prisma.MembershipWhereInput = {
       organizationId,
       ...(params.roleKey ? { role: { key: params.roleKey } } : {}),
@@ -51,7 +54,10 @@ export class IamService {
 
     const rows = await this.prisma.db.membership.findMany({
       where,
-      include: { user: { select: USER_FIELDS }, role: { select: { id: true, key: true, name: true } } },
+      include: {
+        user: { select: USER_FIELDS },
+        role: { select: { id: true, key: true, name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       ...cursorArgs(params),
     });
@@ -75,7 +81,12 @@ export class IamService {
     const membership = await this.prisma.db.membership.findFirst({
       where: { organizationId, userId },
       include: {
-        user: { select: { ...USER_FIELDS, teamMemberships: { include: { team: { select: { id: true, name: true } } } } } },
+        user: {
+          select: {
+            ...USER_FIELDS,
+            teamMemberships: { include: { team: { select: { id: true, name: true } } } },
+          },
+        },
         role: true,
       },
     });
@@ -105,7 +116,9 @@ export class IamService {
     languages?: string[];
   }) {
     const organizationId = RequestContextStore.organizationId()!;
-    const role = await this.prisma.db.role.findFirst({ where: { organizationId, key: input.roleKey } });
+    const role = await this.prisma.db.role.findFirst({
+      where: { organizationId, key: input.roleKey },
+    });
     if (!role) throw AppError.badRequest(`Unknown role "${input.roleKey}"`);
 
     // An administrator must not be able to grant more than they hold.
@@ -163,7 +176,9 @@ export class IamService {
       });
     });
 
-    const organization = await this.prisma.raw.organization.findUniqueOrThrow({ where: { id: organizationId } });
+    const organization = await this.prisma.raw.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+    });
     await this.mail
       .send({
         to: input.email,
@@ -175,25 +190,44 @@ export class IamService {
           ctaUrl: existing ? '/workspace' : `/accept-invite?token=${inviteToken}`,
           brandColor: organization.primaryColor ?? undefined,
         }),
-        text: existing ? 'You have been added to a new organization on Atrrehub.' : `Accept your invitation: /accept-invite?token=${inviteToken}`,
+        text: existing
+          ? 'You have been added to a new organization on Atrrehub.'
+          : `Accept your invitation: /accept-invite?token=${inviteToken}`,
       })
       .catch(() => undefined);
 
-    await this.events.publish(DomainEvent.UserInvited, { type: 'user', id: userId }, {
-      email: input.email,
-      roleId: role.id,
+    await this.events.publish(
+      DomainEvent.UserInvited,
+      { type: 'user', id: userId },
+      {
+        email: input.email,
+        roleId: role.id,
+      },
+    );
+    await this.audit.record({
+      action: 'user.invited',
+      resourceType: 'user',
+      resourceId: userId,
+      after: { email: input.email, role: role.key },
     });
-    await this.audit.record({ action: 'user.invited', resourceType: 'user', resourceId: userId, after: { email: input.email, role: role.key } });
 
     return { userId, email: input.email, role: role.key, status: existing ? 'active' : 'invited' };
   }
 
   /** Completes an invitation: sets the password and activates the account. */
-  async acceptInvite(token: string, input: { password: string; firstName: string; lastName: string }) {
+  async acceptInvite(
+    token: string,
+    input: { password: string; firstName: string; lastName: string },
+  ) {
     const record = await this.prisma.raw.verificationToken.findUnique({
       where: { tokenHash: this.crypto.hashToken(token) },
     });
-    if (!record || record.purpose !== 'invitation' || record.usedAt || record.expiresAt < new Date()) {
+    if (
+      !record ||
+      record.purpose !== 'invitation' ||
+      record.usedAt ||
+      record.expiresAt < new Date()
+    ) {
       throw AppError.badRequest('This invitation is invalid or has expired');
     }
 
@@ -213,7 +247,12 @@ export class IamService {
 
     const organizationId = (record.metadata as { organizationId?: string })?.organizationId;
     await this.events
-      .publish(DomainEvent.UserActivated, { type: 'user', id: record.userId }, { userId: record.userId }, { organizationId })
+      .publish(
+        DomainEvent.UserActivated,
+        { type: 'user', id: record.userId },
+        { userId: record.userId },
+        { organizationId },
+      )
       .catch(() => undefined);
 
     const user = await this.prisma.raw.user.findUniqueOrThrow({ where: { id: record.userId } });
@@ -255,12 +294,19 @@ export class IamService {
       if (actor && !hasAllPermissions(actor.permissions, role.permissions)) {
         throw AppError.permissionDenied('You cannot grant permissions you do not hold');
       }
-      await this.prisma.db.membership.update({ where: { id: membership.id }, data: { roleId: role.id } });
-      await this.events.publish(DomainEvent.RoleChanged, { type: 'user', id: userId }, {
-        userId,
-        from: membership.role.key,
-        to: roleKey,
+      await this.prisma.db.membership.update({
+        where: { id: membership.id },
+        data: { roleId: role.id },
       });
+      await this.events.publish(
+        DomainEvent.RoleChanged,
+        { type: 'user', id: userId },
+        {
+          userId,
+          from: membership.role.key,
+          to: roleKey,
+        },
+      );
       await this.audit.record({
         action: 'user.role_changed',
         resourceType: 'user',
@@ -273,7 +319,10 @@ export class IamService {
     }
 
     if (workspaceIds) {
-      await this.prisma.db.membership.update({ where: { id: membership.id }, data: { workspaceIds } });
+      await this.prisma.db.membership.update({
+        where: { id: membership.id },
+        data: { workspaceIds },
+      });
     }
 
     if (Object.keys(userPatch).length || status) {
@@ -287,7 +336,11 @@ export class IamService {
 
       if (status === 'suspended' || status === 'deactivated') {
         await this.auth.revokeAllSessions(userId, `status_${status}`);
-        await this.events.publish(DomainEvent.UserDeactivated, { type: 'user', id: userId }, { userId });
+        await this.events.publish(
+          DomainEvent.UserDeactivated,
+          { type: 'user', id: userId },
+          { userId },
+        );
       }
     }
 
@@ -296,13 +349,20 @@ export class IamService {
 
   /** Removes the membership. The platform user survives — they may belong elsewhere. */
   async removeUser(organizationId: string, userId: string) {
-    const membership = await this.prisma.db.membership.findFirst({ where: { organizationId, userId } });
+    const membership = await this.prisma.db.membership.findFirst({
+      where: { organizationId, userId },
+    });
     if (!membership) throw AppError.notFound('User', userId);
     if (membership.isOwner) throw AppError.conflict('The organization owner cannot be removed');
 
     await this.prisma.db.membership.delete({ where: { id: membership.id } });
     await this.auth.revokeAllSessions(userId, 'membership_removed');
-    await this.audit.record({ action: 'user.removed', resourceType: 'user', resourceId: userId, before: membership });
+    await this.audit.record({
+      action: 'user.removed',
+      resourceType: 'user',
+      resourceId: userId,
+      before: membership,
+    });
   }
 
   /** Agent presence, used by routing to pick an available assignee. */
@@ -324,7 +384,12 @@ export class IamService {
     });
   }
 
-  async createRole(input: { key: string; name: string; description?: string; permissions: string[] }) {
+  async createRole(input: {
+    key: string;
+    name: string;
+    description?: string;
+    permissions: string[];
+  }) {
     this.assertKnownPermissions(input.permissions);
     const actor = RequestContextStore.principal();
     if (actor && !hasAllPermissions(actor.permissions, input.permissions)) {
@@ -340,11 +405,20 @@ export class IamService {
         isSystem: false,
       } as never,
     });
-    await this.audit.record({ action: 'role.created', resourceType: 'role', resourceId: role.id, after: role });
+    await this.audit.record({
+      action: 'role.created',
+      resourceType: 'role',
+      resourceId: role.id,
+      after: role,
+    });
     return role;
   }
 
-  async updateRole(organizationId: string, roleId: string, patch: { name?: string; description?: string; permissions?: string[] }) {
+  async updateRole(
+    organizationId: string,
+    roleId: string,
+    patch: { name?: string; description?: string; permissions?: string[] },
+  ) {
     const role = await this.prisma.db.role.findFirst({ where: { organizationId, id: roleId } });
     if (!role) throw AppError.notFound('Role', roleId);
     if (role.isSystem && patch.permissions) {
@@ -363,8 +437,13 @@ export class IamService {
 
     // Everyone holding this role needs a token reflecting the new permissions.
     if (patch.permissions) {
-      const members = await this.prisma.db.membership.findMany({ where: { roleId }, select: { userId: true } });
-      await Promise.all(members.map((m) => this.auth.revokeAllSessions(m.userId, 'role_permissions_changed')));
+      const members = await this.prisma.db.membership.findMany({
+        where: { roleId },
+        select: { userId: true },
+      });
+      await Promise.all(
+        members.map((m) => this.auth.revokeAllSessions(m.userId, 'role_permissions_changed')),
+      );
     }
     return updated;
   }
@@ -380,7 +459,12 @@ export class IamService {
       throw AppError.conflict(`${role._count.memberships} user(s) still hold this role`);
     }
     await this.prisma.db.role.delete({ where: { id: roleId } });
-    await this.audit.record({ action: 'role.deleted', resourceType: 'role', resourceId: roleId, before: role });
+    await this.audit.record({
+      action: 'role.deleted',
+      resourceType: 'role',
+      resourceId: roleId,
+      before: role,
+    });
   }
 
   private assertKnownPermissions(permissions: string[]): void {
@@ -414,12 +498,23 @@ export class IamService {
         keyHash: this.crypto.hashToken(key),
         permissions: input.permissions,
         createdById: actor?.id ?? null,
-        expiresAt: input.expiresInDays ? new Date(Date.now() + input.expiresInDays * 86_400_000) : null,
+        expiresAt: input.expiresInDays
+          ? new Date(Date.now() + input.expiresInDays * 86_400_000)
+          : null,
       } as never,
     });
 
-    await this.events.publish(DomainEvent.ApiKeyCreated, { type: 'api_key', id: record.id }, { apiKeyId: record.id });
-    await this.audit.record({ action: 'apikey.created', resourceType: 'api_key', resourceId: record.id, after: { name: input.name, permissions: input.permissions } });
+    await this.events.publish(
+      DomainEvent.ApiKeyCreated,
+      { type: 'api_key', id: record.id },
+      { apiKeyId: record.id },
+    );
+    await this.audit.record({
+      action: 'apikey.created',
+      resourceType: 'api_key',
+      resourceId: record.id,
+      after: { name: input.name, permissions: input.permissions },
+    });
 
     return { ...record, key, keyHash: undefined };
   }
@@ -428,16 +523,35 @@ export class IamService {
     return this.prisma.db.apiKey.findMany({
       where: { organizationId, revokedAt: null },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, prefix: true, permissions: true, lastUsedAt: true, expiresAt: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        prefix: true,
+        permissions: true,
+        lastUsedAt: true,
+        expiresAt: true,
+        createdAt: true,
+      },
     });
   }
 
   async revokeApiKey(organizationId: string, apiKeyId: string) {
     const key = await this.prisma.db.apiKey.findFirst({ where: { organizationId, id: apiKeyId } });
     if (!key) throw AppError.notFound('API key', apiKeyId);
-    await this.prisma.db.apiKey.update({ where: { id: apiKeyId }, data: { revokedAt: new Date() } });
-    await this.events.publish(DomainEvent.ApiKeyRevoked, { type: 'api_key', id: apiKeyId }, { apiKeyId });
-    await this.audit.record({ action: 'apikey.revoked', resourceType: 'api_key', resourceId: apiKeyId });
+    await this.prisma.db.apiKey.update({
+      where: { id: apiKeyId },
+      data: { revokedAt: new Date() },
+    });
+    await this.events.publish(
+      DomainEvent.ApiKeyRevoked,
+      { type: 'api_key', id: apiKeyId },
+      { apiKeyId },
+    );
+    await this.audit.record({
+      action: 'apikey.revoked',
+      resourceType: 'api_key',
+      resourceId: apiKeyId,
+    });
   }
 }
 

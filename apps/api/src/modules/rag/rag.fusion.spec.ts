@@ -54,21 +54,29 @@ describe('reciprocal rank fusion', () => {
     const vector = [hit('p'), hit('y'), hit('x')];
     const keyword = [hit('x')];
     const fused = service.fuse(vector, keyword);
-    expect(fused.findIndex((h) => h.chunkId === 'x')).toBeLessThan(fused.findIndex((h) => h.chunkId === 'y'));
+    expect(fused.findIndex((h) => h.chunkId === 'x')).toBeLessThan(
+      fused.findIndex((h) => h.chunkId === 'y'),
+    );
   });
 });
 
 describe('groundedness', () => {
-  const sources = [hit('a', 'Refunds are processed within three working days of approval by the billing team.')];
+  const sources = [
+    hit('a', 'Refunds are processed within three working days of approval by the billing team.'),
+  ];
 
   it('scores an answer drawn from the sources as grounded', () => {
-    const result = service.groundedness('Refunds are processed within three working days of approval.', sources);
+    const result = service.groundedness(
+      'Refunds are processed within three working days of approval.',
+      sources,
+    );
     expect(result.score).toBe(1);
     expect(result.unsupported).toEqual([]);
   });
 
   it('flags a sentence that the sources do not support', () => {
-    const answer = 'Refunds are processed within three working days of approval. We also guarantee compensation vouchers for every delayed shipment.';
+    const answer =
+      'Refunds are processed within three working days of approval. We also guarantee compensation vouchers for every delayed shipment.';
     const result = service.groundedness(answer, sources);
     expect(result.score).toBeLessThan(1);
     expect(result.unsupported.join(' ')).toContain('compensation vouchers');

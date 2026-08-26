@@ -3,7 +3,8 @@ import { RequestContextStore, type Principal } from '../../../core/context/reque
 
 /** The authenticated principal for the active request. */
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, _ctx: ExecutionContext): Principal | undefined => RequestContextStore.principal(),
+  (_data: unknown, _ctx: ExecutionContext): Principal | undefined =>
+    RequestContextStore.principal(),
 );
 
 /** The resolved tenant for the active request. */

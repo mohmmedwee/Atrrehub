@@ -37,7 +37,9 @@ export class IdempotencyInterceptor implements NestInterceptor {
     if (!organizationId) return next.handle();
 
     const endpoint = request.routeOptions?.url ?? request.url;
-    const requestHash = createHash('sha256').update(JSON.stringify(request.body ?? {})).digest('hex');
+    const requestHash = createHash('sha256')
+      .update(JSON.stringify(request.body ?? {}))
+      .digest('hex');
 
     const existing = await this.prisma.raw.idempotencyKey.findUnique({
       where: { organizationId_key_endpoint: { organizationId, key, endpoint } },
@@ -45,7 +47,9 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     if (existing) {
       if (existing.requestHash !== requestHash) {
-        throw AppError.conflict('This idempotency key was already used with a different request body');
+        throw AppError.conflict(
+          'This idempotency key was already used with a different request body',
+        );
       }
       if (existing.response) {
         return of(raw(existing.response as Record<string, unknown>));

@@ -47,7 +47,10 @@ export class MemoryService {
     private readonly logger: AppLogger,
   ) {}
 
-  async remember(write: MemoryWrite, policy: MemoryPolicy = {}): Promise<{ stored: boolean; reason?: string }> {
+  async remember(
+    write: MemoryWrite,
+    policy: MemoryPolicy = {},
+  ): Promise<{ stored: boolean; reason?: string }> {
     const organizationId = RequestContextStore.organizationId()!;
 
     if (write.scope === 'short_term' && policy.shortTerm === false) {
@@ -77,7 +80,8 @@ export class MemoryService {
       }
     }
 
-    const retentionDays = write.retentionDays ?? policy.retentionDays ?? DEFAULT_RETENTION[write.scope];
+    const retentionDays =
+      write.retentionDays ?? policy.retentionDays ?? DEFAULT_RETENTION[write.scope];
     const expiresAt = retentionDays > 0 ? new Date(Date.now() + retentionDays * 86_400_000) : null;
 
     await this.prisma.raw.memoryEntry.upsert({
@@ -155,11 +159,19 @@ export class MemoryService {
     const entries = await this.recall(filter);
     if (!entries.length) return '';
     return entries
-      .map((entry) => `- ${entry.key}: ${typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value)}`)
+      .map(
+        (entry) =>
+          `- ${entry.key}: ${typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value)}`,
+      )
       .join('\n');
   }
 
-  async forget(filter: { scope?: MemoryScope; customerId?: string; conversationId?: string; key?: string }): Promise<number> {
+  async forget(filter: {
+    scope?: MemoryScope;
+    customerId?: string;
+    conversationId?: string;
+    key?: string;
+  }): Promise<number> {
     const result = await this.prisma.db.memoryEntry.deleteMany({
       where: {
         ...(filter.scope ? { scope: filter.scope } : {}),
@@ -210,8 +222,13 @@ export class MemoryService {
     });
     // Withdrawing consent must take effect on data already held, not just future writes.
     if (!consent) {
-      const removed = await this.prisma.db.memoryEntry.deleteMany({ where: { customerId, containsPii: true } });
-      this.logger.info('Removed identifiable memory after consent withdrawal', { customerId, removed: removed.count });
+      const removed = await this.prisma.db.memoryEntry.deleteMany({
+        where: { customerId, containsPii: true },
+      });
+      this.logger.info('Removed identifiable memory after consent withdrawal', {
+        customerId,
+        removed: removed.count,
+      });
     }
     return customer;
   }

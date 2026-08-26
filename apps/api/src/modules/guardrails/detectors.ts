@@ -20,21 +20,46 @@ export interface Detection {
  * for the residual, but this must never be the slow path.
  */
 const INJECTION_PATTERNS: { pattern: RegExp; weight: number; label: string }[] = [
-  { pattern: /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)/i, weight: 0.9, label: 'ignore-previous-instructions' },
-  { pattern: /disregard\s+(all\s+)?(previous|prior|above|your)\s+\w+/i, weight: 0.85, label: 'disregard-instructions' },
+  {
+    pattern: /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)/i,
+    weight: 0.9,
+    label: 'ignore-previous-instructions',
+  },
+  {
+    pattern: /disregard\s+(all\s+)?(previous|prior|above|your)\s+\w+/i,
+    weight: 0.85,
+    label: 'disregard-instructions',
+  },
   { pattern: /forget\s+(everything|all)\s+(you|that)/i, weight: 0.8, label: 'forget-context' },
   { pattern: /you\s+are\s+now\s+(a|an|in)\s+/i, weight: 0.6, label: 'role-reassignment' },
-  { pattern: /\b(developer|debug|god|admin|sudo)\s+mode\b/i, weight: 0.75, label: 'privileged-mode' },
+  {
+    pattern: /\b(developer|debug|god|admin|sudo)\s+mode\b/i,
+    weight: 0.75,
+    label: 'privileged-mode',
+  },
   // Requires the possessive "your" or an explicit "system" — "show me the
   // instructions for returning an item" is a customer asking for help, not an
   // exfiltration attempt.
-  { pattern: /(reveal|show|print|repeat|output)\s+(me\s+)?(your\s+(system\s+)?(prompt|instructions?|rules?)|the\s+system\s+(prompt|instructions?))/i, weight: 0.9, label: 'system-prompt-exfiltration' },
+  {
+    pattern:
+      /(reveal|show|print|repeat|output)\s+(me\s+)?(your\s+(system\s+)?(prompt|instructions?|rules?)|the\s+system\s+(prompt|instructions?))/i,
+    weight: 0.9,
+    label: 'system-prompt-exfiltration',
+  },
   { pattern: /\bDAN\b|\bjailbreak\b/i, weight: 0.7, label: 'jailbreak-keyword' },
   { pattern: /pretend\s+(you|to\s+be)\s+/i, weight: 0.5, label: 'pretend' },
   { pattern: /<\s*\/?\s*(system|assistant)\s*>/i, weight: 0.8, label: 'role-tag-injection' },
   { pattern: /\[\s*(SYSTEM|INST|\/INST)\s*\]/i, weight: 0.75, label: 'template-token-injection' },
-  { pattern: /(without|no)\s+(any\s+)?(restrictions?|limitations?|filters?|guardrails?)/i, weight: 0.7, label: 'restriction-removal' },
-  { pattern: /new\s+(instructions?|system\s+prompt)\s*:/i, weight: 0.85, label: 'instruction-override' },
+  {
+    pattern: /(without|no)\s+(any\s+)?(restrictions?|limitations?|filters?|guardrails?)/i,
+    weight: 0.7,
+    label: 'restriction-removal',
+  },
+  {
+    pattern: /new\s+(instructions?|system\s+prompt)\s*:/i,
+    weight: 0.85,
+    label: 'instruction-override',
+  },
 ];
 
 export function detectPromptInjection(text: string): Detection {
@@ -49,19 +74,13 @@ export function detectPromptInjection(text: string): Detection {
   }
 
   // Several weak signals together are stronger than any one of them.
-  const confidence = evidence.length > 1 ? Math.min(0.99, peak + 0.1 * (evidence.length - 1)) : peak;
+  const confidence =
+    evidence.length > 1 ? Math.min(0.99, peak + 0.1 * (evidence.length - 1)) : peak;
   return { matched: confidence >= 0.5, confidence, evidence };
 }
 
 export type PiiKind =
-  | 'email'
-  | 'phone'
-  | 'credit_card'
-  | 'iban'
-  | 'ssn'
-  | 'national_id'
-  | 'ip_address'
-  | 'api_key';
+  'email' | 'phone' | 'credit_card' | 'iban' | 'ssn' | 'national_id' | 'ip_address' | 'api_key';
 
 export interface PiiMatch {
   kind: PiiKind;
@@ -118,7 +137,8 @@ export function detectPii(text: string, kinds?: PiiKind[]): PiiMatch[] {
   matches.sort((a, b) => a.start - b.start || b.end - a.end);
   const resolved: PiiMatch[] = [];
   for (const match of matches) {
-    if (resolved.some((existing) => match.start < existing.end && match.end > existing.start)) continue;
+    if (resolved.some((existing) => match.start < existing.end && match.end > existing.start))
+      continue;
     resolved.push(match);
   }
   return resolved;
@@ -176,13 +196,18 @@ function luhn(digits: string): boolean {
 /** Categories a customer-facing agent must never produce. */
 const CONTENT_PATTERNS: { category: string; pattern: RegExp }[] = [
   { category: 'self_harm', pattern: /\b(kill|hurt|harm)\s+(yourself|themselves)\b/i },
-  { category: 'violence', pattern: /\b(how\s+to\s+)?(make|build)\s+(a\s+)?(bomb|explosive|weapon)\b/i },
+  {
+    category: 'violence',
+    pattern: /\b(how\s+to\s+)?(make|build)\s+(a\s+)?(bomb|explosive|weapon)\b/i,
+  },
   { category: 'illegal', pattern: /\b(launder\s+money|buy\s+(drugs|weapons)\s+online)\b/i },
   { category: 'credentials', pattern: /\b(password|api[\s_-]?key|secret)\s+(is|=|:)\s*\S{6,}/i },
 ];
 
 export function detectContentPolicy(text: string): Detection {
-  const evidence = CONTENT_PATTERNS.filter(({ pattern }) => pattern.test(text)).map(({ category }) => category);
+  const evidence = CONTENT_PATTERNS.filter(({ pattern }) => pattern.test(text)).map(
+    ({ category }) => category,
+  );
   return { matched: evidence.length > 0, confidence: evidence.length ? 0.9 : 0, evidence };
 }
 
@@ -191,7 +216,10 @@ export function detectContentPolicy(text: string): Detection {
  * not on an explicit allow-list, so a custom tool cannot be turned into an
  * internal-network probe.
  */
-export function isEgressAllowed(url: string, allowlist: string[] = []): { allowed: boolean; reason?: string } {
+export function isEgressAllowed(
+  url: string,
+  allowlist: string[] = [],
+): { allowed: boolean; reason?: string } {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -203,7 +231,10 @@ export function isEgressAllowed(url: string, allowlist: string[] = []): { allowe
     return { allowed: false, reason: `protocol ${parsed.protocol} is not permitted` };
   }
   if (isPrivateHost(parsed.hostname)) {
-    return { allowed: false, reason: 'private and link-local addresses are not reachable from tools' };
+    return {
+      allowed: false,
+      reason: 'private and link-local addresses are not reachable from tools',
+    };
   }
   if (allowlist.length) {
     const host = parsed.hostname.toLowerCase();
@@ -211,14 +242,21 @@ export function isEgressAllowed(url: string, allowlist: string[] = []): { allowe
       const candidate = entry.toLowerCase().trim();
       return host === candidate || host.endsWith(`.${candidate}`);
     });
-    if (!permitted) return { allowed: false, reason: `${parsed.hostname} is not on the egress allow-list` };
+    if (!permitted)
+      return { allowed: false, reason: `${parsed.hostname} is not on the egress allow-list` };
   }
   return { allowed: true };
 }
 
 export function isPrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) return true;
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.local')
+  )
+    return true;
 
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
     const [a, b] = host.split('.').map(Number);

@@ -27,7 +27,10 @@ const DEFAULTS: Required<ChunkOptions> = { targetTokens: 800, overlapTokens: 120
  */
 export function chunkDocument(text: string, options: ChunkOptions = {}): Chunk[] {
   const config = { ...DEFAULTS, ...options };
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  const normalized = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   if (!normalized) return [];
 
   const sections = splitByHeading(normalized);

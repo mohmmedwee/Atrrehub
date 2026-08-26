@@ -135,9 +135,11 @@ function tokenize(input: string): Token[] {
         index += 1;
       }
       const lower = word.toLowerCase();
-      if (lower === 'true' || lower === 'false') tokens.push({ kind: 'boolean', value: lower === 'true' });
+      if (lower === 'true' || lower === 'false')
+        tokens.push({ kind: 'boolean', value: lower === 'true' });
       else if (lower === 'null' || lower === 'nil') tokens.push({ kind: 'null' });
-      else if (['and', 'or', 'not'].includes(lower) || WORD_OPERATORS.includes(lower)) tokens.push({ kind: 'op', value: lower });
+      else if (['and', 'or', 'not'].includes(lower) || WORD_OPERATORS.includes(lower))
+        tokens.push({ kind: 'op', value: lower });
       else tokens.push({ kind: 'path', value: word });
       continue;
     }
@@ -222,7 +224,8 @@ class Parser {
       this.position += 1;
       const value = this.parseOr();
       const closing = this.peek();
-      if (closing?.kind !== 'punct' || closing.value !== ')') throw new Error('Missing closing parenthesis');
+      if (closing?.kind !== 'punct' || closing.value !== ')')
+        throw new Error('Missing closing parenthesis');
       this.position += 1;
       return value;
     }
@@ -230,7 +233,10 @@ class Parser {
     if (token.kind === 'punct' && token.value === '[') {
       this.position += 1;
       const items: unknown[] = [];
-      while (this.peek() && !(this.peek()!.kind === 'punct' && (this.peek() as { value: string }).value === ']')) {
+      while (
+        this.peek() &&
+        !(this.peek()!.kind === 'punct' && (this.peek() as { value: string }).value === ']')
+      ) {
         items.push(this.parsePrimary());
         const next = this.peek();
         if (next?.kind === 'punct' && next.value === ',') this.position += 1;
@@ -271,14 +277,22 @@ function compare(operator: string, left: unknown, right: unknown): boolean {
       return Number(left) <= Number(right);
     case 'contains':
       if (Array.isArray(left)) return left.some((item) => looseEquals(item, right));
-      return String(left ?? '').toLowerCase().includes(String(right ?? '').toLowerCase());
+      return String(left ?? '')
+        .toLowerCase()
+        .includes(String(right ?? '').toLowerCase());
     case 'startswith':
-      return String(left ?? '').toLowerCase().startsWith(String(right ?? '').toLowerCase());
+      return String(left ?? '')
+        .toLowerCase()
+        .startsWith(String(right ?? '').toLowerCase());
     case 'endswith':
-      return String(left ?? '').toLowerCase().endsWith(String(right ?? '').toLowerCase());
+      return String(left ?? '')
+        .toLowerCase()
+        .endsWith(String(right ?? '').toLowerCase());
     case 'in':
       if (Array.isArray(right)) return right.some((item) => looseEquals(item, left));
-      return String(right ?? '').toLowerCase().includes(String(left ?? '').toLowerCase());
+      return String(right ?? '')
+        .toLowerCase()
+        .includes(String(left ?? '').toLowerCase());
     case 'matches':
       try {
         // Anchored and length-capped so a workflow author cannot author a

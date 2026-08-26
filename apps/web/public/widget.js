@@ -50,10 +50,14 @@
   style.textContent = [
     '.atr-root{position:fixed;bottom:20px;right:20px;z-index:2147483000;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5}',
     '.atr-root *{box-sizing:border-box}',
-    '.atr-btn{width:56px;height:56px;border-radius:50%;border:none;background:' + ACCENT + ';color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center}',
+    '.atr-btn{width:56px;height:56px;border-radius:50%;border:none;background:' +
+      ACCENT +
+      ';color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center}',
     '.atr-btn:focus-visible{outline:3px solid ' + ACCENT + ';outline-offset:3px}',
     '.atr-panel{position:absolute;bottom:70px;right:0;width:min(370px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.22);display:flex;flex-direction:column;overflow:hidden}',
-    '.atr-head{background:' + ACCENT + ';color:#fff;padding:14px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center}',
+    '.atr-head{background:' +
+      ACCENT +
+      ';color:#fff;padding:14px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center}',
     '.atr-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;padding:0 4px}',
     '.atr-body{flex:1;overflow-y:auto;padding:14px;background:#f8fafc;display:flex;flex-direction:column;gap:8px}',
     '.atr-msg{max-width:80%;padding:8px 11px;border-radius:12px;white-space:pre-wrap;word-break:break-word}',
@@ -63,7 +67,9 @@
     '.atr-foot{border-top:1px solid #e2e8f0;padding:10px;display:flex;gap:8px;background:#fff}',
     '.atr-input{flex:1;border:1px solid #e2e8f0;border-radius:9px;padding:9px 11px;font:inherit;color:#0f172a;resize:none;max-height:90px}',
     '.atr-input:focus{outline:none;border-color:' + ACCENT + '}',
-    '.atr-send{background:' + ACCENT + ';color:#fff;border:none;border-radius:9px;padding:0 15px;cursor:pointer;font:inherit;font-weight:600}',
+    '.atr-send{background:' +
+      ACCENT +
+      ';color:#fff;border:none;border-radius:9px;padding:0 15px;cursor:pointer;font:inherit;font-weight:600}',
     '.atr-send:disabled{opacity:.5;cursor:not-allowed}',
     '.atr-note{color:#64748b;font-size:12px;text-align:center;padding:4px}',
     '@media (prefers-reduced-motion:no-preference){.atr-panel{animation:atr-in .2s ease-out}}',
@@ -75,8 +81,12 @@
   var root = document.createElement('div');
   root.className = 'atr-root';
   root.innerHTML =
-    '<div class="atr-panel" hidden role="dialog" aria-label="' + escapeAttribute(TITLE) + '">' +
-    '<div class="atr-head"><span>' + escapeHtml(TITLE) + '</span>' +
+    '<div class="atr-panel" hidden role="dialog" aria-label="' +
+    escapeAttribute(TITLE) +
+    '">' +
+    '<div class="atr-head"><span>' +
+    escapeHtml(TITLE) +
+    '</span>' +
     '<button class="atr-close" aria-label="Close chat">&times;</button></div>' +
     '<div class="atr-body" aria-live="polite"></div>' +
     '<div class="atr-foot">' +
@@ -110,7 +120,9 @@
           })
           .join('<br>');
         return (
-          '<div class="atr-msg ' + (message.direction === 'inbound' ? 'atr-out' : 'atr-in') + '">' +
+          '<div class="atr-msg ' +
+          (message.direction === 'inbound' ? 'atr-out' : 'atr-in') +
+          '">' +
           escapeHtml(message.body) +
           (citations ? '<div class="atr-cite">' + citations + '</div>' : '') +
           '</div>'
@@ -171,11 +183,23 @@
     })
       .then(function (result) {
         state.conversationId = result.conversationId || state.conversationId;
-        if (result.reply) state.messages.push({ direction: 'outbound', body: result.reply, citations: result.citations });
-        else if (result.queued) state.messages.push({ direction: 'outbound', body: 'Thanks — a member of our team will reply shortly.' });
+        if (result.reply)
+          state.messages.push({
+            direction: 'outbound',
+            body: result.reply,
+            citations: result.citations,
+          });
+        else if (result.queued)
+          state.messages.push({
+            direction: 'outbound',
+            body: 'Thanks — a member of our team will reply shortly.',
+          });
       })
       .catch(function () {
-        state.messages.push({ direction: 'outbound', body: 'Sorry, that message could not be delivered. Please try again.' });
+        state.messages.push({
+          direction: 'outbound',
+          body: 'Sorry, that message could not be delivered. Please try again.',
+        });
       })
       .finally(function () {
         state.sending = false;
@@ -211,7 +235,11 @@
         .then(function (json) {
           if (!json) return;
           var messages = (json.data || []).map(function (message) {
-            return { direction: message.direction, body: message.body, citations: message.citations };
+            return {
+              direction: message.direction,
+              body: message.body,
+              citations: message.citations,
+            };
           });
           if (messages.length !== state.messages.length) {
             state.messages = messages;

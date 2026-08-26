@@ -24,8 +24,12 @@ export function CustomerPanel({ customerId }: { customerId: string }) {
       <div className="flex items-center gap-3">
         <Avatar name={customer.displayName} size={40} />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{customer.displayName ?? 'Unknown customer'}</p>
-          <p className="truncate text-xs text-text-muted">{customer.company ?? customer.contactMethods[0]?.value ?? '—'}</p>
+          <p className="truncate text-sm font-semibold">
+            {customer.displayName ?? 'Unknown customer'}
+          </p>
+          <p className="truncate text-xs text-text-muted">
+            {customer.company ?? customer.contactMethods[0]?.value ?? '—'}
+          </p>
         </div>
       </div>
 
@@ -49,17 +53,35 @@ export function CustomerPanel({ customerId }: { customerId: string }) {
           <div className="mt-2 flex flex-wrap gap-1.5">
             {ai.intent ? <Badge tone="info">{ai.intent}</Badge> : null}
             {ai.sentiment ? (
-              <Badge tone={ai.sentiment === 'negative' ? 'danger' : ai.sentiment === 'positive' ? 'success' : 'muted'}>
+              <Badge
+                tone={
+                  ai.sentiment === 'negative'
+                    ? 'danger'
+                    : ai.sentiment === 'positive'
+                      ? 'success'
+                      : 'muted'
+                }
+              >
                 {ai.sentiment}
               </Badge>
             ) : null}
             {ai.riskLevel ? (
-              <Badge tone={ai.riskLevel === 'high' ? 'danger' : ai.riskLevel === 'medium' ? 'warning' : 'muted'}>
+              <Badge
+                tone={
+                  ai.riskLevel === 'high'
+                    ? 'danger'
+                    : ai.riskLevel === 'medium'
+                      ? 'warning'
+                      : 'muted'
+                }
+              >
                 risk: {ai.riskLevel}
               </Badge>
             ) : null}
           </div>
-          {ai.currentIssue ? <p className="mt-2 text-xs text-text-muted">Current issue: {ai.currentIssue}</p> : null}
+          {ai.currentIssue ? (
+            <p className="mt-2 text-xs text-text-muted">Current issue: {ai.currentIssue}</p>
+          ) : null}
         </section>
       ) : null}
 
@@ -85,7 +107,9 @@ export function CustomerPanel({ customerId }: { customerId: string }) {
               <span className="text-text-muted">{relativeTime(conversation.createdAt)}</span>
             </li>
           ))}
-          {!conversations.length ? <li className="text-xs text-text-muted">No previous conversations</li> : null}
+          {!conversations.length ? (
+            <li className="text-xs text-text-muted">No previous conversations</li>
+          ) : null}
         </ul>
       </Section>
 
@@ -123,7 +147,9 @@ export function CustomerPanel({ customerId }: { customerId: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">{title}</h3>
+      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+        {title}
+      </h3>
       {children}
     </section>
   );

@@ -41,7 +41,13 @@ export interface GuardrailVerdict {
 
 const DEFAULT_RULES: GuardrailRule[] = [
   { stage: 'input', check: 'prompt_injection', action: 'handoff', severity: 'high' },
-  { stage: 'input', check: 'max_length', action: 'block', severity: 'low', config: { maxChars: 8000 } },
+  {
+    stage: 'input',
+    check: 'max_length',
+    action: 'block',
+    severity: 'low',
+    config: { maxChars: 8000 },
+  },
   { stage: 'tool', check: 'egress_allowlist', action: 'block', severity: 'high' },
   { stage: 'output', check: 'pii', action: 'mask', severity: 'medium' },
   { stage: 'output', check: 'content_policy', action: 'block', severity: 'high' },
@@ -75,14 +81,27 @@ export class GuardrailsService {
       async () =>
         policyId
           ? this.prisma.raw.guardrailPolicy.findFirst({ where: { id: policyId, organizationId } })
-          : this.prisma.raw.guardrailPolicy.findFirst({ where: { organizationId, isDefault: true } }),
+          : this.prisma.raw.guardrailPolicy.findFirst({
+              where: { organizationId, isDefault: true },
+            }),
     );
   }
 
-  private async rulesFor(stage: GuardrailStage, policyId?: string | null): Promise<{ rules: GuardrailRule[]; policy: Awaited<ReturnType<GuardrailsService['policyFor']>> }> {
+  private async rulesFor(
+    stage: GuardrailStage,
+    policyId?: string | null,
+  ): Promise<{
+    rules: GuardrailRule[];
+    policy: Awaited<ReturnType<GuardrailsService['policyFor']>>;
+  }> {
     const policy = await this.policyFor(policyId);
-    const configured = ((policy?.rules ?? []) as unknown as GuardrailRule[]).filter((rule) => rule.stage === stage);
-    return { rules: configured.length ? configured : DEFAULT_RULES.filter((rule) => rule.stage === stage), policy };
+    const configured = ((policy?.rules ?? []) as unknown as GuardrailRule[]).filter(
+      (rule) => rule.stage === stage,
+    );
+    return {
+      rules: configured.length ? configured : DEFAULT_RULES.filter((rule) => rule.stage === stage),
+      policy,
+    };
   }
 
   // ── Input ──────────────────────────────────────────────────────────────────
@@ -90,7 +109,13 @@ export class GuardrailsService {
   /** Screen an inbound customer message before it reaches a model. */
   async checkInput(text: string, context: GuardrailContext = {}): Promise<GuardrailVerdict> {
     const { rules } = await this.rulesFor('input', context.policyId);
-    const verdict: GuardrailVerdict = { action: 'allow', text, triggered: [], blocked: false, handoff: false };
+    const verdict: GuardrailVerdict = {
+      action: 'allow',
+      text,
+      triggered: [],
+      blocked: false,
+      handoff: false,
+    };
 
     for (const rule of rules) {
       if (rule.check === 'prompt_injection') {
@@ -104,7 +129,12 @@ export class GuardrailsService {
       if (rule.check === 'max_length') {
         const maxChars = Number(rule.config?.maxChars ?? 8000);
         if (text.length > maxChars) {
-          this.apply(verdict, rule, [`length ${text.length} exceeds ${maxChars}`], 'The message is too long to process');
+          this.apply(
+            verdict,
+            rule,
+            [`length ${text.length} exceeds ${maxChars}`],
+            'The message is too long to process',
+          );
           if (verdict.blocked) break;
         }
       }
@@ -113,7 +143,12 @@ export class GuardrailsService {
         const { masked, matches } = maskPii(verdict.text);
         if (matches.length) {
           verdict.text = rule.action === 'mask' ? masked : verdict.text;
-          this.apply(verdict, rule, matches.map((match) => match.kind), 'Sensitive data detected in the message');
+          this.apply(
+            verdict,
+            rule,
+            matches.map((match) => match.kind),
+            'Sensitive data detected in the message',
+          );
         }
       }
     }
@@ -127,17 +162,31 @@ export class GuardrailsService {
   /** Screen a model's answer before it reaches the customer. */
   async checkOutput(
     text: string,
-    context: GuardrailContext & { groundedness?: { score: number; unsupported: string[] }; confidence?: number } = {},
+    context: GuardrailContext & {
+      groundedness?: { score: number; unsupported: string[] };
+      confidence?: number;
+    } = {},
   ): Promise<GuardrailVerdict> {
     const { rules, policy } = await this.rulesFor('output', context.policyId);
-    const verdict: GuardrailVerdict = { action: 'allow', text, triggered: [], blocked: false, handoff: false };
+    const verdict: GuardrailVerdict = {
+      action: 'allow',
+      text,
+      triggered: [],
+      blocked: false,
+      handoff: false,
+    };
 
     for (const rule of rules) {
       if (rule.check === 'pii' && (policy?.maskPii ?? true)) {
         const { masked, matches } = maskPii(verdict.text);
         if (matches.length) {
           verdict.text = masked;
-          this.apply(verdict, rule, matches.map((match) => match.kind), 'Sensitive data removed from the reply');
+          this.apply(
+            verdict,
+            rule,
+            matches.map((match) => match.kind),
+            'Sensitive data removed from the reply',
+          );
         }
       }
 
@@ -189,7 +238,13 @@ export class GuardrailsService {
     tool: { key: string; url?: string | null; requiresApproval: boolean },
     context: GuardrailContext & { allowedTools?: string[]; declaredTools?: string[] } = {},
   ): Promise<GuardrailVerdict> {
-    const verdict: GuardrailVerdict = { action: 'allow', text: tool.key, triggered: [], blocked: false, handoff: false };
+    const verdict: GuardrailVerdict = {
+      action: 'allow',
+      text: tool.key,
+      triggered: [],
+      blocked: false,
+      handoff: false,
+    };
 
     if (context.declaredTools && !context.declaredTools.includes(tool.key)) {
       this.apply(
@@ -242,8 +297,18 @@ export class GuardrailsService {
 
   // ── Recording ──────────────────────────────────────────────────────────────
 
-  private apply(verdict: GuardrailVerdict, rule: GuardrailRule, evidence: string[], reason: string): void {
-    verdict.triggered.push({ check: rule.check, action: rule.action, severity: rule.severity ?? 'medium', evidence });
+  private apply(
+    verdict: GuardrailVerdict,
+    rule: GuardrailRule,
+    evidence: string[],
+    reason: string,
+  ): void {
+    verdict.triggered.push({
+      check: rule.check,
+      action: rule.action,
+      severity: rule.severity ?? 'medium',
+      evidence,
+    });
 
     if (rule.action === 'block') {
       verdict.blocked = true;
@@ -251,7 +316,8 @@ export class GuardrailsService {
       verdict.reason = reason;
     } else if (rule.action === 'handoff') {
       verdict.handoff = true;
-      if (verdict.action === 'allow' || verdict.action === 'flag' || verdict.action === 'mask') verdict.action = 'handoff';
+      if (verdict.action === 'allow' || verdict.action === 'flag' || verdict.action === 'mask')
+        verdict.action = 'handoff';
       verdict.reason ??= reason;
     } else if (rule.action === 'mask' && verdict.action === 'allow') {
       verdict.action = 'mask';
@@ -261,7 +327,11 @@ export class GuardrailsService {
     }
   }
 
-  private async record(verdict: GuardrailVerdict, stage: GuardrailStage, context: GuardrailContext): Promise<void> {
+  private async record(
+    verdict: GuardrailVerdict,
+    stage: GuardrailStage,
+    context: GuardrailContext,
+  ): Promise<void> {
     if (!verdict.triggered.length) return;
     const organizationId = RequestContextStore.organizationId();
     if (!organizationId) return;
@@ -288,12 +358,16 @@ export class GuardrailsService {
         })),
       });
 
-      await this.events.publish(DomainEvent.GuardrailTriggered, { type: 'guardrail', id: context.executionId ?? organizationId }, {
-        policy: context.policyId ?? 'default',
-        action: verdict.action,
-        severity: verdict.triggered[0]?.severity ?? 'medium',
-        subjectId: context.subjectId,
-      });
+      await this.events.publish(
+        DomainEvent.GuardrailTriggered,
+        { type: 'guardrail', id: context.executionId ?? organizationId },
+        {
+          policy: context.policyId ?? 'default',
+          action: verdict.action,
+          severity: verdict.triggered[0]?.severity ?? 'medium',
+          subjectId: context.subjectId,
+        },
+      );
     } catch (error) {
       this.logger.error('Failed to record a guardrail event', error);
     }
@@ -302,11 +376,23 @@ export class GuardrailsService {
   // ── Policies ───────────────────────────────────────────────────────────────
 
   async listPolicies() {
-    return this.prisma.db.guardrailPolicy.findMany({ where: {}, orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] });
+    return this.prisma.db.guardrailPolicy.findMany({
+      where: {},
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    });
   }
 
-  async createPolicy(input: { name: string; description?: string; rules?: GuardrailRule[]; confidenceThreshold?: number; groundednessMode?: string; maskPii?: boolean; isDefault?: boolean }) {
-    if (input.isDefault) await this.prisma.db.guardrailPolicy.updateMany({ where: {}, data: { isDefault: false } });
+  async createPolicy(input: {
+    name: string;
+    description?: string;
+    rules?: GuardrailRule[];
+    confidenceThreshold?: number;
+    groundednessMode?: string;
+    maskPii?: boolean;
+    isDefault?: boolean;
+  }) {
+    if (input.isDefault)
+      await this.prisma.db.guardrailPolicy.updateMany({ where: {}, data: { isDefault: false } });
     const policy = await this.prisma.db.guardrailPolicy.create({
       data: {
         id: newId('guardrail'),
@@ -324,8 +410,12 @@ export class GuardrailsService {
   }
 
   async updatePolicy(policyId: string, patch: Record<string, unknown>) {
-    if (patch.isDefault) await this.prisma.db.guardrailPolicy.updateMany({ where: {}, data: { isDefault: false } });
-    const policy = await this.prisma.db.guardrailPolicy.update({ where: { id: policyId }, data: patch as never });
+    if (patch.isDefault)
+      await this.prisma.db.guardrailPolicy.updateMany({ where: {}, data: { isDefault: false } });
+    const policy = await this.prisma.db.guardrailPolicy.update({
+      where: { id: policyId },
+      data: patch as never,
+    });
     await this.invalidate(policyId);
     return policy;
   }
@@ -348,6 +438,10 @@ export class GuardrailsService {
   }
 
   async recentEvents(limit = 100) {
-    return this.prisma.db.guardrailEvent.findMany({ where: {}, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 500) });
+    return this.prisma.db.guardrailEvent.findMany({
+      where: {},
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 500),
+    });
   }
 }

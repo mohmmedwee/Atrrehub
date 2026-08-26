@@ -30,7 +30,10 @@ describe('BusinessHoursCalculator', () => {
     });
 
     it('is closed on a holiday that falls on a working day', () => {
-      const withHoliday = new BusinessHoursCalculator({ ...weekdays9to5, holidays: ['2026-02-11'] });
+      const withHoliday = new BusinessHoursCalculator({
+        ...weekdays9to5,
+        holidays: ['2026-02-11'],
+      });
       expect(withHoliday.isOpenAt(at('2026-02-11T10:00:00Z'))).toBe(false);
     });
 
@@ -68,7 +71,9 @@ describe('BusinessHoursCalculator', () => {
 
     it('counts wall-clock time when always open', () => {
       const always = new BusinessHoursCalculator({ timezone: 'UTC', rules: [], holidays: [] });
-      expect(always.elapsedWorkingMs(at('2026-02-14T00:00:00Z'), at('2026-02-14T02:00:00Z'))).toBe(7_200_000);
+      expect(always.elapsedWorkingMs(at('2026-02-14T00:00:00Z'), at('2026-02-14T02:00:00Z'))).toBe(
+        7_200_000,
+      );
     });
   });
 
@@ -93,7 +98,10 @@ describe('BusinessHoursCalculator', () => {
     });
 
     it('jumps over a holiday', () => {
-      const withHoliday = new BusinessHoursCalculator({ ...weekdays9to5, holidays: ['2026-02-12'] });
+      const withHoliday = new BusinessHoursCalculator({
+        ...weekdays9to5,
+        holidays: ['2026-02-12'],
+      });
       // Wednesday 16:00 + 2h → 1h Wednesday, Thursday is a holiday, 1h Friday.
       const due = withHoliday.addWorkingMinutes(at('2026-02-11T16:00:00Z'), 120);
       expect(due.toISOString()).toBe('2026-02-13T10:00:00.000Z');
@@ -121,7 +129,9 @@ describe('BusinessHoursCalculator', () => {
     });
 
     it('advances to the next opening time', () => {
-      expect(calc.nextOpening(at('2026-02-14T12:00:00Z')).toISOString()).toBe('2026-02-16T09:00:00.000Z');
+      expect(calc.nextOpening(at('2026-02-14T12:00:00Z')).toISOString()).toBe(
+        '2026-02-16T09:00:00.000Z',
+      );
     });
   });
 });

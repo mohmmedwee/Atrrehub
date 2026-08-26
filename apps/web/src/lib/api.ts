@@ -30,8 +30,10 @@ export class ApiError extends Error {
 }
 
 export const tokens = {
-  access: (): string | null => (typeof window === 'undefined' ? null : localStorage.getItem(ACCESS_KEY)),
-  refresh: (): string | null => (typeof window === 'undefined' ? null : localStorage.getItem(REFRESH_KEY)),
+  access: (): string | null =>
+    typeof window === 'undefined' ? null : localStorage.getItem(ACCESS_KEY),
+  refresh: (): string | null =>
+    typeof window === 'undefined' ? null : localStorage.getItem(REFRESH_KEY),
   set(accessToken: string, refreshToken: string): void {
     localStorage.setItem(ACCESS_KEY, accessToken);
     localStorage.setItem(REFRESH_KEY, refreshToken);
@@ -103,7 +105,11 @@ export async function api<T = unknown>(path: string, options: RequestOptions = {
 
   let response = await send();
 
-  if (response.status === 401 && options.retryOnUnauthorized !== false && (await refreshSession())) {
+  if (
+    response.status === 401 &&
+    options.retryOnUnauthorized !== false &&
+    (await refreshSession())
+  ) {
     response = await send();
   }
 

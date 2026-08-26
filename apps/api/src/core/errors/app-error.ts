@@ -66,7 +66,10 @@ export class AppError extends Error {
    * must not leak across the tenant boundary.
    */
   static notFound(resource: string, id?: string): AppError {
-    return new AppError('not_found', id ? `${resource} ${id} was not found` : `${resource} was not found`);
+    return new AppError(
+      'not_found',
+      id ? `${resource} ${id} was not found` : `${resource} was not found`,
+    );
   }
 
   static badRequest(message: string, errors?: FieldError[]): AppError {

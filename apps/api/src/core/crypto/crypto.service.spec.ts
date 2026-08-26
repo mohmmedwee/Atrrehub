@@ -29,7 +29,11 @@ describe('CryptoService', () => {
       const encrypted = crypto.encryptObject({ apiKey: 'secret', timeout: 30, enabled: true });
       expect(encrypted.apiKey).not.toBe('secret');
       expect(encrypted.timeout).toBe(30);
-      expect(crypto.decryptObject(encrypted)).toEqual({ apiKey: 'secret', timeout: 30, enabled: true });
+      expect(crypto.decryptObject(encrypted)).toEqual({
+        apiKey: 'secret',
+        timeout: 30,
+        enabled: true,
+      });
     });
   });
 

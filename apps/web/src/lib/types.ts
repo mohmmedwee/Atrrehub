@@ -24,13 +24,20 @@ export interface Me {
     presence: string;
     locale: string;
   };
-  organization: { id: string; name: string; slug: string; primaryColor: string | null; logoUrl: string | null };
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    primaryColor: string | null;
+    logoUrl: string | null;
+  };
   role: string;
   permissions: string[];
   isOwner: boolean;
 }
 
-export type ConversationStatus = 'new' | 'queued' | 'assigned' | 'active' | 'waiting' | 'resolved' | 'closed';
+export type ConversationStatus =
+  'new' | 'queued' | 'assigned' | 'active' | 'waiting' | 'resolved' | 'closed';
 export type Priority = 'low' | 'normal' | 'high' | 'urgent' | 'critical';
 
 export interface ConversationSummary {
@@ -45,9 +52,18 @@ export interface ConversationSummary {
   lastMessageAt: string | null;
   createdAt: string;
   messageCount: number;
-  customer: { id: string; displayName: string | null; avatarUrl: string | null; tier: string | null } | null;
+  customer: {
+    id: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    tier: string | null;
+  } | null;
   queue: { id: string; name: string } | null;
-  intelligence: { sentiment: string | null; sentimentScore: number | null; intent: string | null } | null;
+  intelligence: {
+    sentiment: string | null;
+    sentimentScore: number | null;
+    intent: string | null;
+  } | null;
 }
 
 export interface Message {
@@ -83,10 +99,30 @@ export interface CustomerOverview {
       topics: string[];
     } | null;
   };
-  conversations: { id: string; reference: string; subject: string | null; channel: string; status: string; createdAt: string }[];
-  tickets: { id: string; reference: string; subject: string; status: string; priority: string; createdAt: string }[];
+  conversations: {
+    id: string;
+    reference: string;
+    subject: string | null;
+    channel: string;
+    status: string;
+    createdAt: string;
+  }[];
+  tickets: {
+    id: string;
+    reference: string;
+    subject: string;
+    status: string;
+    priority: string;
+    createdAt: string;
+  }[];
   notes: { id: string; body: string; isPinned: boolean; createdAt: string }[];
-  activities: { id: string; kind: string; title: string; summary: string | null; occurredAt: string }[];
+  activities: {
+    id: string;
+    kind: string;
+    title: string;
+    summary: string | null;
+    occurredAt: string;
+  }[];
 }
 
 export interface Agent {
@@ -129,7 +165,14 @@ export interface ExecutionDebug {
     durationMs: number | null;
   }[];
   toolCalls: { id: string; status: string; durationMs: number; input: unknown; output: unknown }[];
-  guardrails: { id: string; stage: string; check: string; action: string; severity: string; detail: unknown }[];
+  guardrails: {
+    id: string;
+    stage: string;
+    check: string;
+    action: string;
+    severity: string;
+    detail: unknown;
+  }[];
 }
 
 export interface ExecutiveAnalytics {

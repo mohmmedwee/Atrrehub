@@ -94,7 +94,10 @@ export class IamController {
   @Get('users')
   @RequirePermissions('user:read')
   @ApiOperation({ summary: 'List organization members' })
-  async listUsers(@CurrentOrg() organizationId: string, @Query(zodQuery(ListUsersQuery)) query: z.infer<typeof ListUsersQuery>) {
+  async listUsers(
+    @CurrentOrg() organizationId: string,
+    @Query(zodQuery(ListUsersQuery)) query: z.infer<typeof ListUsersQuery>,
+  ) {
     return this.iam.listUsers(organizationId, query);
   }
 
@@ -145,7 +148,8 @@ export class IamController {
     @CurrentUser() principal: Principal | undefined,
     @Body(zodBody(PresenceSchema)) body: z.infer<typeof PresenceSchema>,
   ) {
-    if (principal?.type !== 'user') throw AppError.permissionDenied('Presence requires a user session');
+    if (principal?.type !== 'user')
+      throw AppError.permissionDenied('Presence requires a user session');
     return this.iam.setPresence(principal.id, body.presence, body.note);
   }
 

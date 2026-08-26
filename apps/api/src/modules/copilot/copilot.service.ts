@@ -51,19 +51,31 @@ export class CopilotService {
     const messages = await this.conversations.listMessages(request.conversationId, { limit: 30 });
 
     const transcript = messages.data
-      .map((message) => `${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`)
+      .map(
+        (message) => `${message.authorType === 'customer' ? 'Customer' : 'Agent'}: ${message.body}`,
+      )
       .join('\n');
-    const lastCustomerMessage = [...messages.data].reverse().find((message) => message.direction === 'inbound')?.body ?? '';
+    const lastCustomerMessage =
+      [...messages.data].reverse().find((message) => message.direction === 'inbound')?.body ?? '';
 
     switch (request.action) {
       case 'suggest_reply':
         return this.suggestReply(request, transcript, lastCustomerMessage, conversation.locale);
       case 'rewrite':
-        return this.transform(request, 'Rewrite the agent draft so it is clear, correct and professional. Keep every fact unchanged.');
+        return this.transform(
+          request,
+          'Rewrite the agent draft so it is clear, correct and professional. Keep every fact unchanged.',
+        );
       case 'adjust_tone':
-        return this.transform(request, `Rewrite the agent draft in a ${request.tone ?? 'friendly'} tone. Keep every fact unchanged.`);
+        return this.transform(
+          request,
+          `Rewrite the agent draft in a ${request.tone ?? 'friendly'} tone. Keep every fact unchanged.`,
+        );
       case 'translate':
-        return this.transform(request, `Translate the agent draft into ${request.targetLocale ?? 'English'}. Preserve meaning, names and numbers exactly.`);
+        return this.transform(
+          request,
+          `Translate the agent draft into ${request.targetLocale ?? 'English'}. Preserve meaning, names and numbers exactly.`,
+        );
       case 'summarize':
         return this.summarize(transcript);
       case 'next_best_action':
@@ -76,7 +88,12 @@ export class CopilotService {
   }
 
   /** A grounded reply suggestion, with the sources the agent can verify. */
-  private async suggestReply(request: CopilotRequest, transcript: string, question: string, locale: string) {
+  private async suggestReply(
+    request: CopilotRequest,
+    transcript: string,
+    question: string,
+    locale: string,
+  ) {
     const scope = await this.knowledge.readableBaseIds();
     const hits = await this.rag.retrieve(question || transcript.slice(-2000), {
       knowledgeBaseIds: scope,
@@ -92,7 +109,10 @@ export class CopilotService {
             role: 'system',
             content: `You are helping a human support agent write their next reply. Draft a reply they can send, in ${locale}. Use only the context provided; if it does not contain the answer, say what the agent should ask or check instead.\n\n<context>\n${context}\n</context>`,
           },
-          { role: 'user', content: `Conversation so far:\n${transcript}\n\nDraft the agent's next reply.` },
+          {
+            role: 'user',
+            content: `Conversation so far:\n${transcript}\n\nDraft the agent's next reply.`,
+          },
         ],
         temperature: 0.3,
       },
@@ -127,11 +147,22 @@ export class CopilotService {
         ],
         temperature: 0.2,
       },
-      { role: 'fast', operation: `copilot.${request.action}`, conversationId: request.conversationId },
+      {
+        role: 'fast',
+        operation: `copilot.${request.action}`,
+        conversationId: request.conversationId,
+      },
     );
 
-    const verdict = await this.guardrails.checkOutput(response.content, { conversationId: request.conversationId });
-    return { action: request.action, suggestion: verdict.text, warnings: verdict.triggered.map((t) => t.check), usage: this.usage(response) };
+    const verdict = await this.guardrails.checkOutput(response.content, {
+      conversationId: request.conversationId,
+    });
+    return {
+      action: request.action,
+      suggestion: verdict.text,
+      warnings: verdict.triggered.map((t) => t.check),
+      usage: this.usage(response),
+    };
   }
 
   private async summarize(transcript: string) {
@@ -142,7 +173,10 @@ export class CopilotService {
     }>(
       {
         messages: [
-          { role: 'system', content: 'Summarize this support conversation for a colleague picking it up.' },
+          {
+            role: 'system',
+            content: 'Summarize this support conversation for a colleague picking it up.',
+          },
           { role: 'user', content: transcript },
         ],
         responseSchema: {
@@ -161,7 +195,10 @@ export class CopilotService {
     return { action: 'summarize' as const, ...value, usage: this.usage(response) };
   }
 
-  private async nextBestAction(transcript: string, conversation: Awaited<ReturnType<ConversationsService['get']>>) {
+  private async nextBestAction(
+    transcript: string,
+    conversation: Awaited<ReturnType<ConversationsService['get']>>,
+  ) {
     const { value, response } = await this.gateway.completeStructured<{
       action: string;
       reason: string;
@@ -171,7 +208,8 @@ export class CopilotService {
         messages: [
           {
             role: 'system',
-            content: 'Recommend the single next action the support agent should take. Consider whether to reply, escalate, open a ticket, or resolve.',
+            content:
+              'Recommend the single next action the support agent should take. Consider whether to reply, escalate, open a ticket, or resolve.',
           },
           {
             role: 'user',
@@ -181,7 +219,17 @@ export class CopilotService {
         responseSchema: {
           type: 'object',
           properties: {
-            action: { type: 'string', enum: ['reply', 'ask_for_information', 'create_ticket', 'escalate', 'transfer', 'resolve'] },
+            action: {
+              type: 'string',
+              enum: [
+                'reply',
+                'ask_for_information',
+                'create_ticket',
+                'escalate',
+                'transfer',
+                'resolve',
+              ],
+            },
             reason: { type: 'string' },
             urgency: { type: 'string', enum: ['low', 'normal', 'high'] },
           },
@@ -191,7 +239,11 @@ export class CopilotService {
       { role: 'fast', operation: 'copilot.next_best_action', conversationId: conversation.id },
     );
 
-    return { action: 'next_best_action' as const, recommendation: value, usage: this.usage(response) };
+    return {
+      action: 'next_best_action' as const,
+      recommendation: value,
+      usage: this.usage(response),
+    };
   }
 
   /**
@@ -203,11 +255,15 @@ export class CopilotService {
 
     const existing = await this.prisma.db.customerAiContext.findFirst({ where: { customerId } });
     const fresh = existing && Date.now() - existing.generatedAt.getTime() < 3_600_000;
-    if (fresh && !force) return { action: 'customer_summary' as const, context: existing, cached: true };
+    if (fresh && !force)
+      return { action: 'customer_summary' as const, context: existing, cached: true };
 
     const overview = await this.customers.overview(customerId);
     const history = [
-      ...overview.conversations.map((c) => `Conversation ${c.reference} (${c.channel}, ${c.status}): ${c.subject ?? 'no subject'}`),
+      ...overview.conversations.map(
+        (c) =>
+          `Conversation ${c.reference} (${c.channel}, ${c.status}): ${c.subject ?? 'no subject'}`,
+      ),
       ...overview.tickets.map((t) => `Ticket ${t.reference} (${t.status}): ${t.subject}`),
     ].join('\n');
 
@@ -222,7 +278,11 @@ export class CopilotService {
     }>(
       {
         messages: [
-          { role: 'system', content: 'Summarize what a support agent needs to know about this customer before responding.' },
+          {
+            role: 'system',
+            content:
+              'Summarize what a support agent needs to know about this customer before responding.',
+          },
           {
             role: 'user',
             content: `Customer: ${overview.customer.displayName}, tier ${overview.customer.tier ?? 'none'}, company ${overview.customer.company ?? 'none'}.\n\nHistory:\n${history || 'No previous history.'}`,
@@ -272,14 +332,26 @@ export class CopilotService {
       },
     });
 
-    return { action: 'customer_summary' as const, context, cached: false, usage: this.usage(response) };
+    return {
+      action: 'customer_summary' as const,
+      context,
+      cached: false,
+      usage: this.usage(response),
+    };
   }
 
-  private usage(response: { usage: { promptTokens: number; completionTokens: number }; model: string }) {
+  private usage(response: {
+    usage: { promptTokens: number; completionTokens: number };
+    model: string;
+  }) {
     return {
       promptTokens: response.usage.promptTokens,
       completionTokens: response.usage.completionTokens,
-      costUsd: estimateCostUsd(response.model, response.usage.promptTokens, response.usage.completionTokens),
+      costUsd: estimateCostUsd(
+        response.model,
+        response.usage.promptTokens,
+        response.usage.completionTokens,
+      ),
       model: response.model,
     };
   }

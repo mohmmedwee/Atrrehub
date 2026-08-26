@@ -65,8 +65,13 @@ export const RequestContextStore = {
   /**
    * Run a block outside tenant scoping. Reserved for platform-level work such as
    * the outbox relay or cross-tenant maintenance jobs; never reachable from HTTP.
+   *
+   * The callback is awaited *inside* the scope. That matters because Prisma
+   * promises are lazy: returning one unawaited would execute the query after
+   * the context had already been torn down, silently losing the scope this
+   * function exists to establish.
    */
-  runAsSystem<T>(fn: () => T, organizationId?: string): T {
+  async runAsSystem<T>(fn: () => T | Promise<T>, organizationId?: string): Promise<T> {
     return storage.run(
       {
         requestId: `system-${Date.now().toString(36)}`,
@@ -75,7 +80,15 @@ export const RequestContextStore = {
         startedAt: Date.now(),
         principal: { type: 'system', id: 'system', permissions: ['*'] },
       },
-      fn,
+      async () => fn(),
     );
+  },
+
+  /**
+   * Run a block inside an explicit context, awaiting within the scope for the
+   * same reason as `runAsSystem`.
+   */
+  async runAsync<T>(context: RequestContext, fn: () => T | Promise<T>): Promise<T> {
+    return storage.run(context, async () => fn());
   },
 };

@@ -28,12 +28,24 @@ export class WorkflowsService {
   async list() {
     return this.prisma.db.workflow.findMany({
       where: { key: { not: { startsWith: 'agent-inline-' } } },
-      include: { versions: { orderBy: { version: 'desc' }, take: 1, select: { version: true, publishedAt: true } } },
+      include: {
+        versions: {
+          orderBy: { version: 'desc' },
+          take: 1,
+          select: { version: true, publishedAt: true },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }
 
-  async create(input: { name: string; key: string; description?: string; graph?: WorkflowGraph; workspaceId?: string }) {
+  async create(input: {
+    name: string;
+    key: string;
+    description?: string;
+    graph?: WorkflowGraph;
+    workspaceId?: string;
+  }) {
     const existing = await this.prisma.db.workflow.findFirst({ where: { key: input.key } });
     if (existing) throw AppError.conflict(`A workflow with the key "${input.key}" already exists`);
 
@@ -123,7 +135,9 @@ export class WorkflowsService {
     if (!isPublishable(issues)) {
       throw AppError.badRequest(
         'The workflow has errors that must be fixed before publishing',
-        issues.filter((issue) => issue.severity === 'error').map((issue) => ({ path: issue.nodeId ?? 'graph', message: issue.message })),
+        issues
+          .filter((issue) => issue.severity === 'error')
+          .map((issue) => ({ path: issue.nodeId ?? 'graph', message: issue.message })),
       );
     }
 
@@ -133,7 +147,10 @@ export class WorkflowsService {
         where: { id: latest.id },
         data: { publishedAt: new Date(), publishedById: principal?.id ?? null },
       });
-      await tx.workflow.update({ where: { id: workflowId }, data: { activeVersionId: version.id, state: 'published' } });
+      await tx.workflow.update({
+        where: { id: workflowId },
+        data: { activeVersionId: version.id, state: 'published' },
+      });
       return version;
     });
 
@@ -149,7 +166,9 @@ export class WorkflowsService {
   async validate(workflowId: string) {
     const workflow = await this.get(workflowId);
     const graph = workflow.latestVersion?.graph as unknown as WorkflowGraph | undefined;
-    const issues = graph ? validateGraph(graph) : [{ severity: 'error' as const, message: 'The workflow has no version' }];
+    const issues = graph
+      ? validateGraph(graph)
+      : [{ severity: 'error' as const, message: 'The workflow has no version' }];
     return { issues, publishable: isPublishable(issues) };
   }
 

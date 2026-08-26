@@ -79,7 +79,10 @@ export class EmailAdapter implements ChannelAdapter {
       .trim();
   }
 
-  async receive(payload: unknown, _account: ChannelAccountContext): Promise<NormalizedInboundMessage | null> {
+  async receive(
+    payload: unknown,
+    _account: ChannelAccountContext,
+  ): Promise<NormalizedInboundMessage | null> {
     const email = payload as InboundEmailPayload;
     if (!email?.from) return null;
 
@@ -90,7 +93,9 @@ export class EmailAdapter implements ChannelAdapter {
     const threadKey =
       email.references?.[0] ??
       email.inReplyTo ??
-      (EmailAdapter.extractReference(email.subject) ? `ref:${EmailAdapter.extractReference(email.subject)}` : undefined) ??
+      (EmailAdapter.extractReference(email.subject)
+        ? `ref:${EmailAdapter.extractReference(email.subject)}`
+        : undefined) ??
       `email:${email.messageId}`;
 
     return {

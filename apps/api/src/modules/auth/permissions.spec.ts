@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { PERMISSIONS, SYSTEM_ROLES, hasAllPermissions, hasAnyPermission, hasPermission } from './permissions';
+import {
+  PERMISSIONS,
+  SYSTEM_ROLES,
+  hasAllPermissions,
+  hasAnyPermission,
+  hasPermission,
+} from './permissions';
 
 describe('permission evaluation', () => {
   it('grants an exactly matching permission', () => {
@@ -33,14 +39,24 @@ describe('system roles', () => {
     const catalog = new Set<string>(PERMISSIONS);
     for (const [key, role] of Object.entries(SYSTEM_ROLES)) {
       for (const permission of role.permissions) {
-        expect(catalog.has(permission), `${key} references unknown permission ${permission}`).toBe(true);
+        expect(catalog.has(permission), `${key} references unknown permission ${permission}`).toBe(
+          true,
+        );
       }
     }
   });
 
   it('gives the owner billing control that no other role has', () => {
     expect(SYSTEM_ROLES.owner.permissions).toContain('billing:manage');
-    for (const key of ['administrator', 'supervisor', 'qa_manager', 'agent', 'ai_builder', 'analyst', 'viewer'] as const) {
+    for (const key of [
+      'administrator',
+      'supervisor',
+      'qa_manager',
+      'agent',
+      'ai_builder',
+      'analyst',
+      'viewer',
+    ] as const) {
       expect(SYSTEM_ROLES[key].permissions).not.toContain('billing:manage');
     }
   });

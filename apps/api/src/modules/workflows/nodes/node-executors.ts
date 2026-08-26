@@ -125,8 +125,19 @@ export class NodeExecutors {
 
   // ── AI nodes ───────────────────────────────────────────────────────────────
 
-  private async runLlm(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
-    const config = node.config as { prompt?: string; system?: string; role?: 'chat' | 'fast' | 'reasoning'; temperature?: number; maxTokens?: number; useContext?: boolean };
+  private async runLlm(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
+    const config = node.config as {
+      prompt?: string;
+      system?: string;
+      role?: 'chat' | 'fast' | 'reasoning';
+      temperature?: number;
+      maxTokens?: number;
+      useContext?: boolean;
+    };
     const prompt = interpolate(config.prompt ?? '{{ input.message }}', scope);
 
     // Retrieved passages, if a knowledge node ran earlier, are wrapped in
@@ -141,11 +152,20 @@ export class NodeExecutors {
 
     const response = await this.gateway.complete(
       {
-        messages: [...(system ? [{ role: 'system' as const, content: system }] : []), { role: 'user' as const, content: prompt }],
+        messages: [
+          ...(system ? [{ role: 'system' as const, content: system }] : []),
+          { role: 'user' as const, content: prompt },
+        ],
         temperature: config.temperature,
         maxTokens: config.maxTokens,
       },
-      { role: config.role ?? 'chat', operation: 'workflow.llm', executionId: context.executionId, agentId: context.agentId, conversationId: context.conversationId },
+      {
+        role: config.role ?? 'chat',
+        operation: 'workflow.llm',
+        executionId: context.executionId,
+        agentId: context.agentId,
+        conversationId: context.conversationId,
+      },
     );
 
     return {
@@ -154,7 +174,11 @@ export class NodeExecutors {
       usage: {
         promptTokens: response.usage.promptTokens,
         completionTokens: response.usage.completionTokens,
-        costUsd: estimateCostUsd(response.model, response.usage.promptTokens, response.usage.completionTokens),
+        costUsd: estimateCostUsd(
+          response.model,
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+        ),
         model: response.model,
       },
     };
@@ -168,10 +192,15 @@ export class NodeExecutors {
     field: 'intent' | 'category',
   ): Promise<NodeExecutionResult> {
     const config = node.config as { labels?: string[]; text?: string; instructions?: string };
-    const labels = config.labels?.length ? config.labels : ['question', 'complaint', 'request', 'other'];
+    const labels = config.labels?.length
+      ? config.labels
+      : ['question', 'complaint', 'request', 'other'];
     const text = interpolate(config.text ?? '{{ input.message }}', scope);
 
-    const { value, response } = await this.gateway.completeStructured<{ label: string; confidence: number }>(
+    const { value, response } = await this.gateway.completeStructured<{
+      label: string;
+      confidence: number;
+    }>(
       {
         messages: [
           {
@@ -189,7 +218,12 @@ export class NodeExecutors {
           required: ['label'],
         },
       },
-      { role: 'fast', operation: `workflow.${field}`, executionId: context.executionId, conversationId: context.conversationId },
+      {
+        role: 'fast',
+        operation: `workflow.${field}`,
+        executionId: context.executionId,
+        conversationId: context.conversationId,
+      },
     );
 
     // A label outside the allowed set is a model error, not a new category.
@@ -202,20 +236,35 @@ export class NodeExecutors {
       usage: {
         promptTokens: response.usage.promptTokens,
         completionTokens: response.usage.completionTokens,
-        costUsd: estimateCostUsd(response.model, response.usage.promptTokens, response.usage.completionTokens),
+        costUsd: estimateCostUsd(
+          response.model,
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+        ),
         model: response.model,
       },
     };
   }
 
-  private async runSentiment(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
+  private async runSentiment(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
     const config = node.config as { text?: string };
     const text = interpolate(config.text ?? '{{ input.message }}', scope);
 
-    const { value, response } = await this.gateway.completeStructured<{ sentiment: string; score: number }>(
+    const { value, response } = await this.gateway.completeStructured<{
+      sentiment: string;
+      score: number;
+    }>(
       {
         messages: [
-          { role: 'system', content: 'Judge the sentiment of the customer message. score ranges from -1 (very negative) to 1 (very positive).' },
+          {
+            role: 'system',
+            content:
+              'Judge the sentiment of the customer message. score ranges from -1 (very negative) to 1 (very positive).',
+          },
           { role: 'user', content: text },
         ],
         responseSchema: {
@@ -227,7 +276,12 @@ export class NodeExecutors {
           required: ['sentiment'],
         },
       },
-      { role: 'fast', operation: 'workflow.sentiment', executionId: context.executionId, conversationId: context.conversationId },
+      {
+        role: 'fast',
+        operation: 'workflow.sentiment',
+        executionId: context.executionId,
+        conversationId: context.conversationId,
+      },
     );
 
     const score = clamp(Number(value.score ?? 0), -1, 1);
@@ -238,7 +292,11 @@ export class NodeExecutors {
       usage: {
         promptTokens: response.usage.promptTokens,
         completionTokens: response.usage.completionTokens,
-        costUsd: estimateCostUsd(response.model, response.usage.promptTokens, response.usage.completionTokens),
+        costUsd: estimateCostUsd(
+          response.model,
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+        ),
         model: response.model,
       },
     };
@@ -248,7 +306,11 @@ export class NodeExecutors {
    * A full grounded answer: retrieve, generate, check guardrails, and hand off
    * when the answer is not confident or not grounded.
    */
-  private async runAgentNode(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
+  private async runAgentNode(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
     const config = node.config as {
       instructions?: string;
       question?: string;
@@ -265,7 +327,11 @@ export class NodeExecutors {
       executionId: context.executionId,
     });
     if (inputVerdict.blocked) {
-      return { output: { blocked: true, reason: inputVerdict.reason }, branch: 'blocked', statePatch: { blocked: true } };
+      return {
+        output: { blocked: true, reason: inputVerdict.reason },
+        branch: 'blocked',
+        statePatch: { blocked: true },
+      };
     }
     if (inputVerdict.handoff) {
       return {
@@ -276,7 +342,10 @@ export class NodeExecutors {
     }
 
     const readable = await this.knowledge.readableBaseIds();
-    const scopeIds = await this.guardrails.scopeRetrieval(config.knowledgeBaseIds ?? readable, readable);
+    const scopeIds = await this.guardrails.scopeRetrieval(
+      config.knowledgeBaseIds ?? readable,
+      readable,
+    );
     const hits = await this.rag.retrieve(inputVerdict.text, {
       knowledgeBaseIds: scopeIds,
       topK: config.topK ?? 6,
@@ -296,7 +365,13 @@ export class NodeExecutors {
         ],
         temperature: config.temperature ?? 0.3,
       },
-      { role: 'chat', operation: 'workflow.agent', executionId: context.executionId, agentId: context.agentId, conversationId: context.conversationId },
+      {
+        role: 'chat',
+        operation: 'workflow.agent',
+        executionId: context.executionId,
+        agentId: context.agentId,
+        conversationId: context.conversationId,
+      },
     );
 
     const groundedness = this.rag.groundedness(response.content, hits);
@@ -311,13 +386,22 @@ export class NodeExecutors {
     const usage = {
       promptTokens: response.usage.promptTokens,
       completionTokens: response.usage.completionTokens,
-      costUsd: estimateCostUsd(response.model, response.usage.promptTokens, response.usage.completionTokens),
+      costUsd: estimateCostUsd(
+        response.model,
+        response.usage.promptTokens,
+        response.usage.completionTokens,
+      ),
       model: response.model,
     };
 
     if (outputVerdict.blocked || outputVerdict.handoff) {
       return {
-        output: { handoff: true, reason: outputVerdict.reason, confidence: response.confidence, groundedness: groundedness.score },
+        output: {
+          handoff: true,
+          reason: outputVerdict.reason,
+          confidence: response.confidence,
+          groundedness: groundedness.score,
+        },
         branch: outputVerdict.blocked ? 'blocked' : 'handoff',
         statePatch: { handoffReason: outputVerdict.reason },
         usage,
@@ -325,7 +409,12 @@ export class NodeExecutors {
     }
 
     return {
-      output: { answer: outputVerdict.text, citations, confidence: response.confidence, groundedness: groundedness.score },
+      output: {
+        answer: outputVerdict.text,
+        citations,
+        confidence: response.confidence,
+        groundedness: groundedness.score,
+      },
       branch: 'answered',
       statePatch: { answer: outputVerdict.text, citations, confidence: response.confidence },
       usage,
@@ -334,12 +423,18 @@ export class NodeExecutors {
 
   // ── Knowledge nodes ────────────────────────────────────────────────────────
 
-  private async runKnowledge(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
+  private async runKnowledge(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
     const config = node.config as { query?: string; knowledgeBaseIds?: string[]; topK?: number };
     const query = interpolate(config.query ?? '{{ input.message }}', scope);
 
     const readable = await this.knowledge.readableBaseIds();
-    const scopeIds = config.knowledgeBaseIds?.length ? config.knowledgeBaseIds.filter((id) => readable.includes(id)) : readable;
+    const scopeIds = config.knowledgeBaseIds?.length
+      ? config.knowledgeBaseIds.filter((id) => readable.includes(id))
+      : readable;
 
     const hits = await this.rag.retrieve(query, {
       knowledgeBaseIds: scopeIds,
@@ -350,7 +445,11 @@ export class NodeExecutors {
     const { context: retrieved, citations } = this.rag.buildContext(hits);
 
     return {
-      output: { hits: hits.length, citations, passages: hits.map((hit) => ({ title: hit.title, content: hit.content, score: hit.score })) },
+      output: {
+        hits: hits.length,
+        citations,
+        passages: hits.map((hit) => ({ title: hit.title, content: hit.content, score: hit.score })),
+      },
       branch: hits.length ? 'found' : 'empty',
       statePatch: { context: retrieved, citations },
     };
@@ -369,10 +468,19 @@ export class NodeExecutors {
   }
 
   private runSwitch(node: WorkflowNode, scope: Record<string, unknown>): NodeExecutionResult {
-    const config = node.config as { path?: string; cases?: { value: string; branch: string }[]; default?: string };
+    const config = node.config as {
+      path?: string;
+      cases?: { value: string; branch: string }[];
+      default?: string;
+    };
     const value = config.path ? resolvePath(config.path, scope) : undefined;
-    const match = config.cases?.find((entry) => String(entry.value).toLowerCase() === String(value ?? '').toLowerCase());
-    return { output: { value, matched: match?.branch ?? config.default ?? 'default' }, branch: match?.branch ?? config.default ?? 'default' };
+    const match = config.cases?.find(
+      (entry) => String(entry.value).toLowerCase() === String(value ?? '').toLowerCase(),
+    );
+    return {
+      output: { value, matched: match?.branch ?? config.default ?? 'default' },
+      branch: match?.branch ?? config.default ?? 'default',
+    };
   }
 
   private runSet(node: WorkflowNode, scope: Record<string, unknown>): NodeExecutionResult {
@@ -392,17 +500,25 @@ export class NodeExecutors {
       ? new Date(interpolate(config.until, scope))
       : new Date(Date.now() + Math.max(1, seconds) * 1000);
 
-    return { output: { resumeAfter: resumeAfter.toISOString() }, suspend: { reason: 'delay', resumeAfter } };
+    return {
+      output: { resumeAfter: resumeAfter.toISOString() },
+      suspend: { reason: 'delay', resumeAfter },
+    };
   }
 
   /** Bounded iteration; the counter lives in execution state so it survives a restart. */
-  private runLoop(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): NodeExecutionResult {
+  private runLoop(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): NodeExecutionResult {
     const config = node.config as { maxIterations?: number; condition?: string };
     const key = `__loop_${node.id}`;
     const iteration = Number((context.state[key] as number) ?? 0) + 1;
     const max = Math.min(Number(config.maxIterations ?? 10), 50);
 
-    const shouldContinue = iteration <= max && (!config.condition || evaluateCondition(config.condition, scope));
+    const shouldContinue =
+      iteration <= max && (!config.condition || evaluateCondition(config.condition, scope));
     return {
       output: { iteration, continue: shouldContinue },
       branch: shouldContinue ? 'continue' : 'done',
@@ -412,10 +528,15 @@ export class NodeExecutors {
 
   // ── Action nodes ───────────────────────────────────────────────────────────
 
-  private async runSendMessage(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
+  private async runSendMessage(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
     const config = node.config as { body?: string; conversationId?: string };
     const conversationId = config.conversationId ?? context.conversationId;
-    if (!conversationId) return { output: null, error: 'There is no conversation to send a message to' };
+    if (!conversationId)
+      return { output: null, error: 'There is no conversation to send a message to' };
 
     const body = interpolate(config.body ?? '{{ answer }}', scope).trim();
     if (!body) return { output: null, error: 'The message body is empty' };
@@ -430,8 +551,17 @@ export class NodeExecutors {
     return { output: { messageId: message.id, deliveryState: message.deliveryState } };
   }
 
-  private async runCreateTicket(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
-    const config = node.config as { subject?: string; description?: string; priority?: string; category?: string };
+  private async runCreateTicket(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
+    const config = node.config as {
+      subject?: string;
+      description?: string;
+      priority?: string;
+      category?: string;
+    };
     const payload = {
       subject: interpolate(config.subject ?? 'Follow-up required', scope),
       description: config.description ? interpolate(config.description, scope) : undefined,
@@ -442,12 +572,25 @@ export class NodeExecutors {
     const ticket = context.conversationId
       ? await this.tickets.createFromConversation(context.conversationId, payload as never)
       : await this.tickets.create(payload as never);
-    return { output: { ticketId: ticket.id, reference: ticket.reference }, statePatch: { ticketId: ticket.id } };
+    return {
+      output: { ticketId: ticket.id, reference: ticket.reference },
+      statePatch: { ticketId: ticket.id },
+    };
   }
 
-  private async runUpdateTicket(node: WorkflowNode, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
-    const config = node.config as { ticketId?: string; status?: string; priority?: string; category?: string };
-    const ticketId = config.ticketId ? interpolate(config.ticketId, scope) : (scope.ticketId as string | undefined);
+  private async runUpdateTicket(
+    node: WorkflowNode,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
+    const config = node.config as {
+      ticketId?: string;
+      status?: string;
+      priority?: string;
+      category?: string;
+    };
+    const ticketId = config.ticketId
+      ? interpolate(config.ticketId, scope)
+      : (scope.ticketId as string | undefined);
     if (!ticketId) return { output: null, error: 'No ticket id was provided' };
 
     const ticket = await this.tickets.update(ticketId, {
@@ -458,7 +601,11 @@ export class NodeExecutors {
     return { output: { ticketId: ticket.id, status: ticket.status } };
   }
 
-  private async runUpdateCustomer(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
+  private async runUpdateCustomer(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
     const config = node.config as { customerId?: string; fields?: Record<string, string> };
     let customerId = config.customerId ? interpolate(config.customerId, scope) : undefined;
 
@@ -466,7 +613,8 @@ export class NodeExecutors {
       const conversation = await this.conversations.get(context.conversationId);
       customerId = conversation.customerId ?? undefined;
     }
-    if (!customerId) return { output: null, error: 'No customer is associated with this execution' };
+    if (!customerId)
+      return { output: null, error: 'No customer is associated with this execution' };
 
     const patch: Record<string, unknown> = {};
     for (const [key, template] of Object.entries(config.fields ?? {})) {
@@ -477,12 +625,22 @@ export class NodeExecutors {
   }
 
   /** An HTTP action, subject to the same egress control as a custom tool. */
-  private async runHttp(node: WorkflowNode, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
-    const config = node.config as { url?: string; method?: string; headers?: Record<string, string>; body?: unknown; timeoutMs?: number };
+  private async runHttp(
+    node: WorkflowNode,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
+    const config = node.config as {
+      url?: string;
+      method?: string;
+      headers?: Record<string, string>;
+      body?: unknown;
+      timeoutMs?: number;
+    };
     const url = interpolate(config.url ?? '', scope);
 
     const egress = isEgressAllowed(url);
-    if (!egress.allowed) return { output: null, error: `The request was refused: ${egress.reason}` };
+    if (!egress.allowed)
+      return { output: null, error: `The request was refused: ${egress.reason}` };
 
     const method = (config.method ?? 'POST').toUpperCase();
     const body = config.body ? interpolate(JSON.stringify(config.body), scope) : undefined;
@@ -512,8 +670,16 @@ export class NodeExecutors {
     }
   }
 
-  private async runTool(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
-    const config = node.config as { toolKey?: string; arguments?: Record<string, unknown>; declaredTools?: string[] };
+  private async runTool(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
+    const config = node.config as {
+      toolKey?: string;
+      arguments?: Record<string, unknown>;
+      declaredTools?: string[];
+    };
     if (!config.toolKey) return { output: null, error: 'No tool was selected for this node' };
 
     const tool = await this.tools.findByKey(config.toolKey);
@@ -521,11 +687,19 @@ export class NodeExecutors {
 
     const verdict = await this.guardrails.checkToolCall(
       { key: config.toolKey, url: tool.url, requiresApproval: tool.requiresApproval },
-      { conversationId: context.conversationId, executionId: context.executionId, declaredTools: config.declaredTools },
+      {
+        conversationId: context.conversationId,
+        executionId: context.executionId,
+        declaredTools: config.declaredTools,
+      },
     );
-    if (verdict.blocked) return { output: null, error: verdict.reason ?? 'The tool call was blocked' };
+    if (verdict.blocked)
+      return { output: null, error: verdict.reason ?? 'The tool call was blocked' };
     if (verdict.handoff) {
-      return { output: { pendingApproval: true, tool: config.toolKey }, suspend: { reason: 'tool_approval' } };
+      return {
+        output: { pendingApproval: true, tool: config.toolKey },
+        suspend: { reason: 'tool_approval' },
+      };
     }
 
     const args: Record<string, unknown> = {};
@@ -553,15 +727,37 @@ export class NodeExecutors {
    * Hand the conversation to a person. The execution ends here — from this
    * point a human owns the interaction, and the workflow must not keep acting.
    */
-  private async runHandoff(node: WorkflowNode, context: NodeRuntimeContext, scope: Record<string, unknown>): Promise<NodeExecutionResult> {
-    const config = node.config as { reason?: string; queueId?: string; teamId?: string; userId?: string; summary?: string; priority?: string };
-    const reason = interpolate(config.reason ?? (scope.handoffReason as string) ?? 'The AI agent requested human assistance', scope);
+  private async runHandoff(
+    node: WorkflowNode,
+    context: NodeRuntimeContext,
+    scope: Record<string, unknown>,
+  ): Promise<NodeExecutionResult> {
+    const config = node.config as {
+      reason?: string;
+      queueId?: string;
+      teamId?: string;
+      userId?: string;
+      summary?: string;
+      priority?: string;
+    };
+    const reason = interpolate(
+      config.reason ?? (scope.handoffReason as string) ?? 'The AI agent requested human assistance',
+      scope,
+    );
 
     // Running an agent outside a conversation is a legitimate test path. The
     // decision to hand off is still the correct outcome and is reported as
     // such — it is not an execution failure.
     if (!context.conversationId) {
-      return { output: { handoff: true, reason, applied: false, note: 'No conversation is attached, so no transfer was performed' }, terminal: true };
+      return {
+        output: {
+          handoff: true,
+          reason,
+          applied: false,
+          note: 'No conversation is attached, so no transfer was performed',
+        },
+        terminal: true,
+      };
     }
 
     if (config.userId || config.teamId || config.queueId) {
@@ -579,19 +775,27 @@ export class NodeExecutors {
     await this.conversations.setHandoffReason(context.conversationId, reason);
 
     // An AI-written summary is what makes a handoff useful rather than a dump.
-    const summary = config.summary ? interpolate(config.summary, scope) : (scope.answer as string | undefined);
+    const summary = config.summary
+      ? interpolate(config.summary, scope)
+      : (scope.answer as string | undefined);
     await this.conversations.addInternalNote(
       context.conversationId,
       summary ? `AI handoff — ${reason}\n\n${summary}` : `AI handoff — ${reason}`,
     );
 
-    await this.conversations.recordEvent(context.conversationId, 'ai_handoff', { reason, nodeId: node.id });
+    await this.conversations.recordEvent(context.conversationId, 'ai_handoff', {
+      reason,
+      nodeId: node.id,
+    });
 
     if (node.type === 'human.escalate' && config.priority) {
       await this.conversations.update(context.conversationId, { priority: config.priority });
     }
 
-    this.logger.info('Conversation handed to a human', { conversationId: context.conversationId, reason });
+    this.logger.info('Conversation handed to a human', {
+      conversationId: context.conversationId,
+      reason,
+    });
     return { output: { handoff: true, reason }, terminal: true };
   }
 }

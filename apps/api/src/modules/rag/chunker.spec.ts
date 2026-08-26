@@ -14,7 +14,13 @@ describe('chunkDocument', () => {
   });
 
   it('splits on headings so each chunk covers one topic', () => {
-    const document = ['# Refunds', 'Refunds take three days.', '', '# Shipping', 'Shipping takes five days.'].join('\n');
+    const document = [
+      '# Refunds',
+      'Refunds take three days.',
+      '',
+      '# Shipping',
+      'Shipping takes five days.',
+    ].join('\n');
     const chunks = chunkDocument(document);
     expect(chunks).toHaveLength(2);
     expect(chunks[0].heading).toBe('Refunds');
@@ -38,11 +44,21 @@ describe('chunkDocument', () => {
   });
 
   it('overlaps consecutive chunks so a fact on a boundary survives', () => {
-    const sentences = Array.from({ length: 120 }, (_, i) => `Fact number ${i} explains part of the billing policy.`).join(' ');
-    const chunks = chunkDocument(sentences, { targetTokens: 120, overlapTokens: 40, maxTokens: 240 });
+    const sentences = Array.from(
+      { length: 120 },
+      (_, i) => `Fact number ${i} explains part of the billing policy.`,
+    ).join(' ');
+    const chunks = chunkDocument(sentences, {
+      targetTokens: 120,
+      overlapTokens: 40,
+      maxTokens: 240,
+    });
     expect(chunks.length).toBeGreaterThan(1);
 
-    const tailOfFirst = chunks[0].content.split(/(?<=\.)\s+/).slice(-2).join(' ');
+    const tailOfFirst = chunks[0].content
+      .split(/(?<=\.)\s+/)
+      .slice(-2)
+      .join(' ');
     // At least part of the first chunk's tail reappears at the head of the next.
     const overlapFound = tailOfFirst
       .split(/(?<=\.)\s+/)
@@ -51,11 +67,18 @@ describe('chunkDocument', () => {
   });
 
   it('never splits a fenced code block', () => {
-    const code = ['```js', ...Array.from({ length: 60 }, (_, i) => `const line${i} = ${i};`), '```'].join('\n');
+    const code = [
+      '```js',
+      ...Array.from({ length: 60 }, (_, i) => `const line${i} = ${i};`),
+      '```',
+    ].join('\n');
     const document = `Intro sentence.\n\n${code}\n\nClosing sentence.`;
     const chunks = chunkDocument(document, { targetTokens: 50, maxTokens: 80 });
 
-    const opens = chunks.reduce((total, chunk) => total + (chunk.content.match(/```/g) ?? []).length, 0);
+    const opens = chunks.reduce(
+      (total, chunk) => total + (chunk.content.match(/```/g) ?? []).length,
+      0,
+    );
     // Every fence marker is still paired, so no chunk holds half a code block.
     expect(opens % 2).toBe(0);
     const holdingCode = chunks.find((chunk) => chunk.content.includes('const line0'));
@@ -63,8 +86,14 @@ describe('chunkDocument', () => {
   });
 
   it('keeps table rows intact', () => {
-    const rows = Array.from({ length: 40 }, (_, i) => `| Plan ${i} | ${i * 10} USD | monthly |`).join('\n');
-    const chunks = chunkDocument(`| Plan | Price | Cycle |\n${rows}`, { targetTokens: 60, maxTokens: 120 });
+    const rows = Array.from(
+      { length: 40 },
+      (_, i) => `| Plan ${i} | ${i * 10} USD | monthly |`,
+    ).join('\n');
+    const chunks = chunkDocument(`| Plan | Price | Cycle |\n${rows}`, {
+      targetTokens: 60,
+      maxTokens: 120,
+    });
     for (const chunk of chunks) {
       for (const line of chunk.content.split('\n').filter((l) => l.includes('|'))) {
         // A row that starts with a pipe must also end with one.
@@ -82,7 +111,9 @@ describe('chunkDocument', () => {
   });
 
   it('reports a token count for every chunk', () => {
-    for (const chunk of chunkDocument('# Title\nSome content here that is long enough to measure.')) {
+    for (const chunk of chunkDocument(
+      '# Title\nSome content here that is long enough to measure.',
+    )) {
       expect(chunk.tokenCount).toBeGreaterThan(0);
     }
   });

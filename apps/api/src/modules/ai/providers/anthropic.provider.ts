@@ -70,9 +70,17 @@ export class AnthropicProvider implements AiProviderAdapter {
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
       throw new AppError(
-        response.status === 429 || response.status >= 500 ? 'dependency_unavailable' : 'bad_request',
+        response.status === 429 || response.status >= 500
+          ? 'dependency_unavailable'
+          : 'bad_request',
         `anthropic returned ${response.status}`,
-        { meta: { status: response.status, detail: detail.slice(0, 500), retryable: response.status === 429 || response.status >= 500 } },
+        {
+          meta: {
+            status: response.status,
+            detail: detail.slice(0, 500),
+            retryable: response.status === 429 || response.status >= 500,
+          },
+        },
       );
     }
 

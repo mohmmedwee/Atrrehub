@@ -53,7 +53,9 @@ export const envSchema = z.object({
   IMAP_USER: z.string().optional(),
   IMAP_PASSWORD: z.string().optional(),
 
-  AI_DEFAULT_PROVIDER: z.enum(['local', 'openai', 'azure_openai', 'anthropic', 'gemini', 'custom']).default('local'),
+  AI_DEFAULT_PROVIDER: z
+    .enum(['local', 'openai', 'azure_openai', 'anthropic', 'gemini', 'custom'])
+    .default('local'),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
   ANTHROPIC_API_KEY: z.string().optional(),

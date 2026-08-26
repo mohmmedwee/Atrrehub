@@ -19,10 +19,16 @@ export class QualityListener {
   @OnEvent(DomainEvent.ConversationResolved)
   async onResolved(event: DomainEventEnvelope<{ conversationId: string }>) {
     try {
-      await this.queue.enqueue(QUEUES.quality, 'evaluate-conversation', { conversationId: event.data.conversationId });
-      await this.queue.enqueue(QUEUES.intelligence, 'extract-intelligence', { conversationId: event.data.conversationId });
+      await this.queue.enqueue(QUEUES.quality, 'evaluate-conversation', {
+        conversationId: event.data.conversationId,
+      });
+      await this.queue.enqueue(QUEUES.intelligence, 'extract-intelligence', {
+        conversationId: event.data.conversationId,
+      });
     } catch (error) {
-      this.logger.error('Could not schedule post-resolution analysis', error, { conversationId: event.data.conversationId });
+      this.logger.error('Could not schedule post-resolution analysis', error, {
+        conversationId: event.data.conversationId,
+      });
     }
   }
 
@@ -32,7 +38,9 @@ export class QualityListener {
    * evidence about how the customer is feeling.
    */
   @OnEvent(DomainEvent.MessageCreated)
-  async onMessage(event: DomainEventEnvelope<{ conversationId: string; messageId: string; direction: string }>) {
+  async onMessage(
+    event: DomainEventEnvelope<{ conversationId: string; messageId: string; direction: string }>,
+  ) {
     if (event.data.direction !== 'inbound') return;
     try {
       await this.queue.enqueue(QUEUES.quality, 'monitor-live', {

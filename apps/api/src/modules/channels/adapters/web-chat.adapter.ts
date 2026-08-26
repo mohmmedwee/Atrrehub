@@ -31,7 +31,10 @@ export class WebChatAdapter implements ChannelAdapter {
 
   constructor(private readonly realtime: RealtimeGateway) {}
 
-  async receive(payload: unknown, _account: ChannelAccountContext): Promise<NormalizedInboundMessage | null> {
+  async receive(
+    payload: unknown,
+    _account: ChannelAccountContext,
+  ): Promise<NormalizedInboundMessage | null> {
     const input = payload as WebChatPayload;
     if (!input?.body?.trim()) return null;
 
@@ -40,7 +43,11 @@ export class WebChatAdapter implements ChannelAdapter {
       threadKey: `web_chat:${input.sessionId}`,
       contact: input.email
         ? { kind: 'email', value: input.email, displayName: input.displayName }
-        : { kind: 'external', value: input.visitorId ?? input.sessionId, displayName: input.displayName ?? 'Website visitor' },
+        : {
+            kind: 'external',
+            value: input.visitorId ?? input.sessionId,
+            displayName: input.displayName ?? 'Website visitor',
+          },
       body: input.body.trim(),
       locale: input.locale,
       metadata: { ...input.metadata, sessionId: input.sessionId },
@@ -49,12 +56,17 @@ export class WebChatAdapter implements ChannelAdapter {
   }
 
   async send(message: OutboundMessage, account: ChannelAccountContext): Promise<DeliveryReceipt> {
-    const reached = this.realtime.emitToConversation(account.organizationId, message.conversationId, 'message', {
-      messageId: message.messageId,
-      body: message.body,
-      bodyHtml: message.bodyHtml,
-      metadata: message.metadata,
-    });
+    const reached = this.realtime.emitToConversation(
+      account.organizationId,
+      message.conversationId,
+      'message',
+      {
+        messageId: message.messageId,
+        body: message.body,
+        bodyHtml: message.bodyHtml,
+        metadata: message.metadata,
+      },
+    );
     // The transcript is persisted either way; an offline visitor sees it on return.
     return { externalId: message.messageId, state: reached ? 'delivered' : 'sent' };
   }

@@ -47,7 +47,10 @@ export class SlaService {
   async listPolicies() {
     return this.prisma.db.slaPolicy.findMany({
       where: {},
-      include: { targets: { orderBy: [{ type: 'asc' }, { priority: 'asc' }] }, businessHours: { select: { id: true, name: true, timezone: true } } },
+      include: {
+        targets: { orderBy: [{ type: 'asc' }, { priority: 'asc' }] },
+        businessHours: { select: { id: true, name: true, timezone: true } },
+      },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     });
   }
@@ -58,7 +61,14 @@ export class SlaService {
     businessHoursId?: string;
     conditions?: Record<string, unknown>;
     isDefault?: boolean;
-    targets: { type: SlaTargetType; priority: Priority; durationMinutes: number; warningPercent?: number; escalateToTeamId?: string; escalateToUserId?: string }[];
+    targets: {
+      type: SlaTargetType;
+      priority: Priority;
+      durationMinutes: number;
+      warningPercent?: number;
+      escalateToTeamId?: string;
+      escalateToUserId?: string;
+    }[];
   }) {
     if (input.isDefault) {
       await this.prisma.db.slaPolicy.updateMany({ where: {}, data: { isDefault: false } });
@@ -93,7 +103,12 @@ export class SlaService {
       });
     });
 
-    await this.audit.record({ action: 'sla_policy.created', resourceType: 'sla_policy', resourceId: policyId, after: input });
+    await this.audit.record({
+      action: 'sla_policy.created',
+      resourceType: 'sla_policy',
+      resourceId: policyId,
+      after: input,
+    });
     return this.getPolicy(policyId);
   }
 
@@ -108,9 +123,19 @@ export class SlaService {
 
   async updatePolicy(policyId: string, patch: Record<string, unknown>) {
     const before = await this.getPolicy(policyId);
-    if (patch.isDefault) await this.prisma.db.slaPolicy.updateMany({ where: {}, data: { isDefault: false } });
-    const after = await this.prisma.db.slaPolicy.update({ where: { id: policyId }, data: patch as never });
-    await this.audit.recordDiff('sla_policy.updated', 'sla_policy', policyId, before as never, after as never);
+    if (patch.isDefault)
+      await this.prisma.db.slaPolicy.updateMany({ where: {}, data: { isDefault: false } });
+    const after = await this.prisma.db.slaPolicy.update({
+      where: { id: policyId },
+      data: patch as never,
+    });
+    await this.audit.recordDiff(
+      'sla_policy.updated',
+      'sla_policy',
+      policyId,
+      before as never,
+      after as never,
+    );
     return this.getPolicy(policyId);
   }
 
@@ -144,12 +169,17 @@ export class SlaService {
       let matches = true;
       for (const [key, value] of Object.entries(conditions)) {
         const actual =
-          key === 'priority' ? subject.priority
-          : key === 'channel' ? subject.channel
-          : key === 'teamId' ? subject.teamId
-          : key === 'queueId' ? subject.queueId
-          : key === 'tier' ? subject.customerTier
-          : undefined;
+          key === 'priority'
+            ? subject.priority
+            : key === 'channel'
+              ? subject.channel
+              : key === 'teamId'
+                ? subject.teamId
+                : key === 'queueId'
+                  ? subject.queueId
+                  : key === 'tier'
+                    ? subject.customerTier
+                    : undefined;
         const expected = Array.isArray(value) ? value : [value];
         if (actual === undefined || actual === null || !expected.includes(actual)) {
           matches = false;
@@ -172,7 +202,10 @@ export class SlaService {
    * Start the SLA clocks for a subject. Existing running clocks of the same
    * type are left alone so a re-trigger cannot reset a deadline.
    */
-  async startClocks(subject: SlaSubject, types: SlaTargetType[] = ['first_response', 'resolution']) {
+  async startClocks(
+    subject: SlaSubject,
+    types: SlaTargetType[] = ['first_response', 'resolution'],
+  ) {
     const policy = await this.resolvePolicy(subject);
     if (!policy) return [];
 
@@ -189,7 +222,9 @@ export class SlaService {
         where: {
           type,
           state: { in: ['running', 'paused'] },
-          ...(subject.type === 'conversation' ? { conversationId: subject.id } : { ticketId: subject.id }),
+          ...(subject.type === 'conversation'
+            ? { conversationId: subject.id }
+            : { ticketId: subject.id }),
         },
       });
       if (existing) continue;
@@ -219,23 +254,33 @@ export class SlaService {
       });
       created.push(clock);
 
-      await this.events.publish(DomainEvent.SlaStarted, { type: subject.type, id: subject.id }, {
-        targetType: type,
-        subjectId: subject.id,
-        dueAt: dueAt.toISOString(),
-      });
+      await this.events.publish(
+        DomainEvent.SlaStarted,
+        { type: subject.type, id: subject.id },
+        {
+          targetType: type,
+          subjectId: subject.id,
+          dueAt: dueAt.toISOString(),
+        },
+      );
     }
 
     return created;
   }
 
   /** Stop a clock as met, recording the working time actually consumed. */
-  async completeClock(subjectType: 'conversation' | 'ticket', subjectId: string, type: SlaTargetType) {
+  async completeClock(
+    subjectType: 'conversation' | 'ticket',
+    subjectId: string,
+    type: SlaTargetType,
+  ) {
     const clock = await this.prisma.db.slaClock.findFirst({
       where: {
         type,
         state: { in: ['running', 'paused'] },
-        ...(subjectType === 'conversation' ? { conversationId: subjectId } : { ticketId: subjectId }),
+        ...(subjectType === 'conversation'
+          ? { conversationId: subjectId }
+          : { ticketId: subjectId }),
       },
       include: { policy: true },
     });
@@ -256,11 +301,15 @@ export class SlaService {
       },
     });
 
-    await this.events.publish(met ? DomainEvent.SlaMet : DomainEvent.SlaBreached, { type: subjectType, id: subjectId }, {
-      targetType: type,
-      subjectId,
-      elapsedMs: Math.max(0, elapsedMs),
-    });
+    await this.events.publish(
+      met ? DomainEvent.SlaMet : DomainEvent.SlaBreached,
+      { type: subjectType, id: subjectId },
+      {
+        targetType: type,
+        subjectId,
+        elapsedMs: Math.max(0, elapsedMs),
+      },
+    );
     return updated;
   }
 
@@ -272,7 +321,9 @@ export class SlaService {
     const clocks = await this.prisma.db.slaClock.findMany({
       where: {
         state: 'running',
-        ...(subjectType === 'conversation' ? { conversationId: subjectId } : { ticketId: subjectId }),
+        ...(subjectType === 'conversation'
+          ? { conversationId: subjectId }
+          : { ticketId: subjectId }),
       },
     });
     const now = new Date();
@@ -290,7 +341,9 @@ export class SlaService {
     const clocks = await this.prisma.db.slaClock.findMany({
       where: {
         state: 'paused',
-        ...(subjectType === 'conversation' ? { conversationId: subjectId } : { ticketId: subjectId }),
+        ...(subjectType === 'conversation'
+          ? { conversationId: subjectId }
+          : { ticketId: subjectId }),
       },
       include: { policy: true },
     });
@@ -321,7 +374,9 @@ export class SlaService {
     await this.prisma.db.slaClock.updateMany({
       where: {
         state: { in: ['running', 'paused'] },
-        ...(subjectType === 'conversation' ? { conversationId: subjectId } : { ticketId: subjectId }),
+        ...(subjectType === 'conversation'
+          ? { conversationId: subjectId }
+          : { ticketId: subjectId }),
       },
       data: { state: 'cancelled', completedAt: new Date() },
     });
@@ -329,7 +384,8 @@ export class SlaService {
 
   async clocksFor(subjectType: 'conversation' | 'ticket', subjectId: string) {
     return this.prisma.db.slaClock.findMany({
-      where: subjectType === 'conversation' ? { conversationId: subjectId } : { ticketId: subjectId },
+      where:
+        subjectType === 'conversation' ? { conversationId: subjectId } : { ticketId: subjectId },
       orderBy: { startedAt: 'asc' },
     });
   }
@@ -363,7 +419,10 @@ export class SlaService {
         await RequestContextStore.runAsSystem(async () => {
           await this.events.publish(
             DomainEvent.SlaWarning,
-            { type: clock.conversationId ? 'conversation' : 'ticket', id: (clock.conversationId ?? clock.ticketId)! },
+            {
+              type: clock.conversationId ? 'conversation' : 'ticket',
+              id: (clock.conversationId ?? clock.ticketId)!,
+            },
             {
               targetType: clock.type,
               subjectId: clock.conversationId ?? clock.ticketId,
@@ -387,12 +446,18 @@ export class SlaService {
           where: { id: clock.id },
           data: { state: 'breached', breachedAt: now },
         });
-        this.metrics.slaBreaches.inc({ target_type: clock.type, priority: clock.target?.priority ?? 'unknown' });
+        this.metrics.slaBreaches.inc({
+          target_type: clock.type,
+          priority: clock.target?.priority ?? 'unknown',
+        });
 
         await RequestContextStore.runAsSystem(async () => {
           await this.events.publish(
             DomainEvent.SlaBreached,
-            { type: clock.conversationId ? 'conversation' : 'ticket', id: (clock.conversationId ?? clock.ticketId)! },
+            {
+              type: clock.conversationId ? 'conversation' : 'ticket',
+              id: (clock.conversationId ?? clock.ticketId)!,
+            },
             {
               targetType: clock.type,
               subjectId: clock.conversationId ?? clock.ticketId,
@@ -418,7 +483,12 @@ export class SlaService {
 
   private async escalate(
     organizationId: string,
-    clock: { id: string; conversationId: string | null; ticketId: string | null; target: { escalateToUserId: string | null; escalateToTeamId: string | null } | null },
+    clock: {
+      id: string;
+      conversationId: string | null;
+      ticketId: string | null;
+      target: { escalateToUserId: string | null; escalateToTeamId: string | null } | null;
+    },
     now: Date,
   ) {
     const assigneeId = clock.target?.escalateToUserId;
@@ -436,7 +506,11 @@ export class SlaService {
     } else if (clock.ticketId) {
       await this.prisma.raw.ticket.update({
         where: { id: clock.ticketId },
-        data: { priority: 'urgent', ...(assigneeId ? { assigneeId } : {}), ...(teamId ? { teamId } : {}) },
+        data: {
+          priority: 'urgent',
+          ...(assigneeId ? { assigneeId } : {}),
+          ...(teamId ? { teamId } : {}),
+        },
       });
     }
 
@@ -454,7 +528,10 @@ export class SlaService {
       select: { type: true, state: true, elapsedMs: true },
     });
 
-    const byType = new Map<string, { met: number; breached: number; totalMs: number; count: number }>();
+    const byType = new Map<
+      string,
+      { met: number; breached: number; totalMs: number; count: number }
+    >();
     for (const clock of clocks) {
       const entry = byType.get(clock.type) ?? { met: 0, breached: 0, totalMs: 0, count: 0 };
       if (clock.state === 'met') entry.met += 1;

@@ -19,7 +19,11 @@ export class ApiLogInterceptor implements NestInterceptor {
     if (context.getType() !== 'http') return next.handle();
 
     const http = context.switchToHttp();
-    const request = http.getRequest<{ method: string; url: string; routeOptions?: { url?: string } }>();
+    const request = http.getRequest<{
+      method: string;
+      url: string;
+      routeOptions?: { url?: string };
+    }>();
     const started = Date.now();
 
     const write = (statusCode: number, errorCode?: string) => {
@@ -47,8 +51,10 @@ export class ApiLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => write(http.getResponse<{ statusCode: number }>().statusCode)),
       catchError((error) => {
-        write(error instanceof AppError ? error.status : (error?.status ?? 500),
-          error instanceof AppError ? error.code : 'internal_error');
+        write(
+          error instanceof AppError ? error.status : (error?.status ?? 500),
+          error instanceof AppError ? error.code : 'internal_error',
+        );
         throw error;
       }),
     );

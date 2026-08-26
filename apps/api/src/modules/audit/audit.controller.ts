@@ -25,7 +25,10 @@ export class AuditController {
   @Get()
   @RequirePermissions('audit:read')
   @ApiOperation({ summary: 'Search the audit trail' })
-  async search(@CurrentOrg() organizationId: string, @Query(zodQuery(SearchQuery)) query: z.infer<typeof SearchQuery>) {
+  async search(
+    @CurrentOrg() organizationId: string,
+    @Query(zodQuery(SearchQuery)) query: z.infer<typeof SearchQuery>,
+  ) {
     return this.audit.search({ organizationId, ...query });
   }
 }

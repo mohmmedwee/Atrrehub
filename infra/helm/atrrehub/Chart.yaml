@@ -1,0 +1,6 @@
+apiVersion: v2
+name: atrrehub
+description: AI-native omnichannel customer experience and contact center platform
+type: application
+version: 0.1.0
+appVersion: '0.1.0'

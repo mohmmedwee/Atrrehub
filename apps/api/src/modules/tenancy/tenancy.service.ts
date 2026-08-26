@@ -242,7 +242,13 @@ export class TenancyService {
       where: { id: organizationId },
       data: patch as never,
     });
-    await this.audit.recordDiff('organization.updated', 'organization', organizationId, before as never, after as never);
+    await this.audit.recordDiff(
+      'organization.updated',
+      'organization',
+      organizationId,
+      before as never,
+      after as never,
+    );
     await this.redis.delByPrefix(this.redis.key(organizationId, 'org'));
     return after;
   }
@@ -274,9 +280,17 @@ export class TenancyService {
     });
   }
 
-  async createWorkspace(input: { name: string; slug?: string; environment?: string; description?: string }) {
+  async createWorkspace(input: {
+    name: string;
+    slug?: string;
+    environment?: string;
+    description?: string;
+  }) {
     const organizationId = RequestContextStore.organizationId()!;
-    const slug = (input.slug ?? input.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slug = (input.slug ?? input.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
 
     const existing = await this.prisma.db.workspace.findFirst({ where: { organizationId, slug } });
     if (existing) throw AppError.conflict(`A workspace with the slug "${slug}" already exists`);
@@ -290,7 +304,12 @@ export class TenancyService {
         environment: (input.environment ?? 'production') as never,
       } as never,
     });
-    await this.audit.record({ action: 'workspace.created', resourceType: 'workspace', resourceId: workspace.id, after: workspace });
+    await this.audit.record({
+      action: 'workspace.created',
+      resourceType: 'workspace',
+      resourceId: workspace.id,
+      after: workspace,
+    });
     return workspace;
   }
 
@@ -302,8 +321,17 @@ export class TenancyService {
 
   async updateWorkspace(workspaceId: string, patch: Record<string, unknown>) {
     const before = await this.getWorkspace(workspaceId);
-    const after = await this.prisma.db.workspace.update({ where: { id: workspaceId }, data: patch as never });
-    await this.audit.recordDiff('workspace.updated', 'workspace', workspaceId, before as never, after as never);
+    const after = await this.prisma.db.workspace.update({
+      where: { id: workspaceId },
+      data: patch as never,
+    });
+    await this.audit.recordDiff(
+      'workspace.updated',
+      'workspace',
+      workspaceId,
+      before as never,
+      after as never,
+    );
     return after;
   }
 
@@ -311,14 +339,25 @@ export class TenancyService {
     const workspace = await this.getWorkspace(workspaceId);
     if (workspace.isDefault) throw AppError.conflict('The default workspace cannot be deleted');
     await this.prisma.db.workspace.delete({ where: { id: workspaceId } });
-    await this.audit.record({ action: 'workspace.deleted', resourceType: 'workspace', resourceId: workspaceId, before: workspace });
+    await this.audit.record({
+      action: 'workspace.deleted',
+      resourceType: 'workspace',
+      resourceId: workspaceId,
+      before: workspace,
+    });
   }
 }
 
 /** Baseline guardrail configuration applied to every new tenant. */
 const DEFAULT_GUARDRAIL_RULES = [
   { stage: 'input', check: 'prompt_injection', action: 'handoff', severity: 'high' },
-  { stage: 'input', check: 'max_length', action: 'block', severity: 'low', config: { maxChars: 8000 } },
+  {
+    stage: 'input',
+    check: 'max_length',
+    action: 'block',
+    severity: 'low',
+    config: { maxChars: 8000 },
+  },
   { stage: 'tool', check: 'authorization', action: 'block', severity: 'high' },
   { stage: 'tool', check: 'egress_allowlist', action: 'block', severity: 'high' },
   { stage: 'output', check: 'pii', action: 'mask', severity: 'medium' },

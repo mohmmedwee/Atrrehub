@@ -48,12 +48,25 @@ export class AgentsService {
   async list() {
     return this.prisma.db.agent.findMany({
       where: {},
-      include: { versions: { orderBy: { version: 'desc' }, take: 1, select: { version: true, publishedAt: true, environment: true } } },
+      include: {
+        versions: {
+          orderBy: { version: 'desc' },
+          take: 1,
+          select: { version: true, publishedAt: true, environment: true },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }
 
-  async create(input: { name: string; key: string; description?: string; workspaceId?: string } & Partial<AgentVersionInput>) {
+  async create(
+    input: {
+      name: string;
+      key: string;
+      description?: string;
+      workspaceId?: string;
+    } & Partial<AgentVersionInput>,
+  ) {
     const existing = await this.prisma.db.agent.findFirst({ where: { key: input.key } });
     if (existing) throw AppError.conflict(`An agent with the key "${input.key}" already exists`);
 
@@ -80,16 +93,24 @@ export class AgentsService {
           organizationId,
           agentId,
           version: 1,
-          instructions: input.instructions ?? 'You are a helpful customer support agent. Answer using the knowledge provided, and hand off to a human when you are unsure.',
+          instructions:
+            input.instructions ??
+            'You are a helpful customer support agent. Answer using the knowledge provided, and hand off to a human when you are unsure.',
           modelRole: (input.modelRole ?? 'chat') as never,
           temperature: input.temperature ?? 0.3,
           maxTokens: input.maxTokens ?? 1024,
           knowledgeBaseIds: input.knowledgeBaseIds ?? [],
           toolIds: input.toolIds ?? [],
           workflowId: input.workflowId ?? null,
-          memoryPolicy: (input.memoryPolicy ?? { shortTerm: true, longTerm: false }) as Prisma.InputJsonValue,
+          memoryPolicy: (input.memoryPolicy ?? {
+            shortTerm: true,
+            longTerm: false,
+          }) as Prisma.InputJsonValue,
           guardrailPolicyId: input.guardrailPolicyId ?? null,
-          handoffRules: (input.handoffRules ?? { confidenceThreshold: 0.7, onRequest: true }) as Prisma.InputJsonValue,
+          handoffRules: (input.handoffRules ?? {
+            confidenceThreshold: 0.7,
+            onRequest: true,
+          }) as Prisma.InputJsonValue,
           greeting: input.greeting ?? null,
           fallbackMessage: input.fallbackMessage ?? null,
           locales: input.locales ?? ['en'],
@@ -101,7 +122,12 @@ export class AgentsService {
       return created;
     });
 
-    await this.audit.record({ action: 'agent.created', resourceType: 'agent', resourceId: agentId, after: { name: input.name } });
+    await this.audit.record({
+      action: 'agent.created',
+      resourceType: 'agent',
+      resourceId: agentId,
+      after: { name: input.name },
+    });
     return this.get(agent.id);
   }
 
@@ -160,7 +186,10 @@ export class AgentsService {
       },
     });
 
-    await this.prisma.db.agent.update({ where: { id: agentId }, data: { draftVersionId: draft.id } });
+    await this.prisma.db.agent.update({
+      where: { id: agentId },
+      data: { draftVersionId: draft.id },
+    });
     return draft;
   }
 
@@ -181,11 +210,15 @@ export class AgentsService {
         include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
       });
       const graph = workflow?.versions[0]?.graph as unknown as WorkflowGraph | undefined;
-      if (!graph) throw AppError.conflict('The workflow attached to this agent has no version to run');
+      if (!graph)
+        throw AppError.conflict('The workflow attached to this agent has no version to run');
       const issues = validateGraph(graph);
       if (!isPublishable(issues)) {
         throw AppError.badRequest(
-          `The attached workflow is not valid: ${issues.filter((issue) => issue.severity === 'error').map((issue) => issue.message).join('; ')}`,
+          `The attached workflow is not valid: ${issues
+            .filter((issue) => issue.severity === 'error')
+            .map((issue) => issue.message)
+            .join('; ')}`,
         );
       }
     }
@@ -217,11 +250,15 @@ export class AgentsService {
       return version;
     });
 
-    await this.events.publish(DomainEvent.AgentPublished, { type: 'agent', id: agentId }, {
-      agentId,
-      version: published.version,
-      environment,
-    });
+    await this.events.publish(
+      DomainEvent.AgentPublished,
+      { type: 'agent', id: agentId },
+      {
+        agentId,
+        version: published.version,
+        environment,
+      },
+    );
     await this.audit.record({
       action: 'agent.published',
       resourceType: 'agent',
@@ -235,10 +272,19 @@ export class AgentsService {
   async rollback(agentId: string, version: number) {
     const target = await this.prisma.db.agentVersion.findFirst({ where: { agentId, version } });
     if (!target) throw AppError.notFound('Agent version', String(version));
-    if (!target.publishedAt) throw AppError.conflict('Only a previously published version can be rolled back to');
+    if (!target.publishedAt)
+      throw AppError.conflict('Only a previously published version can be rolled back to');
 
-    await this.prisma.db.agent.update({ where: { id: agentId }, data: { activeVersionId: target.id } });
-    await this.audit.record({ action: 'agent.rolled_back', resourceType: 'agent', resourceId: agentId, after: { version } });
+    await this.prisma.db.agent.update({
+      where: { id: agentId },
+      data: { activeVersionId: target.id },
+    });
+    await this.audit.record({
+      action: 'agent.rolled_back',
+      resourceType: 'agent',
+      resourceId: agentId,
+      after: { version },
+    });
     return target;
   }
 
@@ -246,7 +292,11 @@ export class AgentsService {
     const inUse = await this.prisma.db.queue.count({ where: { aiAgentId: agentId } });
     if (inUse) throw AppError.conflict(`${inUse} queue(s) still route to this agent`);
     await this.prisma.db.agent.delete({ where: { id: agentId } });
-    await this.audit.record({ action: 'agent.deleted', resourceType: 'agent', resourceId: agentId });
+    await this.audit.record({
+      action: 'agent.deleted',
+      resourceType: 'agent',
+      resourceId: agentId,
+    });
   }
 
   // ── Execution ──────────────────────────────────────────────────────────────
@@ -283,7 +333,11 @@ export class AgentsService {
       agentVersionId: version.id,
       conversationId: input.conversationId,
       triggerType: 'agent.run',
-      input: { message: input.message, customerId: input.customerId, conversationId: input.conversationId },
+      input: {
+        message: input.message,
+        customerId: input.customerId,
+        conversationId: input.conversationId,
+      },
       idempotencyKey: input.idempotencyKey,
     });
 
@@ -338,7 +392,12 @@ export class AgentsService {
             temperature: version.temperature,
           },
         },
-        { id: 'reply', type: 'action.send_message', name: 'Reply', config: { body: '{{ answer }}' } },
+        {
+          id: 'reply',
+          type: 'action.send_message',
+          name: 'Reply',
+          config: { body: '{{ answer }}' },
+        },
         {
           id: 'handoff',
           type: 'human.handoff',

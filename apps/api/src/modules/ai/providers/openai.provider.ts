@@ -58,7 +58,11 @@ export class OpenAiProvider implements AiProviderAdapter {
         ? {
             tools: request.tools.map((tool) => ({
               type: 'function',
-              function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters,
+              },
             })),
           }
         : {}),
@@ -167,14 +171,26 @@ export class OpenAiProvider implements AiProviderAdapter {
   }
 
   private async request(url: string, body: unknown): Promise<any> {
-    const response = await fetch(url, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
       // Rate limits and overloads are retryable; the gateway decides.
       throw new AppError(
-        response.status === 429 || response.status >= 500 ? 'dependency_unavailable' : 'bad_request',
+        response.status === 429 || response.status >= 500
+          ? 'dependency_unavailable'
+          : 'bad_request',
         `${this.name} returned ${response.status}`,
-        { meta: { status: response.status, detail: detail.slice(0, 500), retryable: response.status === 429 || response.status >= 500 } },
+        {
+          meta: {
+            status: response.status,
+            detail: detail.slice(0, 500),
+            retryable: response.status === 429 || response.status >= 500,
+          },
+        },
       );
     }
     return response.json();
@@ -209,6 +225,7 @@ function mapFinishReason(reason: string | undefined): CompletionResponse['finish
 function deriveConfidence(logprobs: any): number | undefined {
   const tokens = logprobs?.content;
   if (!Array.isArray(tokens) || !tokens.length) return undefined;
-  const mean = tokens.reduce((total: number, token: any) => total + (token.logprob ?? 0), 0) / tokens.length;
+  const mean =
+    tokens.reduce((total: number, token: any) => total + (token.logprob ?? 0), 0) / tokens.length;
   return Math.max(0, Math.min(1, Math.exp(mean)));
 }

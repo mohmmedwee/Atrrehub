@@ -53,7 +53,13 @@ export class ChannelsService {
       return null;
     }
 
-    return this.acceptInbound(channel, normalized, account.id, account.queueId ?? undefined, account.workspaceId ?? undefined);
+    return this.acceptInbound(
+      channel,
+      normalized,
+      account.id,
+      account.queueId ?? undefined,
+      account.workspaceId ?? undefined,
+    );
   }
 
   /** Shared by every adapter and by the widget endpoints. */
@@ -72,15 +78,21 @@ export class ChannelsService {
       select: { id: true, conversationId: true },
     });
     if (duplicate) {
-      this.logger.debug('Ignoring a redelivered inbound message', { externalId: normalized.externalId });
+      this.logger.debug('Ignoring a redelivered inbound message', {
+        externalId: normalized.externalId,
+      });
       return { conversationId: duplicate.conversationId, messageId: duplicate.id, duplicate: true };
     }
 
-    const { customer } = await this.customers.findOrCreateByContact(normalized.contact.kind, normalized.contact.value, {
-      displayName: normalized.contact.displayName,
-      locale: normalized.locale,
-      workspaceId,
-    });
+    const { customer } = await this.customers.findOrCreateByContact(
+      normalized.contact.kind,
+      normalized.contact.value,
+      {
+        displayName: normalized.contact.displayName,
+        locale: normalized.locale,
+        workspaceId,
+      },
+    );
 
     const conversation = await this.resolveConversation(channel, normalized, customer.id, {
       channelAccountId,
@@ -114,16 +126,27 @@ export class ChannelsService {
       createdAt: message.createdAt,
     });
     if (conversation.queueId) {
-      this.realtime.emitToQueue(organizationId, conversation.queueId, 'queue:updated', { conversationId: conversation.id });
+      this.realtime.emitToQueue(organizationId, conversation.queueId, 'queue:updated', {
+        conversationId: conversation.id,
+      });
     }
 
-    await this.events.publish(DomainEvent.ChannelInboundReceived, { type: 'conversation', id: conversation.id }, {
-      channel,
-      externalId: normalized.externalId,
-      conversationId: conversation.id,
-    });
+    await this.events.publish(
+      DomainEvent.ChannelInboundReceived,
+      { type: 'conversation', id: conversation.id },
+      {
+        channel,
+        externalId: normalized.externalId,
+        conversationId: conversation.id,
+      },
+    );
 
-    return { conversationId: conversation.id, messageId: message.id, customerId: customer.id, duplicate: false };
+    return {
+      conversationId: conversation.id,
+      messageId: message.id,
+      customerId: customer.id,
+      duplicate: false,
+    };
   }
 
   /**
@@ -142,7 +165,10 @@ export class ChannelsService {
   ) {
     if (normalized.threadKey) {
       const byThread = await this.prisma.db.conversation.findFirst({
-        where: { threadKey: normalized.threadKey, status: { in: ConversationsService.openStatuses } },
+        where: {
+          threadKey: normalized.threadKey,
+          status: { in: ConversationsService.openStatuses },
+        },
       });
       if (byThread) return byThread;
     }
@@ -252,8 +278,13 @@ export class ChannelsService {
     const destination = conversation.customer?.contactMethods?.[0]?.value;
     if (!this.registry.has(conversation.channel) || !destination) {
       // Web chat delivers over the socket; other channels need a destination.
-      await this.conversations.updateDeliveryState(message.id, this.registry.has(conversation.channel) ? 'sent' : 'failed',
-        this.registry.has(conversation.channel) ? undefined : 'No delivery address for this customer');
+      await this.conversations.updateDeliveryState(
+        message.id,
+        this.registry.has(conversation.channel) ? 'sent' : 'failed',
+        this.registry.has(conversation.channel)
+          ? undefined
+          : 'No delivery address for this customer',
+      );
     } else {
       const adapter = this.registry.adapter(conversation.channel);
       const account = conversation.channelAccountId
@@ -285,10 +316,15 @@ export class ChannelsService {
 
       await this.conversations.updateDeliveryState(message.id, receipt.state, receipt.error);
       if (receipt.externalId) {
-        await this.prisma.db.message.update({ where: { id: message.id }, data: { externalId: receipt.externalId } });
+        await this.prisma.db.message.update({
+          where: { id: message.id },
+          data: { externalId: receipt.externalId },
+        });
       }
       await this.events.publish(
-        receipt.state === 'failed' ? DomainEvent.ChannelDeliveryFailed : DomainEvent.ChannelOutboundSent,
+        receipt.state === 'failed'
+          ? DomainEvent.ChannelDeliveryFailed
+          : DomainEvent.ChannelOutboundSent,
         { type: 'message', id: message.id },
         { channel: conversation.channel, messageId: message.id, reason: receipt.error },
       );
@@ -310,7 +346,10 @@ export class ChannelsService {
   // ── Channel accounts ───────────────────────────────────────────────────────
 
   async listAccounts() {
-    const accounts = await this.prisma.db.channelAccount.findMany({ where: {}, orderBy: { createdAt: 'asc' } });
+    const accounts = await this.prisma.db.channelAccount.findMany({
+      where: {},
+      orderBy: { createdAt: 'asc' },
+    });
     // Credentials never leave the server, not even to an administrator.
     return accounts.map(({ credentials: _credentials, ...account }) => ({
       ...account,
@@ -327,7 +366,10 @@ export class ChannelsService {
     workspaceId?: string;
   }) {
     if (!this.registry.has(input.channel)) {
-      throw new AppError('not_implemented', `The ${input.channel} channel is not enabled in this deployment`);
+      throw new AppError(
+        'not_implemented',
+        `The ${input.channel} channel is not enabled in this deployment`,
+      );
     }
     const account = await this.prisma.db.channelAccount.create({
       data: {
@@ -344,12 +386,23 @@ export class ChannelsService {
     return safe;
   }
 
-  async updateAccount(accountId: string, patch: { name?: string; credentials?: Record<string, unknown>; config?: Record<string, unknown>; queueId?: string | null; isActive?: boolean }) {
+  async updateAccount(
+    accountId: string,
+    patch: {
+      name?: string;
+      credentials?: Record<string, unknown>;
+      config?: Record<string, unknown>;
+      queueId?: string | null;
+      isActive?: boolean;
+    },
+  ) {
     const account = await this.prisma.db.channelAccount.update({
       where: { id: accountId },
       data: {
         ...(patch.name ? { name: patch.name } : {}),
-        ...(patch.credentials ? { credentials: this.crypto.encryptObject(patch.credentials) as never } : {}),
+        ...(patch.credentials
+          ? { credentials: this.crypto.encryptObject(patch.credentials) as never }
+          : {}),
         ...(patch.config ? { config: patch.config as never } : {}),
         ...(patch.queueId !== undefined ? { queueId: patch.queueId } : {}),
         ...(patch.isActive !== undefined ? { isActive: patch.isActive } : {}),

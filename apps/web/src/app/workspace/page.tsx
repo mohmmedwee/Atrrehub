@@ -35,7 +35,8 @@ export default function WorkspacePage() {
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['conversations', filter],
-    queryFn: () => get<Page<ConversationSummary>>(path, { ...query, limit: 50, sort: '-lastMessageAt' }),
+    queryFn: () =>
+      get<Page<ConversationSummary>>(path, { ...query, limit: 50, sort: '-lastMessageAt' }),
     refetchInterval: 20_000,
   });
 
@@ -43,7 +44,9 @@ export default function WorkspacePage() {
   useEffect(() => {
     const off = [
       onRealtime('message', () => queryClient.invalidateQueries({ queryKey: ['conversations'] })),
-      onRealtime('queue:updated', () => queryClient.invalidateQueries({ queryKey: ['conversations'] })),
+      onRealtime('queue:updated', () =>
+        queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+      ),
     ];
     return () => off.forEach((unsubscribe) => unsubscribe());
   }, [queryClient]);
@@ -67,7 +70,9 @@ export default function WorkspacePage() {
               onClick={() => setFilter(entry.key)}
               aria-pressed={filter === entry.key}
               className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors duration-fast ${
-                filter === entry.key ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-surface-sunken'
+                filter === entry.key
+                  ? 'bg-accent/10 text-accent'
+                  : 'text-text-muted hover:bg-surface-sunken'
               }`}
             >
               {entry.label}
@@ -93,7 +98,11 @@ export default function WorkspacePage() {
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
-                    <Avatar name={conversation.customer?.displayName ?? 'Unknown'} url={conversation.customer?.avatarUrl} size={30} />
+                    <Avatar
+                      name={conversation.customer?.displayName ?? 'Unknown'}
+                      url={conversation.customer?.avatarUrl}
+                      size={30}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="truncate text-sm font-medium">
@@ -108,16 +117,22 @@ export default function WorkspacePage() {
                       </p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1">
                         <Badge tone={statusTone[conversation.status]}>{conversation.status}</Badge>
-                        <Badge tone="muted">{channelLabel[conversation.channel] ?? conversation.channel}</Badge>
+                        <Badge tone="muted">
+                          {channelLabel[conversation.channel] ?? conversation.channel}
+                        </Badge>
                         {conversation.priority !== 'normal' ? (
-                          <Badge tone={priorityTone[conversation.priority]}>{conversation.priority}</Badge>
+                          <Badge tone={priorityTone[conversation.priority]}>
+                            {conversation.priority}
+                          </Badge>
                         ) : null}
                         {conversation.intelligence?.sentimentScore != null ? (
                           <Badge tone={sentimentTone(conversation.intelligence.sentimentScore)}>
                             {conversation.intelligence.sentiment}
                           </Badge>
                         ) : null}
-                        {conversation.assigneeType === 'ai_agent' ? <Badge tone="accent">AI</Badge> : null}
+                        {conversation.assigneeType === 'ai_agent' ? (
+                          <Badge tone="accent">AI</Badge>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -129,17 +144,25 @@ export default function WorkspacePage() {
       </aside>
 
       {/* Conversation */}
-      <main className={`min-w-0 flex-1 ${selected ? 'flex' : 'hidden lg:flex'} flex-col bg-surface-sunken`}>
+      <main
+        className={`min-w-0 flex-1 ${selected ? 'flex' : 'hidden lg:flex'} flex-col bg-surface-sunken`}
+      >
         {active ? (
           <ConversationView conversation={active} onBack={() => setSelected(null)} />
         ) : (
-          <Empty title="Select a conversation" hint="Pick a conversation from the queue to see the full thread, the customer's history and AI assistance." />
+          <Empty
+            title="Select a conversation"
+            hint="Pick a conversation from the queue to see the full thread, the customer's history and AI assistance."
+          />
         )}
       </main>
 
       {/* Customer 360 */}
       {active?.customer ? (
-        <aside className="hidden w-80 shrink-0 overflow-y-auto border-s border-border bg-surface xl:block" aria-label="Customer details">
+        <aside
+          className="hidden w-80 shrink-0 overflow-y-auto border-s border-border bg-surface xl:block"
+          aria-label="Customer details"
+        >
           <CustomerPanel customerId={active.customer.id} />
         </aside>
       ) : null}

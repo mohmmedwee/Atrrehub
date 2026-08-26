@@ -51,7 +51,10 @@ export class QueueService implements OnModuleDestroy {
   queue(name: QueueName): Queue {
     let queue = this.queues.get(name);
     if (!queue) {
-      queue = new Queue(name, { connection: this.connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+      queue = new Queue(name, {
+        connection: this.connection,
+        defaultJobOptions: DEFAULT_JOB_OPTIONS,
+      });
       this.queues.set(name, queue);
     }
     return queue;
@@ -66,7 +69,8 @@ export class QueueService implements OnModuleDestroy {
   ): Promise<string | undefined> {
     const context = RequestContextStore.get();
     const organizationId = options?.organizationId ?? context?.organizationId;
-    if (!organizationId) throw new Error(`Cannot enqueue ${name}/${jobName} without an organization`);
+    if (!organizationId)
+      throw new Error(`Cannot enqueue ${name}/${jobName} without an organization`);
 
     const payload: JobPayload<T> = {
       ...data,
@@ -98,7 +102,9 @@ export class QueueService implements OnModuleDestroy {
     const handler: Processor = async (job) => {
       const payload = job.data as JobPayload<T>;
       const ctx = payload.__ctx;
-      return RequestContextStore.run(
+      // `runAsync` awaits inside the scope, so a handler returning a lazy
+      // promise still executes with the job's tenant context in place.
+      return RequestContextStore.runAsync(
         {
           requestId: ctx?.requestId ?? `job-${job.id}`,
           organizationId: ctx?.organizationId,
@@ -110,9 +116,16 @@ export class QueueService implements OnModuleDestroy {
       );
     };
 
-    const worker = new Worker(name, handler, { connection: this.connection, concurrency: this.concurrency });
+    const worker = new Worker(name, handler, {
+      connection: this.connection,
+      concurrency: this.concurrency,
+    });
     worker.on('failed', (job, error) =>
-      this.logger.error('Job failed', error, { queue: name, jobId: job?.id, attempts: job?.attemptsMade }),
+      this.logger.error('Job failed', error, {
+        queue: name,
+        jobId: job?.id,
+        attempts: job?.attemptsMade,
+      }),
     );
     worker.on('error', (error) => this.logger.error('Worker error', error, { queue: name }));
     this.workers.push(worker);

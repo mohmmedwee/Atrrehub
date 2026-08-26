@@ -26,7 +26,11 @@ const VersionSchema = z.object({
 
 const CreateAgentSchema = VersionSchema.extend({
   name: z.string().min(2).max(80),
-  key: z.string().min(2).max(60).regex(/^[a-z][a-z0-9_-]*$/),
+  key: z
+    .string()
+    .min(2)
+    .max(60)
+    .regex(/^[a-z][a-z0-9_-]*$/),
   description: z.string().max(500).optional(),
   workspaceId: z.string().optional(),
 }).strict();
@@ -83,7 +87,10 @@ export class AgentsController {
   @Post('executions/:id/resume')
   @RequirePermissions('agent:execute')
   @ApiOperation({ summary: 'Resume a suspended execution' })
-  async resume(@Param('id') id: string, @Body(zodBody(z.record(z.unknown()))) body: Record<string, unknown>) {
+  async resume(
+    @Param('id') id: string,
+    @Body(zodBody(z.record(z.unknown()))) body: Record<string, unknown>,
+  ) {
     return { status: await this.runtime.resume(id, body) };
   }
 
@@ -105,7 +112,10 @@ export class AgentsController {
   @Patch(':id')
   @RequirePermissions('agent:update')
   @ApiOperation({ summary: 'Edit the draft version; a published version is never modified' })
-  updateDraft(@Param('id') id: string, @Body(zodBody(VersionSchema.strict())) body: z.infer<typeof VersionSchema>) {
+  updateDraft(
+    @Param('id') id: string,
+    @Body(zodBody(VersionSchema.strict())) body: z.infer<typeof VersionSchema>,
+  ) {
     return this.agents.updateDraft(id, body as never);
   }
 
@@ -114,7 +124,15 @@ export class AgentsController {
   @ApiOperation({ summary: 'Publish the draft into an environment' })
   publish(
     @Param('id') id: string,
-    @Body(zodBody(z.object({ environment: z.enum(['development', 'staging', 'production']).default('production') }).strict()))
+    @Body(
+      zodBody(
+        z
+          .object({
+            environment: z.enum(['development', 'staging', 'production']).default('production'),
+          })
+          .strict(),
+      ),
+    )
     body: { environment: 'development' | 'staging' | 'production' },
   ) {
     return this.agents.publish(id, body.environment);
@@ -123,7 +141,11 @@ export class AgentsController {
   @Post(':id/rollback')
   @RequirePermissions('agent:publish')
   @ApiOperation({ summary: 'Roll back to a previously published version' })
-  rollback(@Param('id') id: string, @Body(zodBody(z.object({ version: z.number().int().min(1) }).strict())) body: { version: number }) {
+  rollback(
+    @Param('id') id: string,
+    @Body(zodBody(z.object({ version: z.number().int().min(1) }).strict()))
+    body: { version: number },
+  ) {
     return this.agents.rollback(id, body.version);
   }
 
