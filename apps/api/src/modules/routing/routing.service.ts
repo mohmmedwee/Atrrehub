@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type RoutingStrategy } from '@prisma/client';
 import { RequestContextStore } from '../../core/context/request-context';
-import { AppError } from '../../core/errors/app-error';
 import { DomainEvent } from '../../core/events/domain-events';
 import { EventBus } from '../../core/events/event-bus.service';
 import { newId } from '../../core/ids/id.service';

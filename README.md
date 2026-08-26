@@ -19,9 +19,15 @@ evidence and its named gaps.
 ## Quick start
 
 ```bash
-./scripts/bootstrap.sh   # installs, starts datastores, migrates, seeds
-pnpm dev                 # API on :4000, web on :3000
+./scripts/bootstrap.sh        # installs, starts datastores, migrates, seeds
+pnpm dev                      # API on :4000, web on :3000
+./scripts/index-knowledge.sh  # index the seeded articles, once the API is up
 ```
+
+The third step matters: the seed writes articles straight to the database, and
+chunking and embedding happen in the API. Until the articles are indexed,
+retrieval returns nothing and every agent answer is refused for being
+ungrounded — which looks like a broken agent rather than an empty index.
 
 Then sign in at <http://localhost:3000> as `owner@atrrehub.demo` /
 `Str0ngPassword!23`.

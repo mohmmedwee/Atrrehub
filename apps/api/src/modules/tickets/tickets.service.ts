@@ -4,7 +4,7 @@ import { RequestContextStore } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { DomainEvent } from '../../core/events/domain-events';
 import { EventBus } from '../../core/events/event-bus.service';
-import { newId, newReference } from '../../core/ids/id.service';
+import { newId } from '../../core/ids/id.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CustomersService } from '../customers/customers.service';

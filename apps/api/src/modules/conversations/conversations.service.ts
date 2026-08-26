@@ -97,7 +97,7 @@ export class ConversationsService {
     }
 
     const id = newId('conversation');
-    const conversation = await this.prisma.db.conversation.create({
+    await this.prisma.db.conversation.create({
       data: {
         id,
         reference: newReference('C'),

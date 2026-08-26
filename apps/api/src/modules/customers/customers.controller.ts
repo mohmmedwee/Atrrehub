@@ -3,7 +3,6 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { CursorQuery } from '../../common/pagination';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
-import { CurrentOrg } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CustomersService } from './customers.service';
 

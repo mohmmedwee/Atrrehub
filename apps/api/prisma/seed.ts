@@ -673,8 +673,10 @@ Seed complete.
   ${customers.length} customers, ${scenarios.length} conversations, ${articles.length} knowledge articles,
   1 published AI agent on an AI-first queue.
 
-  Knowledge articles still need indexing for retrieval — publish one from the
-  admin console, or POST /api/v1/knowledge/articles/:id/publish.
+  Knowledge articles still need indexing: chunking and embedding happen in the
+  API's ingestion pipeline, not here. With the API running, index them all with
+  ./scripts/index-knowledge.sh — until then, every agent answer is refused for
+  being ungrounded.
 `);
 }
 

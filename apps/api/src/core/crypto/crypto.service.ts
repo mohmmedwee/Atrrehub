@@ -25,7 +25,6 @@ const scrypt = (
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
-const TAG_LENGTH = 16;
 const SALT_LENGTH = 16;
 /** scrypt parameters: ~64 MB memory, deliberately expensive to brute force. */
 const SCRYPT_N = 16384;

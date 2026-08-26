@@ -401,6 +401,10 @@ export class NodeExecutors {
           reason: outputVerdict.reason,
           confidence: response.confidence,
           groundedness: groundedness.score,
+          // The sources are recorded even though the reply was refused: "what
+          // did it retrieve, and why wasn't that enough?" is the first question
+          // asked of a handoff, in the debugger and in an evaluation alike.
+          citations,
         },
         branch: outputVerdict.blocked ? 'blocked' : 'handoff',
         statePatch: { handoffReason: outputVerdict.reason },

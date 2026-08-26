@@ -111,6 +111,9 @@ export function estimateCostUsd(
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0;
+  // Counting characters outside ASCII is the point — Arabic and CJK text costs
+  // roughly twice the tokens per character that Latin text does.
+  // eslint-disable-next-line no-control-regex
   const nonLatin = (text.match(/[^\x00-\x7F]/g) ?? []).length;
   const latin = text.length - nonLatin;
   return Math.ceil(latin / 4 + nonLatin / 2);
