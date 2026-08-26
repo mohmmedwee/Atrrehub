@@ -14,6 +14,10 @@ import { RateLimitGuard } from './core/http/rate-limit.guard';
 import { RequestContextMiddleware } from './core/http/request-context.middleware';
 import { ResponseEnvelopeInterceptor } from './core/http/response.interceptor';
 import { AgentsModule } from './modules/agents/agents.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AutomationModule } from './modules/automation/automation.module';
+import { IntelligenceModule } from './modules/intelligence/intelligence.module';
+import { QualityModule } from './modules/quality/quality.module';
 import { CopilotModule } from './modules/copilot/copilot.module';
 import { GuardrailsModule } from './modules/guardrails/guardrails.module';
 import { MemoryModule } from './modules/memory/memory.module';
@@ -69,6 +73,10 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     WorkflowsModule,
     AgentsModule,
     CopilotModule,
+    AutomationModule,
+    IntelligenceModule,
+    QualityModule,
+    AnalyticsModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.
