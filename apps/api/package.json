@@ -5,7 +5,7 @@
   "description": "Atrrehub platform API, realtime gateway and workers",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "dev": "node --enable-source-maps -r @swc-node/register src/main.ts",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -19,7 +19,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "node -r @swc-node/register prisma/seed.ts",
+    "dev:watch": "nodemon --watch src --ext ts --exec \"node -r @swc-node/register src/main.ts\""
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
@@ -52,7 +53,8 @@
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
     "ulid": "^2.3.0",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "fastify": "^5.2.1"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.1",
@@ -68,6 +70,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "unplugin-swc": "^1.5.1",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "@swc-node/register": "^1.10.9",
+    "nodemon": "^3.1.9"
   }
 }
