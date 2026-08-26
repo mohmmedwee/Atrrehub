@@ -6,11 +6,13 @@ not an add-on: voice, chat and automation are entry points into one durable
 runtime that draws on RAG, tools and memory, and hands off to humans when it
 should.
 
-Built from the 50-phase product plan in [`docs/product/prd.md`](docs/product/prd.md),
-delivering the MVP boundary the plan defines (§52) end to end, plus a
-substantial part of Release 2, Release 3 and the enterprise foundations. See
-[`docs/product/roadmap.md`](docs/product/roadmap.md) for exactly what is built,
-partial and deferred.
+Built from the 51-phase product plan (Phase 0 – Phase 50) in
+[`docs/product/prd.md`](docs/product/prd.md). The MVP boundary the plan defines
+(§52) is complete end to end, along with much of Release 2 and Release 3.
+
+**Delivery status: 30 phases built, 11 partial, 6 schema only, 4 not built.**
+[`docs/product/roadmap.md`](docs/product/roadmap.md) lists every phase with its
+evidence and its named gaps.
 
 ---
 

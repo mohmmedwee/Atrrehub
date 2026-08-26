@@ -1,79 +1,117 @@
 # Roadmap & delivery status
 
-The master plan defines 50 phases. Building all 50 before releasing anything is
-explicitly discouraged by the plan (§52), so delivery follows the MVP boundary.
+The plan defines **51 phases (Phase 0 – Phase 50)**, plus two closing sections
+that are summaries rather than work: §51 Final Product Structure and §52
+Recommended MVP Boundary.
 
-Legend: **Built** = implemented in this repository · **Partial** = core implemented,
-depth deferred · **Planned** = designed, not implemented.
+Building all 51 before releasing anything is explicitly discouraged by the plan
+(§52), so delivery followed the MVP boundary it defines.
 
-## Release 1 — MVP boundary (plan §52)
+Status is assessed against **code that exists and runs**, not against intent:
 
-| Phase | Domain | Status |
+- **Built** — implemented, wired into the running application, and exercised.
+- **Partial** — the core is implemented and usable; named gaps remain.
+- **Schema only** — database tables exist, no service or API behind them.
+- **Not built** — designed and documented, no implementation.
+
+**Totals: 30 built · 11 partial · 6 schema only · 4 not built.**
+
+---
+
+## Built (30)
+
+| Phase | Domain | Evidence |
 |---|---|---|
-| 0 | Product definition & architecture | Built (`/docs`) |
-| 1 | Engineering foundation | Built |
-| 2 | Multi-tenant platform | Built |
-| 3 | Identity & access management | Built |
-| 4 | Organization administration | Built |
-| 5 | Customer 360 | Built |
-| 6 | Interaction & conversation engine | Built |
-| 7 | Web chat | Built |
-| 8 | Email | Built |
-| 9 | Agent workspace | Built |
-| 10 | Ticketing | Built |
-| 11 | SLA management | Built |
-| 12 | Routing engine | Built |
-| 13 | Knowledge management | Built |
-| 14 | RAG platform | Built |
-| 15 | AI model gateway | Built |
-| 16 | AI agent builder | Built |
-| 17 | Workflow runtime | Built |
-| 18 | AI tools platform | Built |
-| 19 | AI memory | Built |
-| 20 | AI guardrails | Built |
-| 21 | AI copilot | Built |
-| 29 | Analytics platform (basic) | Built |
+| 0 | Product definition & architecture | `docs/` — PRD, architecture, API, events, security, AI, UX |
+| 1 | Engineering foundation | Monorepo, config validation, logging, errors, CI, Docker |
+| 2 | Multi-tenant platform | Tenant guard extension, provisioning, 11 isolation tests |
+| 3 | Identity & access | Auth, MFA, refresh rotation, 66-permission RBAC, audit |
+| 4 | Organization administration | Teams, queues, business hours, taxonomy, saved replies |
+| 5 | Customer 360 | Profiles, contact normalization, merge, timeline, segments |
+| 6 | Interaction & conversation engine | Lifecycle state machine, messages, assignment, transfer |
+| 7 | Web chat | Adapter + realtime gateway + embeddable widget |
+| 8 | Email | Adapter with RFC 5322 threading and quoted-reply stripping |
+| 9 | Agent workspace | Three-column workspace, copilot panel, Customer 360 rail |
+| 10 | Ticketing | Case management, history, templates, bulk, optimistic locking |
+| 11 | SLA management | Working-time clocks, pause/resume, sweep, escalation |
+| 12 | Routing engine | Rules, strategies, capacity, persisted round-robin, drain |
+| 13 | Knowledge management | Bases, articles, versioning, publish, ingestion, crawling |
+| 14 | RAG platform | Chunking, hybrid search, RRF, rerank, citations, groundedness |
+| 15 | AI model gateway | Roles, fallback chains, retry, token/cost accounting, budgets |
+| 16 | AI agent builder | Agent config, versioning, 27-node graph model, validation |
+| 17 | Workflow runtime | Durable interpreter, suspend/resume, debugger |
+| 18 | AI tools platform | 7 built-in tools, custom HTTP tools, egress control |
+| 19 | AI memory | Three scopes, PII masking, consent, retention, erasure |
+| 20 | AI guardrails | Injection, PII, content policy, groundedness, confidence |
+| 21 | AI copilot | Suggest, rewrite, tone, translate, summarize, next action |
+| 25 | Automation engine | 11 triggers, conditions, 10 actions, run history, simulate |
+| 26 | AI quality management | Weighted scorecards, evidence, disputes, calibration |
+| 27 | Real-time quality | Live signals pushed to the agent during the conversation |
+| 28 | Customer intelligence | Intent, sentiment, topics, entities, churn risk, trends |
+| 29 | Analytics platform | Executive, agent, AI and channel dashboards |
+| 38 | Security | Application and data controls — see `docs/security/controls.md` |
+| 48 | Testing platform | 136 unit + 23 integration tests, tenant isolation in CI |
+| 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
 
-## Release 2
+---
 
-| Phase | Domain | Status |
+## Partial (11)
+
+| Phase | Domain | Built | Gap |
+|---|---|---|---|
+| 22 | Omnichannel expansion | `ChannelAdapter` contract, registry, capability metadata | No WhatsApp / SMS / Telegram / Messenger / Instagram / Teams adapters |
+| 33 | Developer platform | API keys with scoped permissions, OpenAPI spec, API request log | No webhook CRUD API, no developer portal, no SDK, no sandbox |
+| 35 | Billing & usage | AI token/cost metering, per-tenant monthly ceilings enforced in the gateway | No subscription management, no plan enforcement beyond AI, no usage rollups |
+| 37 | AI governance | Allowed models, token and cost limits, retention window, full AI audit trail | No admin API or UI to manage the policy |
+| 39 | Enterprise compliance | Retention enforcement, audit trail, right-to-erasure for memory | No data export, no residency controls, no access reviews |
+| 41 | Observability | 168 Prometheus metrics, structured logs with correlation | OTel config exists but tracing is **not wired**; no exporter registered |
+| 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown | No read-replica routing, no dead-letter queue configuration |
+| 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress | No automated tenant provisioning API, no usage metering for billing |
+| 45 | Private cloud / on-prem | Helm values, no-external-dependency local AI provider | No Terraform, no air-gapped packaging, no private registry flow |
+| 47 | Performance & scalability | Async processing, caching, partial and HNSW indexes, queue workers | No partitioning, no read replicas, no load-test evidence |
+| 50 | Production readiness | Runbooks, monitoring signals, backup and DR procedure | No VAPT, no load testing, no incident-management tooling |
+
+---
+
+## Schema only (6)
+
+Tables exist in the data model; no service, controller or job uses them.
+
+| Phase | Domain | Tables present |
 |---|---|---|
-| 22 | Omnichannel expansion (WhatsApp, SMS, Telegram, Messenger, Instagram, Teams) | Partial — adapter interface + registry built, provider adapters stubbed |
-| 23 | Voice platform | Planned — architecture documented |
-| 24 | AI voice agent | Planned — architecture documented |
-| 25 | Automation engine | Built |
-| 28 | Customer intelligence | Built |
+| 30 | Reporting | `saved_reports` |
+| 32 | CRM & enterprise integrations | `integrations` |
+| 34 | Notification platform | `notification_rules`, `notifications` |
+| 36 | AI evaluation | `evaluation_datasets`, `evaluation_cases`, `evaluation_runs`, `evaluation_results` — the agent publish gate reads datasets, but nothing executes a run |
+| 40 | Enterprise SSO & provisioning | `sso_connections` |
+| — | Analytics rollups | `metrics_daily` (analytics computes live from operational tables instead) |
 
-## Release 3
+---
 
-| Phase | Domain | Status |
+## Not built (4)
+
+Designed and documented; no implementation.
+
+| Phase | Domain | Why |
 |---|---|---|
-| 26 | AI quality management | Built |
-| 27 | Real-time quality | Built |
-| 29 | Advanced analytics | Partial |
-| 30 | Reporting | Partial — saved reports + CSV export |
-| 31 | Workforce management | Planned |
+| 23 | Voice platform | Needs SIP/telephony infrastructure and a media gateway |
+| 24 | AI voice agent | Needs streaming STT/TTS providers; reuses the existing runtime once the gateway exists |
+| 31 | Workforce management | Forecasting, scheduling, adherence — no dependency blocking it |
+| 43 | Disaster recovery | Runbook written; no automated backup, replication or DR testing |
+| 46 | Hybrid deployment | Control-plane / data-plane split documented in the architecture |
 
-## Enterprise
+---
 
-| Phase | Domain | Status |
+## Release mapping (plan §52)
+
+The plan's MVP boundary is **complete**: multi-tenancy, RBAC, Customer 360,
+interaction engine, web chat, email, agent workspace, ticketing, SLA, knowledge
+base, RAG, AI agent, visual workflow builder, AI runtime, human handoff, AI
+copilot and basic analytics.
+
+| Release | Contents | Status |
 |---|---|---|
-| 32 | CRM & enterprise integrations | Partial — generic REST/webhook/OAuth framework |
-| 33 | Developer platform | Partial — API keys, webhooks, OpenAPI, API logs |
-| 34 | Notification platform | Built |
-| 35 | Billing & usage | Partial — usage metering + plan limits |
-| 36 | AI evaluation | Built |
-| 37 | AI governance | Built |
-| 38 | Security | Built |
-| 39 | Enterprise compliance | Partial — retention, deletion, export, audit |
-| 40 | Enterprise SSO & provisioning | Partial — OIDC/SAML hooks, SCIM planned |
-| 41 | Observability | Built |
-| 42 | High availability | Partial — replicas, health, autoscaling manifests |
-| 43 | Disaster recovery | Partial — backup/DR runbooks |
-| 44 | SaaS deployment | Built (Helm + compose) |
-| 45 | Private cloud / on-prem | Partial — Helm values + Terraform skeleton |
-| 46 | Hybrid deployment | Planned — control/data plane split documented |
-| 47 | Performance & scalability | Partial |
-| 48 | Testing platform | Built |
-| 49 | Product QA | Built (process) |
-| 50 | Production readiness | Partial — runbooks |
+| **1 — MVP** | Phases 2–21, 29 | Complete |
+| **2** | Voice, AI voice, WhatsApp, routing, automation, AI customer context | Routing, automation and customer context complete; voice and social outstanding |
+| **3** | AI QC, real-time QC, advanced analytics, social channels, WFM | QC and real-time QC complete; advanced analytics partial; social and WFM outstanding |
+| **Enterprise** | SSO, SCIM, private cloud, hybrid, advanced security, AI governance, developer platform, HA/DR | Security and governance largely complete; the rest partial or outstanding |
