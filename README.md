@@ -37,9 +37,10 @@ Then sign in at <http://localhost:3000> as `owner@atrrehub.demo` /
 | Mail catcher | <http://localhost:8025> |
 
 **No AI provider key is required.** A deterministic local provider ships with
-the platform, so agents, RAG, quality control and evaluation all run — and their
-tests pass — with no external calls. Set `OPENAI_API_KEY` or
-`ANTHROPIC_API_KEY` in `.env` to use real models.
+the platform, so agents, RAG, the copilot and quality control all run — and
+their tests pass — with no external calls. Its replies are structurally correct
+but not linguistically meaningful; set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+in `.env` and the same code paths produce real answers.
 
 ### Prerequisites
 
