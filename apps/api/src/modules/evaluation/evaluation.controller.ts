@@ -59,7 +59,7 @@ export class EvaluationController {
   }
 
   @Post('datasets')
-  @RequirePermissions('agent:update')
+  @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Create an evaluation dataset' })
   createDataset(@Body(zodBody(DatasetSchema)) body: z.infer<typeof DatasetSchema>) {
     return this.evaluation.createDataset(body);
@@ -73,7 +73,7 @@ export class EvaluationController {
   }
 
   @Patch('datasets/:datasetId')
-  @RequirePermissions('agent:update')
+  @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Update a dataset' })
   updateDataset(
     @Param('datasetId') datasetId: string,
@@ -84,7 +84,7 @@ export class EvaluationController {
 
   @Delete('datasets/:datasetId')
   @HttpCode(204)
-  @RequirePermissions('agent:update')
+  @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Delete a dataset and everything scored against it' })
   async deleteDataset(@Param('datasetId') datasetId: string) {
     await this.evaluation.deleteDataset(datasetId);
@@ -93,7 +93,7 @@ export class EvaluationController {
   // ── Cases ──────────────────────────────────────────────────────────────────
 
   @Post('datasets/:datasetId/cases')
-  @RequirePermissions('agent:update')
+  @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Add cases to a dataset' })
   addCases(
     @Param('datasetId') datasetId: string,
@@ -104,7 +104,7 @@ export class EvaluationController {
 
   @Delete('datasets/:datasetId/cases/:caseId')
   @HttpCode(204)
-  @RequirePermissions('agent:update')
+  @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Remove a case from a dataset' })
   async deleteCase(@Param('datasetId') datasetId: string, @Param('caseId') caseId: string) {
     await this.evaluation.deleteCase(datasetId, caseId);
@@ -113,7 +113,7 @@ export class EvaluationController {
   // ── Runs ───────────────────────────────────────────────────────────────────
 
   @Post('datasets/:datasetId/runs')
-  @RequirePermissions('agent:update')
+  @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Run a dataset against an agent and score every case' })
   run(
     @Param('datasetId') datasetId: string,

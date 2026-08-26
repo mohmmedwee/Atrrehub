@@ -11,6 +11,7 @@ import { QUEUES, QueueService } from '../core/queue/queue.service';
 import { KnowledgeService } from '../modules/knowledge/knowledge.service';
 import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
+import { ReportsService } from '../modules/reports/reports.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
 import { RuntimeService } from '../modules/workflows/runtime.service';
 import { SlaService } from '../modules/sla/sla.service';
@@ -34,6 +35,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly runtime: RuntimeService,
     private readonly knowledge: KnowledgeService,
     private readonly quality: QualityService,
+    private readonly reports: ReportsService,
     private readonly intelligence: IntelligenceService,
     private readonly memory: MemoryService,
     private readonly metrics: MetricsService,
@@ -188,6 +190,24 @@ export class WorkersService implements OnApplicationBootstrap {
           organizationId: policy.organizationId,
         });
       }
+    }
+  }
+
+  /**
+   * Send the reports whose schedule has come due.
+   *
+   * Hourly, so a report schedule is honoured to the hour. Finer than that would
+   * mean a cron sweep competing with request traffic to deliver an email nobody
+   * is waiting on to the minute.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async dispatchScheduledReports(): Promise<void> {
+    if (!this.enabled) return;
+    try {
+      const sent = await this.reports.dispatchScheduled();
+      if (sent) this.logger.info('Scheduled reports delivered', { count: sent });
+    } catch (error) {
+      this.logger.error('Scheduled report dispatch failed', error);
     }
   }
 

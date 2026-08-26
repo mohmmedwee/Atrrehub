@@ -19,6 +19,7 @@ import { AutomationModule } from './modules/automation/automation.module';
 import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { EvaluationModule } from './modules/evaluation/evaluation.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { QualityModule } from './modules/quality/quality.module';
 import { CopilotModule } from './modules/copilot/copilot.module';
 import { GuardrailsModule } from './modules/guardrails/guardrails.module';
@@ -88,6 +89,7 @@ import { WorkersModule } from './workers/workers.module';
     AnalyticsModule,
     EvaluationModule,
     NotificationsModule,
+    ReportsModule,
     WidgetModule,
     WorkersModule,
   ],
