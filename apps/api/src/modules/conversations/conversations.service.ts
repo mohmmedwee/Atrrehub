@@ -378,6 +378,15 @@ export class ConversationsService {
     return after;
   }
 
+  /** Record why an AI agent handed the conversation to a person. */
+  async setHandoffReason(conversationId: string, reason: string) {
+    return this.prisma.db.conversation.update({
+      where: { id: conversationId },
+      data: { handoffReason: reason.slice(0, 500) },
+      select: { id: true, handoffReason: true },
+    });
+  }
+
   async submitCsat(conversationId: string, score: number, comment?: string) {
     return this.prisma.db.conversation.update({
       where: { id: conversationId },

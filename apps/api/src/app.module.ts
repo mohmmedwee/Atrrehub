@@ -13,6 +13,12 @@ import { MetricsInterceptor } from './core/http/metrics.interceptor';
 import { RateLimitGuard } from './core/http/rate-limit.guard';
 import { RequestContextMiddleware } from './core/http/request-context.middleware';
 import { ResponseEnvelopeInterceptor } from './core/http/response.interceptor';
+import { AgentsModule } from './modules/agents/agents.module';
+import { CopilotModule } from './modules/copilot/copilot.module';
+import { GuardrailsModule } from './modules/guardrails/guardrails.module';
+import { MemoryModule } from './modules/memory/memory.module';
+import { ToolsModule } from './modules/tools/tools.module';
+import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -57,6 +63,12 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     AiModule,
     RagModule,
     KnowledgeModule,
+    GuardrailsModule,
+    ToolsModule,
+    MemoryModule,
+    WorkflowsModule,
+    AgentsModule,
+    CopilotModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.
