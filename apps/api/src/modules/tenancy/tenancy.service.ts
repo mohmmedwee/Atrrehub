@@ -141,7 +141,7 @@ export class TenancyService {
       })),
     });
 
-    await tx.queue.create({
+    const queue = await tx.queue.create({
       data: {
         id: newId('queue'),
         organizationId,
@@ -153,6 +153,31 @@ export class TenancyService {
         slaPolicyId: slaPolicy.id,
         businessHoursId: businessHours.id,
       },
+    });
+
+    // Web chat and email work immediately; a tenant configures provider
+    // credentials later, and the local mail driver covers development.
+    await tx.channelAccount.createMany({
+      data: [
+        {
+          id: newId('channelAccount'),
+          organizationId,
+          workspaceId: workspace.id,
+          channel: 'web_chat',
+          name: 'Website chat',
+          queueId: queue.id,
+          config: { greeting: 'Hello! How can we help today?' },
+        },
+        {
+          id: newId('channelAccount'),
+          organizationId,
+          workspaceId: workspace.id,
+          channel: 'email',
+          name: 'Support inbox',
+          queueId: queue.id,
+          config: { signature: `The ${input.name} support team` },
+        },
+      ],
     });
 
     await tx.knowledgeBase.create({

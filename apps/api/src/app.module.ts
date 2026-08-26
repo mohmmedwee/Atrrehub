@@ -15,10 +15,14 @@ import { RequestContextMiddleware } from './core/http/request-context.middleware
 import { ResponseEnvelopeInterceptor } from './core/http/response.interceptor';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ChannelsModule } from './modules/channels/channels.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
+import { CustomersModule } from './modules/customers/customers.module';
 import { DirectoryModule } from './modules/directory/directory.module';
 import { IamModule } from './modules/iam/iam.module';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 
 @Module({
@@ -37,6 +41,10 @@ import { TenancyModule } from './modules/tenancy/tenancy.module';
     AuthModule,
     IamModule,
     DirectoryModule,
+    CustomersModule,
+    RealtimeModule,
+    ChannelsModule,
+    ConversationsModule,
   ],
   providers: [
     // Order matters: authenticate, then authorize, then meter.
