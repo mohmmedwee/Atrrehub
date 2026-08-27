@@ -13,6 +13,7 @@ import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
 import { ReportsService } from '../modules/reports/reports.service';
 import { TenancyService } from '../modules/tenancy/tenancy.service';
+import { WfmService } from '../modules/wfm/wfm.service';
 import { IntegrationsService } from '../modules/integrations/integrations.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
 import { RuntimeService } from '../modules/workflows/runtime.service';
@@ -39,6 +40,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly quality: QualityService,
     private readonly reports: ReportsService,
     private readonly tenancy: TenancyService,
+    private readonly wfm: WfmService,
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
     private readonly memory: MemoryService,
@@ -221,6 +223,35 @@ export class WorkersService implements OnApplicationBootstrap {
       if (sent) this.logger.info('Scheduled reports delivered', { count: sent });
     } catch (error) {
       this.logger.error('Scheduled report dispatch failed', error);
+    }
+  }
+
+  /**
+   * Compute yesterday's adherence for everyone who was rostered.
+   *
+   * Run in the small hours so the day is closed: computing it live would keep
+   * rewriting a number that is still moving.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async computeAdherence(): Promise<void> {
+    if (!this.enabled) return;
+
+    const yesterday = new Date(Date.now() - 86_400_000);
+    const organizations = await this.prisma.raw.organization.findMany({ select: { id: true } });
+
+    for (const organization of organizations) {
+      try {
+        const agents = await RequestContextStore.runAsSystem(
+          () => this.wfm.computeAdherenceForDay(yesterday),
+          organization.id,
+        );
+        if (agents)
+          this.logger.info('Adherence computed', { organizationId: organization.id, agents });
+      } catch (error) {
+        this.logger.error('Adherence computation failed', error, {
+          organizationId: organization.id,
+        });
+      }
     }
   }
 

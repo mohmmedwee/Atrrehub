@@ -69,6 +69,8 @@ export const PERMISSIONS = [
   'call:read',
   'call:control',
   'voice:manage',
+  'wfm:read',
+  'wfm:manage',
   'notification:manage',
   'integration:manage',
   'governance:manage',
@@ -109,6 +111,7 @@ const AGENT_PERMISSIONS: Permission[] = [
   'agent:execute',
   'call:read',
   'call:control',
+  'wfm:read',
   'tool:execute',
   'copilot:execute',
   'qc:read_own',
@@ -139,6 +142,7 @@ const SUPERVISOR_PERMISSIONS: Permission[] = [
   'report:manage',
   'report:export',
   'notification:manage',
+  'wfm:manage',
 ];
 
 const ADMIN_PERMISSIONS: Permission[] = [

@@ -367,11 +367,25 @@ export class IamService {
 
   /** Agent presence, used by routing to pick an available assignee. */
   async setPresence(userId: string, presence: string, note?: string) {
-    return this.prisma.raw.user.update({
+    const updated = await this.prisma.raw.user.update({
       where: { id: userId },
       data: { presence: presence as never, presenceNote: note ?? null },
       select: { id: true, presence: true, presenceNote: true },
     });
+
+    // The User row holds only the *current* state, which cannot answer "were
+    // they available at 10:15?" — the question adherence is. Workforce
+    // management keeps the history, and hears about it through an event so
+    // identity does not have to know workforce management exists.
+    await this.events
+      .publish(
+        DomainEvent.AgentPresenceChanged,
+        { type: 'user', id: userId },
+        { userId, presence, note },
+      )
+      .catch(() => undefined);
+
+    return updated;
   }
 
   // ── Roles ──────────────────────────────────────────────────────────────────

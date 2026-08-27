@@ -98,6 +98,13 @@ export const ID_PREFIXES = {
   transcript: 'trs',
   phoneNumber: 'pho',
   ivrFlow: 'ivr',
+  forecast: 'fct',
+  forecastInterval: 'fci',
+  shiftTemplate: 'sht',
+  shift: 'shf',
+  timeOff: 'tof',
+  stateEvent: 'ase',
+  adherence: 'adh',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

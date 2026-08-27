@@ -344,6 +344,10 @@ model Organization {
   ivrFlows          IvrFlow[]
   calls             Call[]
   governance        GovernancePolicy?
+  forecasts         Forecast[]
+  shiftTemplates    ShiftTemplate[]
+  shifts            Shift[]
+  timeOffRequests   TimeOffRequest[]
 
   @@map("organizations")
 }
@@ -416,6 +420,10 @@ model User {
   memberships     Membership[]
   sessions        Session[]
   teamMemberships TeamMember[]
+  shifts          Shift[]
+  timeOff         TimeOffRequest[]
+  stateEvents     AgentStateEvent[]
+  adherence       AdherenceRecord[]
 
   @@index([email])
   @@map("users")
@@ -2573,4 +2581,196 @@ model CallTranscriptSegment {
   @@unique([callId, sequence])
   @@index([organizationId])
   @@map("call_transcript_segments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workforce management
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ShiftState {
+  draft
+  published
+  cancelled
+}
+
+enum TimeOffStatus {
+  requested
+  approved
+  declined
+  cancelled
+}
+
+model Forecast {
+  id                 String       @id
+  organizationId     String       @map("organization_id")
+  workspaceId        String?      @map("workspace_id")
+  name               String
+  queueId            String?      @map("queue_id")
+  channel            ChannelType?
+  startsAt           DateTime     @map("starts_at")
+  endsAt             DateTime     @map("ends_at")
+  intervalMinutes    Int          @default(30) @map("interval_minutes")
+  /// seasonal_average is the only method today; the column exists so a second
+  /// one can be added without a migration on every stored forecast.
+  method             String       @default("seasonal_average")
+  lookbackWeeks      Int          @default(6) @map("lookback_weeks")
+  growthFactor       Float        @default(1) @map("growth_factor")
+  shrinkage          Float        @default(0.3)
+  targetServiceLevel Float        @default(0.8) @map("target_service_level")
+  targetAnswerSec    Int          @default(20) @map("target_answer_sec")
+  maxOccupancy       Float        @default(0.85) @map("max_occupancy")
+  /// { mape, weightedMape, bias, intervals }, filled in once actuals exist.
+  accuracy           Json?
+  createdById        String?      @map("created_by_id")
+  generatedAt        DateTime     @default(now()) @map("generated_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intervals    ForecastInterval[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, startsAt])
+  @@map("forecasts")
+}
+
+model ForecastInterval {
+  id                   String   @id
+  organizationId       String   @map("organization_id")
+  forecastId           String   @map("forecast_id")
+  startsAt             DateTime @map("starts_at")
+  predictedVolume      Int      @default(0) @map("predicted_volume")
+  averageHandleTimeSec Int      @default(300) @map("average_handle_time_sec")
+  /// Agents needed on the line, from Erlang C.
+  requiredAgents       Int      @default(0) @map("required_agents")
+  /// Agents to roster once shrinkage is added back.
+  rosteredAgents       Int      @default(0) @map("rostered_agents")
+  serviceLevel         Float    @default(0) @map("service_level")
+  occupancy            Float    @default(0)
+  /// How much like-for-like history stood behind the prediction, 0-1.
+  confidence           Float    @default(0)
+  samples              Int      @default(0)
+  /// Filled in after the fact, so accuracy can be scored.
+  actualVolume         Int?     @map("actual_volume")
+
+  forecast Forecast @relation(fields: [forecastId], references: [id], onDelete: Cascade)
+
+  @@unique([forecastId, startsAt])
+  @@index([organizationId, startsAt])
+  @@map("forecast_intervals")
+}
+
+model ShiftTemplate {
+  id              String   @id
+  organizationId  String   @map("organization_id")
+  name            String
+  /// Minutes from local midnight, so a template survives a timezone change.
+  startMinute     Int      @map("start_minute")
+  durationMinutes Int      @map("duration_minutes")
+  /// 0 = Sunday, matching JavaScript's getDay.
+  daysOfWeek      Int[]    @default([]) @map("days_of_week")
+  /// [{ startMinute, durationMinutes, paid }] — offsets from the shift start.
+  breaks          Json     @default("[]")
+  queueIds        String[] @default([]) @map("queue_ids")
+  timezone        String   @default("UTC")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  shifts       Shift[]
+
+  @@unique([organizationId, name])
+  @@map("shift_templates")
+}
+
+model Shift {
+  id             String     @id
+  organizationId String     @map("organization_id")
+  workspaceId    String?    @map("workspace_id")
+  userId         String     @map("user_id")
+  templateId     String?    @map("template_id")
+  startsAt       DateTime   @map("starts_at")
+  endsAt         DateTime   @map("ends_at")
+  state          ShiftState @default(draft)
+  /// Absolute times, resolved from the template at assignment.
+  breaks         Json       @default("[]")
+  queueIds       String[]   @default([]) @map("queue_ids")
+  note           String?
+  publishedAt    DateTime?  @map("published_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     ShiftTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([organizationId, startsAt])
+  @@index([userId, startsAt])
+  @@map("shifts")
+}
+
+model TimeOffRequest {
+  id             String        @id
+  organizationId String        @map("organization_id")
+  userId         String        @map("user_id")
+  startsAt       DateTime      @map("starts_at")
+  endsAt         DateTime      @map("ends_at")
+  /// holiday, sick, training, other.
+  type           String        @default("holiday")
+  status         TimeOffStatus @default(requested)
+  reason         String?
+  decidedById    String?       @map("decided_by_id")
+  decidedAt      DateTime?     @map("decided_at")
+  decisionNote   String?       @map("decision_note")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startsAt])
+  @@index([userId, startsAt])
+  @@map("time_off_requests")
+}
+
+/// Presence transitions. The User row carries only the *current* state, which
+/// cannot answer "were they available at 10:15?" — the question adherence is.
+model AgentStateEvent {
+  id             String        @id
+  organizationId String        @map("organization_id")
+  userId         String        @map("user_id")
+  state          AgentPresence
+  note           String?
+  /// Set when the platform changed the state rather than the person.
+  source         String        @default("user")
+  occurredAt     DateTime      @default(now()) @map("occurred_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, occurredAt])
+  @@index([userId, occurredAt])
+  @@map("agent_state_events")
+}
+
+model AdherenceRecord {
+  id                 String   @id
+  organizationId     String   @map("organization_id")
+  userId             String   @map("user_id")
+  date               DateTime @db.Date
+  scheduledMinutes   Int      @default(0) @map("scheduled_minutes")
+  /// Minutes both scheduled and actually available.
+  adherentMinutes    Int      @default(0) @map("adherent_minutes")
+  /// Minutes available while not scheduled — over-work, not adherence.
+  unscheduledMinutes Int      @default(0) @map("unscheduled_minutes")
+  adherencePercent   Float    @default(0) @map("adherence_percent")
+  /// Total worked over total scheduled, regardless of *when*.
+  conformancePercent Float    @default(0) @map("conformance_percent")
+  computedAt         DateTime @default(now()) @map("computed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([organizationId, date])
+  @@map("adherence_records")
 }

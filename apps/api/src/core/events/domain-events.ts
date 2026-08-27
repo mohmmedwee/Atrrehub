@@ -5,6 +5,7 @@ export const DomainEvent = {
   UserInvited: 'user.invited',
   UserActivated: 'user.activated',
   UserDeactivated: 'user.deactivated',
+  AgentPresenceChanged: 'user.presence_changed',
   RoleChanged: 'role.changed',
   SessionCreated: 'session.created',
   ApiKeyCreated: 'apikey.created',
