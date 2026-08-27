@@ -13,6 +13,8 @@ import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
 import { ReportsService } from '../modules/reports/reports.service';
 import { TenancyService } from '../modules/tenancy/tenancy.service';
+import { BillingService } from '../modules/billing/billing.service';
+import { MetricsRollupService } from '../modules/billing/metrics-rollup.service';
 import { BackupService } from '../modules/dr/backup.service';
 import { HybridService } from '../modules/hybrid/hybrid.service';
 import { WfmService } from '../modules/wfm/wfm.service';
@@ -45,6 +47,8 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly wfm: WfmService,
     private readonly hybrid: HybridService,
     private readonly backups: BackupService,
+    private readonly billing: BillingService,
+    private readonly metricsRollup: MetricsRollupService,
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
     private readonly memory: MemoryService,
@@ -305,6 +309,31 @@ export class WorkersService implements OnApplicationBootstrap {
       if (pruned) this.logger.info('Expired backups pruned', { count: pruned });
     } catch (error) {
       this.logger.error('The nightly backup failed', error);
+    }
+  }
+
+  /**
+   * Close yesterday: roll up analytics and record metered usage.
+   *
+   * Both are written rather than computed on demand because both have to
+   * survive retention deleting the rows they counted — an invoice that cannot
+   * be reproduced after a customer's conversations expire is not an invoice.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async dailyRollups(): Promise<void> {
+    if (!this.enabled) return;
+
+    try {
+      await this.metricsRollup.rollupYesterday();
+    } catch (error) {
+      this.logger.error('Metric rollup failed', error);
+    }
+
+    try {
+      const tenants = await this.billing.rollupAllTenants();
+      if (tenants) this.logger.info('Usage recorded', { tenants });
+    } catch (error) {
+      this.logger.error('Usage rollup failed', error);
     }
   }
 

@@ -4,6 +4,7 @@ import { RequestContextStore } from '../../core/context/request-context';
 import { CryptoService } from '../../core/crypto/crypto.service';
 import { AppError } from '../../core/errors/app-error';
 import { DomainEvent } from '../../core/events/domain-events';
+import { BillingService } from '../billing/billing.service';
 import { EventBus } from '../../core/events/event-bus.service';
 import { newId } from '../../core/ids/id.service';
 import { MailService } from '../../core/mail/mail.service';
@@ -27,6 +28,7 @@ export class IamService {
     private readonly audit: AuditService,
     private readonly events: EventBus,
     private readonly auth: AuthService,
+    private readonly billing: BillingService,
   ) {}
 
   // ── Users ──────────────────────────────────────────────────────────────────
@@ -116,6 +118,12 @@ export class IamService {
     languages?: string[];
   }) {
     const organizationId = RequestContextStore.organizationId()!;
+
+    // Checked before the invitation is written: a seat limit enforced after
+    // the fact leaves the tenant over their plan with no way back except
+    // removing somebody who already has an account.
+    await this.billing.assertWithinLimit('seats');
+
     const role = await this.prisma.db.role.findFirst({
       where: { organizationId, key: input.roleKey },
     });

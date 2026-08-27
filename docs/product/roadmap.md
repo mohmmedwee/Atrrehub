@@ -14,11 +14,11 @@ Status is assessed against **code that exists and runs**, not against intent:
 - **Schema only** — database tables exist, no service or API behind them.
 - **Not built** — designed and documented, no implementation.
 
-**Totals: 35 built · 13 partial · 1 schema only · 3 not built.**
+**Totals: 38 built · 13 partial · 0 schema only · 0 not built.**
 
 ---
 
-## Built (35)
+## Built (38)
 
 | Phase | Domain | Evidence |
 |---|---|---|
@@ -49,12 +49,15 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 27 | Real-time quality | Live signals pushed to the agent during the conversation |
 | 28 | Customer intelligence | Intent, sentiment, topics, entities, churn risk, trends |
 | 24 | AI voice agent | Turn loop over the existing runtime: endpointing, barge-in budget, no-input recovery, handoff with transcript |
-| 29 | Analytics platform | Executive, agent, AI and channel dashboards |
+| 29 | Analytics platform | Executive, agent, AI and channel dashboards, plus durable daily rollups |
+| 31 | Workforce management | Erlang C staffing, seasonal forecasting, rosters, time off, adherence |
 | 30 | Reporting | Closed source catalogue, saved reports, CSV export, scheduled email |
 | 32 | CRM & enterprise integrations | Connect/test/enable/sync lifecycle, four connectors, field mapping |
 | 34 | Notification platform | Rules, audiences, in-app/email/webhook delivery, inbox |
 | 36 | AI evaluation | Six scorers, dataset runs, run diffing, the agent promotion gate |
 | 38 | Security | Application and data controls — see `docs/security/controls.md` |
+| 43 | Disaster recovery | Automated backup, restore verification into a scratch database, readiness endpoint |
+| 46 | Hybrid deployment | Control-plane / data-plane split with an enforced data residency guard |
 | 48 | Testing platform | 289 unit + 23 integration tests, tenant isolation in CI |
 | 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
 
@@ -67,38 +70,33 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 22 | Omnichannel expansion | Eight channels: web chat, email, WhatsApp, SMS, Telegram, Messenger, Instagram, Teams — each with webhook signature verification | Teams verification is a shared secret, not the Bot Framework's JWT scheme; no channel has been exercised against a live provider account |
 | 23 | Voice platform | Call lifecycle and state machine, IVR engine, call control, recording with consent and retention, routing into the existing engine, three telephony adapters (simulated, Twilio, SIP gateway) | No media plane: audio is carried by the provider, so the platform never touches RTP. Verified end to end against the simulated provider only — no PSTN call has been placed from this repository |
 | 33 | Developer platform | API keys with scoped permissions, OpenAPI spec, API request log | No webhook CRUD API, no developer portal, no SDK, no sandbox |
-| 35 | Billing & usage | AI token/cost metering, per-tenant monthly ceilings enforced in the gateway | No subscription management, no plan enforcement beyond AI, no usage rollups |
+| 35 | Billing & usage | Four plans with ten enforced limits, subscriptions, negotiated overrides, monthly usage records, invoice estimate | No payment provider; the invoice estimate is list price only |
 | 37 | AI governance | Allowed models, token and cost limits, retention window, full AI audit trail | No admin API or UI to manage the policy |
 | 39 | Enterprise compliance | Retention enforcement, audit trail, right-to-erasure for memory | No data export, no residency controls, no access reviews |
 | 40 | Enterprise SSO & provisioning | OIDC with JWKS verification, PKCE, domain routing, JIT provisioning, group→role mapping, SCIM 2.0 Users and Groups | No SAML — assertion signature verification needs XML canonicalization, which is not safe to hand-roll |
 | 41 | Observability | 168 Prometheus metrics, structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
 | 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown | No read-replica routing, no dead-letter queue configuration |
-| 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress | No automated tenant provisioning API, no usage metering for billing |
+| 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress, tenant provisioning API with suspend/resume, metered usage records | No payment provider integration |
 | 45 | Private cloud / on-prem | Helm values, no-external-dependency local AI provider | No Terraform, no air-gapped packaging, no private registry flow |
 | 47 | Performance & scalability | Async processing, caching, partial and HNSW indexes, queue workers | No partitioning, no read replicas, no load-test evidence |
 | 50 | Production readiness | Runbooks, monitoring signals, backup and DR procedure | No VAPT, no load testing, no incident-management tooling |
 
 ---
 
-## Schema only (1)
+## Schema only (0)
 
-Tables exist in the data model; no service, controller or job uses them.
-
-| Phase | Domain | Tables present |
-|---|---|---|
-| — | Analytics rollups | `metrics_daily` (analytics and reporting both compute live from operational tables instead) |
+Every table in the data model now has code behind it. An audit of all 108
+models against the codebase found three that did not — `subscriptions`,
+`usage_records` and `metrics_daily` — and all three are now written and read.
 
 ---
 
-## Not built (3)
+## Not built (0)
 
-Designed and documented; no implementation.
-
-| Phase | Domain | Why |
-|---|---|---|
-| 31 | Workforce management | Forecasting, scheduling, adherence — no dependency blocking it |
-| 43 | Disaster recovery | Runbook written; no automated backup, replication or DR testing |
-| 46 | Hybrid deployment | Control-plane / data-plane split documented in the architecture |
+Every phase in the plan now has an implementation. What remains are the named
+gaps in the Partial table above, and three things a repository cannot deliver
+on its own — a penetration test, a load test against production-like
+infrastructure, and a live account with each channel provider.
 
 ---
 

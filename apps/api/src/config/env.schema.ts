@@ -81,6 +81,10 @@ export const envSchema = z.object({
   CONTROL_PLANE_URL: z.string().url().optional(),
   DATA_PLANE_ENROLLMENT_TOKEN: z.string().optional(),
   DATA_PLANE_REGION: z.string().default('local'),
+
+  // Automated tenant provisioning. Absent disables the endpoint entirely —
+  // a tenant-creation API that accepts a blank key is an open door.
+  PROVISIONING_KEY: z.string().min(32).optional(),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
 });
 
