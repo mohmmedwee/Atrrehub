@@ -58,7 +58,7 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 38 | Security | Application and data controls — see `docs/security/controls.md` |
 | 43 | Disaster recovery | Automated backup, restore verification into a scratch database, readiness endpoint |
 | 46 | Hybrid deployment | Control-plane / data-plane split with an enforced data residency guard |
-| 48 | Testing platform | 474 unit + 25 integration tests, tenant isolation and webhook isolation in CI |
+| 48 | Testing platform | 474 unit + 25 integration tests, tenant isolation and webhook isolation in CI, a load test that gates on p95 |
 | 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
 | 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown, dead-letter store with replay, read-replica routing |
 | 33 | Developer platform | API keys, webhook endpoints with signed delivery and replay, generated TypeScript SDK, OpenAPI with request bodies |
@@ -79,9 +79,9 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 41 | Observability | 168 Prometheus metrics, structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
 
 | 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress, tenant provisioning API with suspend/resume, metered usage records | No payment provider integration |
-| 45 | Private cloud / on-prem | Helm values, no-external-dependency local AI provider | No Terraform, no air-gapped packaging, no private registry flow |
-| 47 | Performance & scalability | Async processing, caching, partial and HNSW indexes, queue workers, monthly partitioning with a maintenance job, read-replica routing | No load-test evidence against production-like infrastructure |
-| 50 | Production readiness | Runbooks, monitoring signals, backup and DR procedure | No VAPT, no load testing, no incident-management tooling |
+| 45 | Private cloud / on-prem | Helm values, local AI provider with no external dependency, air-gapped bundle with a verifiable manifest, Terraform for the AWS data plane | The Terraform has not been applied against a live account — the provider registry was unreachable where it was written |
+| 47 | Performance & scalability | Async processing, caching, partial and HNSW indexes, queue workers, monthly partitioning, read-replica routing, a load test with recorded figures | Measured on a development machine, not on production-like infrastructure |
+| 50 | Production readiness | Runbooks for operations and resilience, monitoring signals, backup and DR procedure, a load test with recorded figures | No penetration test, and no incident-management tooling — the platform emits the signals but ships no on-call integration |
 
 ---
 

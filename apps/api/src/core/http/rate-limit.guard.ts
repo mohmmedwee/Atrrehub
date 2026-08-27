@@ -1,5 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, SetMetadata } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import type { AppConfig } from '../../config/configuration';
 import type { FastifyReply } from 'fastify';
 import { RequestContextStore } from '../context/request-context';
 import { AppError } from '../errors/app-error';
@@ -32,7 +34,24 @@ export class RateLimitGuard implements CanActivate {
   constructor(
     private readonly redis: RedisService,
     private readonly reflector: Reflector,
+    private readonly config: ConfigService<AppConfig>,
   ) {}
+
+  /**
+   * The bucket's limit for this deployment.
+   *
+   * The constants above are sized for the default install. A capacity test, or
+   * an install on much larger hardware, needs to raise them — and before this
+   * existed the only way to do that was to edit the source, which meant a
+   * capacity test measured the rate limiter rather than the platform.
+   *
+   * Floored at 1: a multiplier small enough to round a bucket to zero would
+   * reject every request, including the operator's attempt to put it back.
+   */
+  private limitFor(bucket: RateLimitBucket): number {
+    const multiplier = this.config.get('rateLimitMultiplier', { infer: true }) ?? 1;
+    return Math.max(1, Math.round(bucket.limit * multiplier));
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== 'http') return true;
@@ -47,18 +66,22 @@ export class RateLimitGuard implements CanActivate {
     const identity = ctx?.principal?.id ?? ctx?.ipAddress ?? 'anonymous';
     const key = this.redis.key(ctx?.organizationId, 'ratelimit', bucket.name, identity);
 
+    const limit = this.limitFor(bucket);
     const { count, ttl } = await this.redis.incrementWindow(key, bucket.windowSeconds);
-    const remaining = Math.max(0, bucket.limit - count);
+    // Every one of these reads the effective limit, not the constant. A header
+    // that advertises 600 while the guard enforces 6000 tells every client the
+    // wrong thing to back off to.
+    const remaining = Math.max(0, limit - count);
 
     const reply = context.switchToHttp().getResponse<FastifyReply>();
-    void reply.header('RateLimit-Limit', String(bucket.limit));
+    void reply.header('RateLimit-Limit', String(limit));
     void reply.header('RateLimit-Remaining', String(remaining));
     void reply.header('RateLimit-Reset', String(ttl));
 
-    if (count > bucket.limit) {
+    if (count > limit) {
       void reply.header('Retry-After', String(ttl));
       throw new AppError('rate_limited', `Rate limit exceeded for ${bucket.name}`, {
-        meta: { limit: bucket.limit, windowSeconds: bucket.windowSeconds, retryAfter: ttl },
+        meta: { limit, windowSeconds: bucket.windowSeconds, retryAfter: ttl },
       });
     }
     return true;

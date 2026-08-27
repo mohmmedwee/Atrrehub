@@ -21,6 +21,11 @@ export const envSchema = z.object({
   PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
+  // Scales every rate-limit bucket. Deployment-wide, because the buckets exist
+  // to protect this deployment's capacity, and that is a property of the
+  // hardware rather than of any one tenant. Raise it for a capacity test, or
+  // for an install sized well above the defaults.
+  RATE_LIMIT_MULTIPLIER: z.coerce.number().min(0.1).max(1000).default(1),
   DATABASE_URL: z.string().min(1),
   // A read-only replica for reporting and analytics. Absent means every read
   // goes to the primary, which is correct for a single-node deployment.

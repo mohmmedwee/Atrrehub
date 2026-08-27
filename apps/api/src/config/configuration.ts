@@ -17,6 +17,7 @@ export const buildConfig = (env: Env) => ({
       .filter(Boolean),
   },
 
+  rateLimitMultiplier: env.RATE_LIMIT_MULTIPLIER,
   database: {
     url: env.DATABASE_URL,
     replicaUrl: env.DATABASE_REPLICA_URL,
