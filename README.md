@@ -207,6 +207,8 @@ The values that matter most:
 | `AI_DEFAULT_PROVIDER` | `local` (default), `openai`, `azure_openai`, `anthropic` |
 | `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` | Optional speech recognition and synthesis; without them voice runs on the local provider |
 | `WORKERS_ENABLED` | `false` on API pods, `true` on worker pods |
+| `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT` | Distributed tracing across HTTP and the database |
+| `DEPLOYMENT_MODE` | `standalone` (default), `control_plane`, `data_plane` |
 
 ---
 

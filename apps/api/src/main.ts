@@ -1,4 +1,10 @@
 import 'reflect-metadata';
+// Tracing first: instrumentation patches modules as they load, so anything
+// imported before this line is invisible to it.
+import { startTracing } from './core/telemetry/tracing';
+
+startTracing();
+
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';

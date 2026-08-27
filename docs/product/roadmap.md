@@ -71,7 +71,7 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 37 | AI governance | Allowed models, token and cost limits, retention window, full AI audit trail | No admin API or UI to manage the policy |
 | 39 | Enterprise compliance | Retention enforcement, audit trail, right-to-erasure for memory | No data export, no residency controls, no access reviews |
 | 40 | Enterprise SSO & provisioning | OIDC with JWKS verification, PKCE, domain routing, JIT provisioning, group→role mapping, SCIM 2.0 Users and Groups | No SAML — assertion signature verification needs XML canonicalization, which is not safe to hand-roll |
-| 41 | Observability | 168 Prometheus metrics, structured logs with correlation | OTel config exists but tracing is **not wired**; no exporter registered |
+| 41 | Observability | 168 Prometheus metrics, structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
 | 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown | No read-replica routing, no dead-letter queue configuration |
 | 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress | No automated tenant provisioning API, no usage metering for billing |
 | 45 | Private cloud / on-prem | Helm values, no-external-dependency local AI provider | No Terraform, no air-gapped packaging, no private registry flow |
