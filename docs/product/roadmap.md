@@ -64,7 +64,7 @@ Status is assessed against **code that exists and runs**, not against intent:
 
 | Phase | Domain | Built | Gap |
 |---|---|---|---|
-| 22 | Omnichannel expansion | `ChannelAdapter` contract, registry, capability metadata | No WhatsApp / SMS / Telegram / Messenger / Instagram / Teams adapters |
+| 22 | Omnichannel expansion | Eight channels: web chat, email, WhatsApp, SMS, Telegram, Messenger, Instagram, Teams — each with webhook signature verification | Teams verification is a shared secret, not the Bot Framework's JWT scheme; no channel has been exercised against a live provider account |
 | 23 | Voice platform | Call lifecycle and state machine, IVR engine, call control, recording with consent and retention, routing into the existing engine, three telephony adapters (simulated, Twilio, SIP gateway) | No media plane: audio is carried by the provider, so the platform never touches RTP. Verified end to end against the simulated provider only — no PSTN call has been placed from this repository |
 | 33 | Developer platform | API keys with scoped permissions, OpenAPI spec, API request log | No webhook CRUD API, no developer portal, no SDK, no sandbox |
 | 35 | Billing & usage | AI token/cost metering, per-tenant monthly ceilings enforced in the gateway | No subscription management, no plan enforcement beyond AI, no usage rollups |

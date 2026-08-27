@@ -1,6 +1,12 @@
 import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { EmailAdapter } from './adapters/email.adapter';
+import { InstagramAdapter } from './adapters/instagram.adapter';
+import { MessengerAdapter } from './adapters/messenger.adapter';
+import { SmsAdapter } from './adapters/sms.adapter';
+import { TeamsAdapter } from './adapters/teams.adapter';
+import { TelegramAdapter } from './adapters/telegram.adapter';
 import { WebChatAdapter } from './adapters/web-chat.adapter';
+import { WhatsAppAdapter } from './adapters/whatsapp.adapter';
 import { ChannelRegistry } from './channel-registry.service';
 import { ChannelsController } from './channels.controller';
 import { ChannelsService } from './channels.service';
@@ -15,7 +21,18 @@ import { ChannelsService } from './channels.service';
   // other's exported providers without importing one another — importing would
   // form a cycle at module-definition time.
   controllers: [ChannelsController],
-  providers: [ChannelRegistry, ChannelsService, WebChatAdapter, EmailAdapter],
+  providers: [
+    ChannelRegistry,
+    ChannelsService,
+    WebChatAdapter,
+    EmailAdapter,
+    WhatsAppAdapter,
+    MessengerAdapter,
+    InstagramAdapter,
+    SmsAdapter,
+    TelegramAdapter,
+    TeamsAdapter,
+  ],
   exports: [ChannelsService, ChannelRegistry],
 })
 export class ChannelsModule implements OnModuleInit {
@@ -23,10 +40,26 @@ export class ChannelsModule implements OnModuleInit {
     private readonly registry: ChannelRegistry,
     private readonly webChat: WebChatAdapter,
     private readonly email: EmailAdapter,
+    private readonly whatsapp: WhatsAppAdapter,
+    private readonly messenger: MessengerAdapter,
+    private readonly instagram: InstagramAdapter,
+    private readonly sms: SmsAdapter,
+    private readonly telegram: TelegramAdapter,
+    private readonly teams: TeamsAdapter,
   ) {}
 
   onModuleInit(): void {
-    this.registry.register(this.webChat);
-    this.registry.register(this.email);
+    for (const adapter of [
+      this.webChat,
+      this.email,
+      this.whatsapp,
+      this.messenger,
+      this.instagram,
+      this.sms,
+      this.telegram,
+      this.teams,
+    ]) {
+      this.registry.register(adapter);
+    }
   }
 }

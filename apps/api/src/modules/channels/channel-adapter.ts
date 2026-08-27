@@ -28,6 +28,33 @@ export interface ChannelAdapter {
   /** Poll delivery state for providers without status webhooks. */
   status?(externalId: string, account: ChannelAccountContext): Promise<DeliveryState>;
 
+  /**
+   * Verify an inbound webhook actually came from the provider.
+   *
+   * Every social channel delivers messages over a public, unauthenticated URL,
+   * so without this anyone who learns the endpoint can inject a message into a
+   * tenant's inbox as any customer they choose. Adapters whose transport is
+   * already authenticated — web chat, email through a trusted relay — do not
+   * implement it.
+   */
+  verifySignature?(
+    payload: unknown,
+    headers: Record<string, string | undefined>,
+    account: ChannelAccountContext,
+    rawBody?: string,
+  ): boolean;
+
+  /**
+   * Answer a provider's subscription challenge.
+   *
+   * Meta's platforms verify an endpoint by GETting it with a token before they
+   * will deliver anything to it.
+   */
+  challenge?(
+    query: Record<string, string | undefined>,
+    account: ChannelAccountContext,
+  ): string | null;
+
   /** Capabilities the workspace UI adapts to. */
   metadata(): ChannelMetadata;
 }
