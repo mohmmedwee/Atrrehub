@@ -107,6 +107,7 @@ export const ID_PREFIXES = {
   adherence: 'adh',
   dataPlane: 'dpl',
   heartbeat: 'hbt',
+  backup: 'bak',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

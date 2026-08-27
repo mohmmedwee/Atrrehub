@@ -139,7 +139,31 @@ Treat as a **security incident**, not a bug report.
 | Business | 1 hour | 4 hours |
 | Starter | 24 hours | 24 hours |
 
-Test the restore path quarterly. An untested backup is a hypothesis.
+### Testing the restore path
+
+An untested backup is a hypothesis, so the platform tests its own:
+
+```bash
+./scripts/dr-drill.sh          # backup → restore into a scratch database → report
+```
+
+The drill takes a backup, restores it into a throwaway database, compares row
+counts for ten witness tables against the live database, checks the table count
+and the schema version, and drops the scratch database whatever happens. It
+exits non-zero when a check fails, so it belongs on a schedule in CI.
+
+The worker tier runs the same thing nightly and records the result. A backup
+whose status is `completed` is a file; only `verified` means anything, and
+`GET /api/v1/dr/readiness` answers the question an auditor actually asks:
+
+```json
+{ "hasVerifiedBackup": true, "verifiedAgeHours": 3, "unrestorableCount": 0, "ready": true }
+```
+
+A backup that fails verification is marked `unrestorable` — the loudest row in
+the table — and the reason is recorded against it. Corruption is caught by
+checksum before the restore is even attempted, because `pg_restore`'s own error
+would not say "this file is not what we stored".
 
 ---
 

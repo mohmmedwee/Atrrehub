@@ -13,6 +13,7 @@ import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
 import { ReportsService } from '../modules/reports/reports.service';
 import { TenancyService } from '../modules/tenancy/tenancy.service';
+import { BackupService } from '../modules/dr/backup.service';
 import { HybridService } from '../modules/hybrid/hybrid.service';
 import { WfmService } from '../modules/wfm/wfm.service';
 import { IntegrationsService } from '../modules/integrations/integrations.service';
@@ -43,6 +44,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly tenancy: TenancyService,
     private readonly wfm: WfmService,
     private readonly hybrid: HybridService,
+    private readonly backups: BackupService,
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
     private readonly memory: MemoryService,
@@ -280,6 +282,29 @@ export class WorkersService implements OnApplicationBootstrap {
       }
     } catch (error) {
       this.logger.error('Hybrid upkeep failed', error);
+    }
+  }
+
+  /**
+   * Nightly backup, then prove the last one restores.
+   *
+   * The verification is the point. Taking a backup every night and never
+   * restoring one is how an organization discovers on the worst day of its
+   * year that the archives were empty for four months.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async nightlyBackup(): Promise<void> {
+    if (!this.enabled) return;
+
+    try {
+      const backup = await RequestContextStore.runAsSystem(() =>
+        this.backups.create({ retentionDays: 30 }),
+      );
+      await RequestContextStore.runAsSystem(() => this.backups.verify(backup.id));
+      const pruned = await RequestContextStore.runAsSystem(() => this.backups.prune());
+      if (pruned) this.logger.info('Expired backups pruned', { count: pruned });
+    } catch (error) {
+      this.logger.error('The nightly backup failed', error);
     }
   }
 

@@ -2836,3 +2836,44 @@ model DataPlaneHeartbeat {
   @@index([dataPlaneId, reportedAt])
   @@map("data_plane_heartbeats")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Disaster recovery
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum BackupStatus {
+  running
+  completed
+  failed
+  /// Restored into a scratch database and checked. The only status that means
+  /// anything: an unverified backup is a hypothesis.
+  verified
+  /// Restored and found wanting — the loudest row in the table.
+  unrestorable
+}
+
+model BackupRecord {
+  id             String       @id
+  /// full, schema_only, or tenant — a single organization's data.
+  kind           String       @default("full")
+  organizationId String?      @map("organization_id")
+  storageKey     String       @map("storage_key")
+  sizeBytes      BigInt       @default(0) @map("size_bytes")
+  /// SHA-256 of the archive, so a silently corrupted file is detectable.
+  checksum       String?
+  status         BackupStatus @default(running)
+  /// Schema version at capture; a restore into a newer schema needs migrating.
+  migrationName  String?      @map("migration_name")
+  startedAt      DateTime     @default(now()) @map("started_at")
+  finishedAt     DateTime?    @map("finished_at")
+  durationMs     Int?         @map("duration_ms")
+  verifiedAt     DateTime?    @map("verified_at")
+  /// { tables, rows, checks: [{ name, expected, actual, passed }] }
+  verification   Json?
+  error          String?
+  expiresAt      DateTime?    @map("expires_at")
+
+  @@index([status, startedAt])
+  @@index([organizationId])
+  @@map("backup_records")
+}

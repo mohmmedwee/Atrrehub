@@ -23,6 +23,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReportsModule } from './modules/reports/reports.module';
 import { SsoModule } from './modules/sso/sso.module';
 import { VoiceModule } from './modules/voice/voice.module';
+import { DrModule } from './modules/dr/dr.module';
 import { HybridModule } from './modules/hybrid/hybrid.module';
 import { WfmModule } from './modules/wfm/wfm.module';
 import { QualityModule } from './modules/quality/quality.module';
@@ -100,6 +101,7 @@ import { WorkersModule } from './workers/workers.module';
     VoiceModule,
     WfmModule,
     HybridModule,
+    DrModule,
     WidgetModule,
     WorkersModule,
   ],
