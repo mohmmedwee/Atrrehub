@@ -10,7 +10,7 @@ Built from the 51-phase product plan (Phase 0 – Phase 50) in
 [`docs/product/prd.md`](docs/product/prd.md). The MVP boundary the plan defines
 (§52) is complete end to end, along with much of Release 2 and Release 3.
 
-**Delivery status: 34 phases built, 12 partial, 1 schema only, 4 not built.**
+**Delivery status: 35 phases built, 13 partial, 1 schema only, 3 not built.**
 [`docs/product/roadmap.md`](docs/product/roadmap.md) lists every phase with its
 evidence and its named gaps.
 
@@ -42,6 +42,13 @@ Then sign in at <http://localhost:3000> as `owner@atrrehub.demo` /
 | API reference | <http://localhost:4000/api/docs> |
 | Mail catcher | <http://localhost:8025> |
 
+**No telephony account is required either.** A simulated telephony provider
+ships alongside, so an inbound call, the IVR, call control, recording and the AI
+voice agent all run and their tests pass with no carrier, no SIP trunk and no
+phone number. It implements the control plane for real and stands in for the
+media plane — it cannot carry audio, and its capability flags say so. Point a
+`twilio` or `sip` number at the same code and the call is real.
+
 **No AI provider key is required.** A deterministic local provider ships with
 the platform, so agents, RAG, the copilot and quality control all run — and
 their tests pass — with no external calls. Its replies are structurally correct
@@ -57,7 +64,7 @@ Node.js 22+, pnpm 10+, and either Docker or a local PostgreSQL 16 with the
 
 ## What it does
 
-**Customers arrive** on web chat, email or the API. Each channel implements one
+**Customers arrive** on web chat, email, the phone or the API. Each channel implements one
 `ChannelAdapter`, so channel specifics never leak into the core. Inbound
 messages resolve or create a customer by normalized contact value, match to an
 existing conversation by thread key, and are deduplicated against provider
@@ -78,6 +85,14 @@ guessing. Every decision is recorded and visible in the execution debugger.
 AI-written handoff summary already in the conversation, plus a copilot that
 suggests grounded replies, rewrites, translates and recommends the next action —
 always showing its sources so an agent is deciding on something they can check.
+
+**Callers** reach an IVR built as a menu tree, key their way to a queue, a
+person or the AI agent, and are routed by the same engine every other channel
+uses. The AI voice agent runs a turn through that same agent and runtime, so a
+phone call gets the same retrieval, the same guardrails and the same handoff
+rules as a chat — and hands over with the transcript already written down. What
+voice adds is the part around the turn: when the caller has stopped speaking,
+what to do when they say nothing, and what to say while the model is thinking.
 
 **Afterwards**, SLA clocks settle in working time, conversations are scored
 against weighted quality scorecards with cited evidence, intelligence is
@@ -131,7 +146,7 @@ two real tenants against a real database on every CI run.
 ```
 apps/
   api/                  NestJS API, realtime gateway and worker tier
-    prisma/             schema (88 tables), migrations, seed
+    prisma/             schema (95 tables), migrations, seed
     src/core/           tenancy, errors, events, queues, storage, crypto, metrics
     src/modules/        one directory per bounded context
   web/                  Next.js workspace, AI studio, analytics, admin, widget
@@ -161,7 +176,7 @@ pnpm infra:up            # datastores only
 
 | Suite | Command | Covers |
 |---|---|---|
-| Unit | `pnpm test` | Permission evaluation and role escalation, crypto, business-hours arithmetic across timezones and holidays, conversation lifecycle, contact normalization, routing conditions, RAG chunking and fusion, guardrail detectors, the workflow expression evaluator, evaluation scorers, report rendering and scheduling, CRM field mapping and sync, OIDC ID-token verification |
+| Unit | `pnpm test` | Permission evaluation and role escalation, crypto, business-hours arithmetic across timezones and holidays, conversation lifecycle, contact normalization, routing conditions, RAG chunking and fusion, guardrail detectors, the workflow expression evaluator, evaluation scorers, report rendering and scheduling, CRM field mapping and sync, OIDC ID-token verification, IVR flow evaluation, telephony webhook signatures |
 | Integration | `pnpm test:e2e` | Tenant isolation across read, write, delete, list and forged headers; registration and provisioning; refresh-token rotation and reuse detection; deny-by-default authorization; API key scoping |
 
 The guardrail and expression suites are deliberately adversarial: they assert
@@ -170,7 +185,8 @@ returning an item", that the PII detector Luhn-validates card numbers rather
 than masking order references, that tool egress refuses the cloud metadata
 endpoint, that the expression evaluator cannot be made to execute code, and
 that the OIDC verifier rejects a forged token, a replayed one, and one signed
-with `alg: none`.
+with `alg: none`, and that a Twilio webhook with one altered parameter fails
+verification.
 
 ---
 
@@ -189,6 +205,7 @@ The values that matter most:
 | `REDIS_URL` | Cache, rate limits, presence, locks, queues |
 | `JWT_SECRET`, `ENCRYPTION_KEY` | Generate with `openssl rand -hex 32` |
 | `AI_DEFAULT_PROVIDER` | `local` (default), `openai`, `azure_openai`, `anthropic` |
+| `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` | Optional speech recognition and synthesis; without them voice runs on the local provider |
 | `WORKERS_ENABLED` | `false` on API pods, `true` on worker pods |
 
 ---

@@ -68,7 +68,16 @@ export class EventBus {
     const client = options.tx ?? this.prisma.raw;
     await client.outboxEvent.create({ data: record });
 
-    // Fire in-process immediately; the relay will deliver the durable copy.
+    // Inside a caller's transaction the row may still be rolled back, so
+    // delivery waits for the relay — emitting now would tell listeners about
+    // something that never happened.
+    if (options.tx) return id;
+
+    // Otherwise deliver in-process immediately, because SLA clocks, routing
+    // and notifications are all expected to be instant, and then mark the row
+    // delivered so the relay does not deliver it a *second* time. The relay's
+    // job is the events whose process died before this line — that is the
+    // outbox guarantee, and it is not a licence to double-fire every listener.
     this.emitLocal({
       id,
       type,
@@ -82,6 +91,17 @@ export class EventBus {
       causationId: record.causationId ?? undefined,
       data,
     });
+
+    await this.prisma.raw.outboxEvent
+      .update({
+        where: { id },
+        data: { status: 'published', publishedAt: new Date(), attempts: 1 },
+      })
+      .catch((error) =>
+        // Failing to mark it costs a duplicate delivery, not a lost one, so it
+        // is logged rather than propagated into the caller's request.
+        this.logger.error('Could not mark an outbox event delivered', error, { id, type }),
+      );
 
     return id;
   }

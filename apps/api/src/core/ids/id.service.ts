@@ -91,6 +91,13 @@ export const ID_PREFIXES = {
   idempotency: 'idm',
   requestLog: 'rql',
   sso: 'sso',
+  call: 'cal',
+  callEvent: 'cle',
+  callParticipant: 'clp',
+  recording: 'rec',
+  transcript: 'trs',
+  phoneNumber: 'pho',
+  ivrFlow: 'ivr',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

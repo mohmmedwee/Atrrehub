@@ -14,11 +14,11 @@ Status is assessed against **code that exists and runs**, not against intent:
 - **Schema only** — database tables exist, no service or API behind them.
 - **Not built** — designed and documented, no implementation.
 
-**Totals: 34 built · 12 partial · 1 schema only · 4 not built.**
+**Totals: 35 built · 13 partial · 1 schema only · 3 not built.**
 
 ---
 
-## Built (34)
+## Built (35)
 
 | Phase | Domain | Evidence |
 |---|---|---|
@@ -48,22 +48,24 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 26 | AI quality management | Weighted scorecards, evidence, disputes, calibration |
 | 27 | Real-time quality | Live signals pushed to the agent during the conversation |
 | 28 | Customer intelligence | Intent, sentiment, topics, entities, churn risk, trends |
+| 24 | AI voice agent | Turn loop over the existing runtime: endpointing, barge-in budget, no-input recovery, handoff with transcript |
 | 29 | Analytics platform | Executive, agent, AI and channel dashboards |
 | 30 | Reporting | Closed source catalogue, saved reports, CSV export, scheduled email |
 | 32 | CRM & enterprise integrations | Connect/test/enable/sync lifecycle, four connectors, field mapping |
 | 34 | Notification platform | Rules, audiences, in-app/email/webhook delivery, inbox |
 | 36 | AI evaluation | Six scorers, dataset runs, run diffing, the agent promotion gate |
 | 38 | Security | Application and data controls — see `docs/security/controls.md` |
-| 48 | Testing platform | 225 unit + 23 integration tests, tenant isolation in CI |
+| 48 | Testing platform | 289 unit + 23 integration tests, tenant isolation in CI |
 | 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
 
 ---
 
-## Partial (12)
+## Partial (13)
 
 | Phase | Domain | Built | Gap |
 |---|---|---|---|
 | 22 | Omnichannel expansion | `ChannelAdapter` contract, registry, capability metadata | No WhatsApp / SMS / Telegram / Messenger / Instagram / Teams adapters |
+| 23 | Voice platform | Call lifecycle and state machine, IVR engine, call control, recording with consent and retention, routing into the existing engine, three telephony adapters (simulated, Twilio, SIP gateway) | No media plane: audio is carried by the provider, so the platform never touches RTP. Verified end to end against the simulated provider only — no PSTN call has been placed from this repository |
 | 33 | Developer platform | API keys with scoped permissions, OpenAPI spec, API request log | No webhook CRUD API, no developer portal, no SDK, no sandbox |
 | 35 | Billing & usage | AI token/cost metering, per-tenant monthly ceilings enforced in the gateway | No subscription management, no plan enforcement beyond AI, no usage rollups |
 | 37 | AI governance | Allowed models, token and cost limits, retention window, full AI audit trail | No admin API or UI to manage the policy |
@@ -88,14 +90,12 @@ Tables exist in the data model; no service, controller or job uses them.
 
 ---
 
-## Not built (4)
+## Not built (3)
 
 Designed and documented; no implementation.
 
 | Phase | Domain | Why |
 |---|---|---|
-| 23 | Voice platform | Needs SIP/telephony infrastructure and a media gateway |
-| 24 | AI voice agent | Needs streaming STT/TTS providers; reuses the existing runtime once the gateway exists |
 | 31 | Workforce management | Forecasting, scheduling, adherence — no dependency blocking it |
 | 43 | Disaster recovery | Runbook written; no automated backup, replication or DR testing |
 | 46 | Hybrid deployment | Control-plane / data-plane split documented in the architecture |
@@ -112,6 +112,6 @@ copilot and basic analytics.
 | Release | Contents | Status |
 |---|---|---|
 | **1 — MVP** | Phases 2–21, 29 | Complete |
-| **2** | Voice, AI voice, WhatsApp, routing, automation, AI customer context | Routing, automation and customer context complete; voice and social outstanding |
+| **2** | Voice, AI voice, WhatsApp, routing, automation, AI customer context | Routing, automation, customer context, voice and AI voice complete; social outstanding |
 | **3** | AI QC, real-time QC, advanced analytics, social channels, WFM | QC, real-time QC and reporting complete; social and WFM outstanding |
 | **Enterprise** | SSO, SCIM, private cloud, hybrid, advanced security, AI governance, developer platform, HA/DR | SSO (OIDC), SCIM, security and governance complete; SAML, hybrid and DR outstanding |

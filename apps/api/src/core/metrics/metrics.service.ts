@@ -56,6 +56,32 @@ export class MetricsService {
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
   });
 
+  /**
+   * Speech latency, bucketed far tighter than the AI histogram: on a live call
+   * the interesting question is whether a turn came back under half a second,
+   * and the AI buckets cannot see the difference between 200 ms and 700 ms.
+   */
+  readonly speechDuration = new Histogram({
+    name: 'atrrehub_speech_duration_seconds',
+    help: 'Speech recognition and synthesis duration in seconds',
+    labelNames: ['kind', 'provider'] as const,
+    buckets: [0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1.2, 2, 4, 8],
+  });
+
+  /** End-to-end latency of one AI voice turn: caller stopped speaking → reply begins. */
+  readonly voiceTurnDuration = new Histogram({
+    name: 'atrrehub_voice_turn_duration_seconds',
+    help: 'AI voice agent turn latency in seconds',
+    labelNames: ['outcome'] as const,
+    buckets: [0.25, 0.5, 0.8, 1.2, 1.8, 2.5, 4, 8],
+  });
+
+  readonly callsTotal = new Counter({
+    name: 'atrrehub_calls_total',
+    help: 'Calls by direction and disposition',
+    labelNames: ['direction', 'disposition'] as const,
+  });
+
   readonly queueDepth = new Gauge({
     name: 'atrrehub_queue_depth',
     help: 'Jobs waiting in each queue',

@@ -12,6 +12,7 @@ import { KnowledgeService } from '../modules/knowledge/knowledge.service';
 import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
 import { ReportsService } from '../modules/reports/reports.service';
+import { TenancyService } from '../modules/tenancy/tenancy.service';
 import { IntegrationsService } from '../modules/integrations/integrations.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
 import { RuntimeService } from '../modules/workflows/runtime.service';
@@ -37,6 +38,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly knowledge: KnowledgeService,
     private readonly quality: QualityService,
     private readonly reports: ReportsService,
+    private readonly tenancy: TenancyService,
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
     private readonly memory: MemoryService,
@@ -53,6 +55,15 @@ export class WorkersService implements OnApplicationBootstrap {
       this.logger.info('Worker tier disabled by configuration');
       return;
     }
+
+    // A release that adds a permission leaves every existing tenant's system
+    // roles stale, so the feature ships and nobody can reach it. Reconcile
+    // once at boot, before any request arrives.
+    void RequestContextStore.runAsSystem(() => this.tenancy.syncSystemRoles())
+      .then((updated) => {
+        if (updated) this.logger.info('System roles reconciled', { roles: updated });
+      })
+      .catch((error) => this.logger.error('Reconciling system roles failed', error));
 
     this.queue.register<{ documentId: string }>(QUEUES.ingestion, async (data) => {
       await this.knowledge.processDocument(data.documentId);

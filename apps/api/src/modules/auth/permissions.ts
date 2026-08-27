@@ -66,6 +66,9 @@ export const PERMISSIONS = [
   'analytics:read_all',
   'report:manage',
   'report:export',
+  'call:read',
+  'call:control',
+  'voice:manage',
   'notification:manage',
   'integration:manage',
   'governance:manage',
@@ -104,6 +107,8 @@ const AGENT_PERMISSIONS: Permission[] = [
   'sla:read',
   'knowledge:read',
   'agent:execute',
+  'call:read',
+  'call:control',
   'tool:execute',
   'copilot:execute',
   'qc:read_own',
@@ -161,6 +166,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
   'integration:manage',
   'governance:manage',
   'eval:manage',
+  'voice:manage',
 ];
 
 export const SYSTEM_ROLES: Record<

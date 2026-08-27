@@ -29,6 +29,44 @@ export class TenancyService {
   ) {}
 
   /**
+   * Bring every tenant's system roles back in step with the code.
+   *
+   * System roles are materialized per tenant so an administrator can clone and
+   * adjust them, which means a release that adds a permission leaves every
+   * existing tenant's roles stale — the feature ships and nobody can reach it.
+   * Reconciling at boot closes that gap.
+   *
+   * Only `isSystem` roles are touched, and only their permission set: a
+   * renamed role and every custom role are left exactly as the tenant left
+   * them.
+   */
+  async syncSystemRoles(): Promise<number> {
+    const roles = await this.prisma.raw.role.findMany({
+      where: { isSystem: true },
+      select: { id: true, key: true, permissions: true },
+    });
+
+    let updated = 0;
+    for (const role of roles) {
+      const expected = SYSTEM_ROLES[role.key as RoleKey]?.permissions;
+      if (!expected) continue;
+
+      const missing = expected.filter((permission) => !role.permissions.includes(permission));
+      if (!missing.length) continue;
+
+      // Added, never removed: a permission taken out of a system role here
+      // would silently revoke access an administrator may have relied on.
+      await this.prisma.raw.role.update({
+        where: { id: role.id },
+        data: { permissions: [...role.permissions, ...missing] },
+      });
+      updated += 1;
+    }
+
+    return updated;
+  }
+
+  /**
    * Everything a new tenant needs to be immediately usable: the organization,
    * its eight system roles, an owner membership, a default workspace, business
    * hours, a default SLA policy, a general queue and a starter knowledge base.
