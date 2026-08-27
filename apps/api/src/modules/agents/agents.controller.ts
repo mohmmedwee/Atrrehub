@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RuntimeService } from '../workflows/runtime.service';
 import { AgentsService } from './agents.service';
@@ -62,6 +63,7 @@ export class AgentsController {
   @Post()
   @RequirePermissions('agent:create')
   @ApiOperation({ summary: 'Create an AI agent with its first draft version' })
+  @ApiZodBody(CreateAgentSchema)
   create(@Body(zodBody(CreateAgentSchema)) body: z.infer<typeof CreateAgentSchema>) {
     return this.agents.create(body as never);
   }
@@ -69,6 +71,7 @@ export class AgentsController {
   @Get('executions')
   @RequirePermissions('execution:read')
   @ApiOperation({ summary: 'List recent executions' })
+  @ApiOptionalQuery('status', 'agentId', 'conversationId')
   executions(
     @Query('status') status?: string,
     @Query('agentId') agentId?: string,
@@ -153,6 +156,7 @@ export class AgentsController {
   @RequirePermissions('agent:execute')
   @RateLimit(RATE_BUCKETS.ai)
   @ApiOperation({ summary: 'Run the agent against a message' })
+  @ApiZodBody(RunSchema)
   run(@Param('id') id: string, @Body(zodBody(RunSchema)) body: z.infer<typeof RunSchema>) {
     return this.agents.run({ agentId: id, ...body });
   }

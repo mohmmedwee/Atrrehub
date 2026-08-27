@@ -19,6 +19,7 @@ import { BackupService } from '../modules/dr/backup.service';
 import { HybridService } from '../modules/hybrid/hybrid.service';
 import { WfmService } from '../modules/wfm/wfm.service';
 import { IntegrationsService } from '../modules/integrations/integrations.service';
+import { WebhooksService } from '../modules/webhooks/webhooks.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
 import { RuntimeService } from '../modules/workflows/runtime.service';
 import { SlaService } from '../modules/sla/sla.service';
@@ -51,6 +52,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly metricsRollup: MetricsRollupService,
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
+    private readonly webhooks: WebhooksService,
     private readonly memory: MemoryService,
     private readonly metrics: MetricsService,
     private readonly logger: AppLogger,
@@ -372,77 +374,22 @@ export class WorkersService implements OnApplicationBootstrap {
     }
   }
 
-  /** Retry webhook deliveries whose backoff has elapsed. */
+  /**
+   * Retry webhook deliveries whose backoff has elapsed.
+   *
+   * The sending itself lives in WebhooksService, which the request path also
+   * goes through, so backoff, failure counting and auto-disable cannot drift
+   * apart between the first attempt and the twelfth.
+   */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async retryWebhooks(): Promise<void> {
     if (!this.enabled) return;
 
-    const due = await this.prisma.raw.webhookDelivery.findMany({
-      where: { deliveredAt: null, nextAttemptAt: { lte: new Date() }, attempts: { lt: 12 } },
-      include: { endpoint: true },
-      take: 100,
-    });
-
-    for (const delivery of due) {
-      if (!delivery.endpoint.isActive) continue;
-      try {
-        const timestamp = Math.floor(Date.now() / 1000);
-        const payload = JSON.stringify(delivery.payload);
-        const { createHmac } = await import('node:crypto');
-        const signature = createHmac('sha256', delivery.endpoint.secret)
-          .update(`${timestamp}.${payload}`)
-          .digest('hex');
-
-        const response = await fetch(delivery.endpoint.url, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-atrrehub-event': delivery.eventType,
-            'x-atrrehub-delivery': delivery.id,
-            'x-atrrehub-signature': `t=${timestamp},v1=${signature}`,
-          },
-          body: payload,
-          signal: AbortSignal.timeout(10_000),
-        });
-
-        const attempts = delivery.attempts + 1;
-        if (response.ok) {
-          await this.prisma.raw.webhookDelivery.update({
-            where: { id: delivery.id },
-            data: {
-              deliveredAt: new Date(),
-              statusCode: response.status,
-              attempts,
-              nextAttemptAt: null,
-            },
-          });
-          await this.prisma.raw.webhookEndpoint.update({
-            where: { id: delivery.endpoint.id },
-            data: { failureCount: 0 },
-          });
-        } else {
-          // Exponential backoff, capped so a slow endpoint is retried for a day.
-          const backoffMinutes = Math.min(2 ** attempts, 720);
-          await this.prisma.raw.webhookDelivery.update({
-            where: { id: delivery.id },
-            data: {
-              attempts,
-              statusCode: response.status,
-              nextAttemptAt: new Date(Date.now() + backoffMinutes * 60_000),
-            },
-          });
-        }
-      } catch (error) {
-        const attempts = delivery.attempts + 1;
-        await this.prisma.raw.webhookDelivery.update({
-          where: { id: delivery.id },
-          data: {
-            attempts,
-            error: error instanceof Error ? error.message.slice(0, 300) : String(error),
-            nextAttemptAt: new Date(Date.now() + Math.min(2 ** attempts, 720) * 60_000),
-          },
-        });
-      }
+    try {
+      const delivered = await RequestContextStore.runAsSystem(() => this.webhooks.retryDue());
+      if (delivered) this.logger.debug('Retried webhook deliveries', { delivered });
+    } catch (error) {
+      this.logger.error('Webhook retry sweep failed', error);
     }
   }
 }

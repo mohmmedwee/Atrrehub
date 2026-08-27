@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { IntegrationsService } from './integrations.service';
 
@@ -64,6 +65,7 @@ export class IntegrationsController {
   @Post()
   @RequirePermissions('integration:manage')
   @ApiOperation({ summary: 'Connect a provider; it stays disabled until tested' })
+  @ApiZodBody(IntegrationSchema)
   create(@Body(zodBody(IntegrationSchema)) body: z.infer<typeof IntegrationSchema>) {
     return this.integrations.create(body);
   }
@@ -78,6 +80,7 @@ export class IntegrationsController {
   @Patch(':integrationId')
   @RequirePermissions('integration:manage')
   @ApiOperation({ summary: 'Reconfigure an integration; changing how it connects re-tests it' })
+  @ApiZodBody(IntegrationSchema.partial())
   update(
     @Param('integrationId') integrationId: string,
     @Body(zodBody(IntegrationSchema.partial())) body: Partial<z.infer<typeof IntegrationSchema>>,

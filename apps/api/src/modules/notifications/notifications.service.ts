@@ -66,6 +66,10 @@ export const NOTIFIABLE_EVENTS: Record<string, { label: string; defaultTitle: st
     defaultTitle: 'An agent failed its evaluation gate',
   },
   'usage.limit': { label: 'Usage limit', defaultTitle: 'An AI usage limit was reached' },
+  'webhook.disabled': {
+    label: 'Webhook disabled',
+    defaultTitle: 'A webhook endpoint was disabled after repeated failures',
+  },
 };
 
 /**

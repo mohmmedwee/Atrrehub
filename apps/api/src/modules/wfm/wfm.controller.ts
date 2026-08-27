@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { calculateStaffing, evaluateStaffing } from './staffing';
 import { WfmService } from './wfm.service';
@@ -118,6 +119,7 @@ export class WfmController {
   @ApiOperation({
     summary: 'Erlang C: agents needed for an interval, or what given agents deliver',
   })
+  @ApiZodBody(StaffingSchema)
   staffing(@Body(zodBody(StaffingSchema)) body: z.infer<typeof StaffingSchema>) {
     const { agents, ...input } = body;
     return agents === undefined
@@ -137,6 +139,7 @@ export class WfmController {
   @Post('forecasts')
   @RequirePermissions('wfm:manage')
   @ApiOperation({ summary: 'Forecast volume from history and size every interval' })
+  @ApiZodBody(ForecastSchema)
   createForecast(@Body(zodBody(ForecastSchema)) body: z.infer<typeof ForecastSchema>) {
     return this.wfm.generateForecast(body);
   }
@@ -182,6 +185,7 @@ export class WfmController {
   @Post('templates')
   @RequirePermissions('wfm:manage')
   @ApiOperation({ summary: 'Create a shift template' })
+  @ApiZodBody(TemplateSchema)
   createTemplate(@Body(zodBody(TemplateSchema)) body: z.infer<typeof TemplateSchema>) {
     return this.wfm.createTemplate(body);
   }
@@ -197,6 +201,7 @@ export class WfmController {
   @Post('templates/:templateId/apply')
   @RequirePermissions('wfm:manage')
   @ApiOperation({ summary: 'Generate draft shifts from a template across a date range' })
+  @ApiZodBody(ApplySchema)
   applyTemplate(
     @Param('templateId') templateId: string,
     @Body(zodBody(ApplySchema)) body: z.infer<typeof ApplySchema>,
@@ -207,6 +212,7 @@ export class WfmController {
   @Get('shifts')
   @RequirePermissions('wfm:read')
   @ApiOperation({ summary: 'List shifts in a window' })
+  @ApiZodQuery(RangeQuery)
   listShifts(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.wfm.listShifts(query);
   }
@@ -214,6 +220,7 @@ export class WfmController {
   @Post('shifts')
   @RequirePermissions('wfm:manage')
   @ApiOperation({ summary: 'Roster a shift; double-booking and approved time off are refused' })
+  @ApiZodBody(ShiftSchema)
   createShift(@Body(zodBody(ShiftSchema)) body: z.infer<typeof ShiftSchema>) {
     return this.wfm.createShift(body);
   }
@@ -243,6 +250,7 @@ export class WfmController {
   @Get('time-off')
   @RequirePermissions('wfm:read')
   @ApiOperation({ summary: 'List time off requests' })
+  @ApiOptionalQuery('from', 'to', 'userId', 'status')
   listTimeOff(
     @Query('from') from?: string,
     @Query('to') to?: string,
@@ -260,6 +268,7 @@ export class WfmController {
   @Post('time-off')
   @RequirePermissions('wfm:read')
   @ApiOperation({ summary: 'Request time off' })
+  @ApiZodBody(TimeOffSchema)
   requestTimeOff(@Body(zodBody(TimeOffSchema)) body: z.infer<typeof TimeOffSchema>) {
     return this.wfm.requestTimeOff(body);
   }
@@ -291,6 +300,7 @@ export class WfmController {
   @Get('adherence')
   @RequirePermissions('wfm:read')
   @ApiOperation({ summary: 'Adherence and conformance over a date range' })
+  @ApiZodQuery(RangeQuery)
   adherence(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.wfm.adherenceReport(query);
   }

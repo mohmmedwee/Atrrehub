@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import { RequestContextStore, type Principal } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { TenancyService } from '../tenancy/tenancy.service';
@@ -34,6 +35,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @ApiOperation({ summary: 'Create an account and its organization' })
+  @ApiZodBody(RegisterSchema)
   async register(@Body(zodBody(RegisterSchema)) body: z.infer<typeof RegisterSchema>) {
     return this.auth.register(body);
   }
@@ -42,6 +44,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   @ApiOperation({ summary: 'Authenticate with email and password' })
+  @ApiZodBody(LoginSchema)
   async login(@Body(zodBody(LoginSchema)) body: z.infer<typeof LoginSchema>) {
     return this.auth.login(body);
   }
@@ -50,6 +53,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   @ApiOperation({ summary: 'Exchange a refresh token for a new session' })
+  @ApiZodBody(RefreshSchema)
   async refresh(@Body(zodBody(RefreshSchema)) body: z.infer<typeof RefreshSchema>) {
     return this.auth.refresh(body.refreshToken);
   }
@@ -58,6 +62,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   @ApiOperation({ summary: 'Revoke the presented refresh token' })
+  @ApiZodBody(RefreshSchema)
   async logout(@Body(zodBody(RefreshSchema)) body: z.infer<typeof RefreshSchema>) {
     await this.auth.logout(body.refreshToken);
   }
@@ -66,6 +71,7 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(202)
   @ApiOperation({ summary: 'Send a password reset link' })
+  @ApiZodBody(ForgotPasswordSchema)
   async forgotPassword(
     @Body(zodBody(ForgotPasswordSchema)) body: z.infer<typeof ForgotPasswordSchema>,
   ) {
@@ -77,6 +83,7 @@ export class AuthController {
   @Post('reset-password')
   @HttpCode(204)
   @ApiOperation({ summary: 'Set a new password using a reset token' })
+  @ApiZodBody(ResetPasswordSchema)
   async resetPassword(
     @Body(zodBody(ResetPasswordSchema)) body: z.infer<typeof ResetPasswordSchema>,
   ) {
@@ -87,6 +94,7 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(204)
   @ApiOperation({ summary: 'Confirm an email address' })
+  @ApiZodBody(VerifyEmailSchema)
   async verifyEmail(@Body(zodBody(VerifyEmailSchema)) body: z.infer<typeof VerifyEmailSchema>) {
     await this.auth.verifyEmail(body.token);
   }
@@ -137,6 +145,7 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(204)
   @ApiOperation({ summary: 'Change the current password' })
+  @ApiZodBody(ChangePasswordSchema)
   async changePassword(
     @CurrentUser() principal: Principal | undefined,
     @Body(zodBody(ChangePasswordSchema)) body: z.infer<typeof ChangePasswordSchema>,
@@ -171,6 +180,7 @@ export class AuthController {
 
   @Post('mfa/confirm')
   @ApiOperation({ summary: 'Confirm TOTP enrolment and receive recovery codes' })
+  @ApiZodBody(EnableMfaSchema)
   async confirmMfa(
     @CurrentUser() principal: Principal | undefined,
     @Body(zodBody(EnableMfaSchema)) body: z.infer<typeof EnableMfaSchema>,
@@ -182,6 +192,7 @@ export class AuthController {
   @Post('mfa/disable')
   @HttpCode(204)
   @ApiOperation({ summary: 'Disable multi-factor authentication' })
+  @ApiZodBody(EnableMfaSchema)
   async disableMfa(
     @CurrentUser() principal: Principal | undefined,
     @Body(zodBody(EnableMfaSchema)) body: z.infer<typeof EnableMfaSchema>,

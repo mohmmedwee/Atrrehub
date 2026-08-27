@@ -6,6 +6,7 @@ import type { Principal } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { AcceptInviteSchema } from '../auth/dto/auth.dto';
 import { CurrentOrg, CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -94,6 +95,7 @@ export class IamController {
   @Get('users')
   @RequirePermissions('user:read')
   @ApiOperation({ summary: 'List organization members' })
+  @ApiZodQuery(ListUsersQuery)
   async listUsers(
     @CurrentOrg() organizationId: string,
     @Query(zodQuery(ListUsersQuery)) query: z.infer<typeof ListUsersQuery>,
@@ -111,6 +113,7 @@ export class IamController {
   @Post('users')
   @RequirePermissions('user:manage')
   @ApiOperation({ summary: 'Invite a user to the organization' })
+  @ApiZodBody(InviteUserSchema)
   async invite(@Body(zodBody(InviteUserSchema)) body: z.infer<typeof InviteUserSchema>) {
     return this.iam.inviteUser(body);
   }
@@ -119,6 +122,7 @@ export class IamController {
   @Post('users/accept-invite')
   @RateLimit(RATE_BUCKETS.auth)
   @ApiOperation({ summary: 'Accept an invitation and sign in' })
+  @ApiZodBody(AcceptInviteSchema)
   async acceptInvite(@Body(zodBody(AcceptInviteSchema)) body: z.infer<typeof AcceptInviteSchema>) {
     return this.iam.acceptInvite(body.token, body);
   }
@@ -126,6 +130,7 @@ export class IamController {
   @Patch('users/:id')
   @RequirePermissions('user:manage')
   @ApiOperation({ summary: 'Update a member, their role or workspace scope' })
+  @ApiZodBody(UpdateUserSchema)
   async updateUser(
     @CurrentOrg() organizationId: string,
     @Param('id') id: string,
@@ -144,6 +149,7 @@ export class IamController {
 
   @Patch('me/presence')
   @ApiOperation({ summary: 'Set your own availability' })
+  @ApiZodBody(PresenceSchema)
   async setPresence(
     @CurrentUser() principal: Principal | undefined,
     @Body(zodBody(PresenceSchema)) body: z.infer<typeof PresenceSchema>,
@@ -175,6 +181,7 @@ export class IamController {
   @Post('roles')
   @RequirePermissions('role:manage')
   @ApiOperation({ summary: 'Create a custom role' })
+  @ApiZodBody(CreateRoleSchema)
   async createRole(@Body(zodBody(CreateRoleSchema)) body: z.infer<typeof CreateRoleSchema>) {
     return this.iam.createRole(body as never);
   }
@@ -182,6 +189,7 @@ export class IamController {
   @Patch('roles/:id')
   @RequirePermissions('role:manage')
   @ApiOperation({ summary: 'Update a role' })
+  @ApiZodBody(UpdateRoleSchema)
   async updateRole(
     @CurrentOrg() organizationId: string,
     @Param('id') id: string,
@@ -210,6 +218,7 @@ export class IamController {
   @Post('api-keys')
   @RequirePermissions('apikey:manage')
   @ApiOperation({ summary: 'Create an API key — the secret is shown only once' })
+  @ApiZodBody(CreateApiKeySchema)
   async createApiKey(@Body(zodBody(CreateApiKeySchema)) body: z.infer<typeof CreateApiKeySchema>) {
     return this.iam.createApiKey(body as never);
   }

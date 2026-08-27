@@ -17,6 +17,7 @@ import { CursorQuery } from '../../common/pagination';
 import { AppError } from '../../core/errors/app-error';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RagService } from '../rag/rag.service';
 import { KnowledgeService } from './knowledge.service';
@@ -116,6 +117,7 @@ export class KnowledgeController {
   @RequirePermissions('knowledge:read')
   @RateLimit(RATE_BUCKETS.ai)
   @ApiOperation({ summary: 'Hybrid retrieval with citations' })
+  @ApiZodQuery(SearchQuery)
   async search(@Query(zodQuery(SearchQuery)) query: z.infer<typeof SearchQuery>) {
     // Retrieval is confined to the bases this principal may read.
     const readable = await this.knowledge.readableBaseIds();
@@ -154,6 +156,7 @@ export class KnowledgeController {
   @Post('bases')
   @RequirePermissions('knowledge:create')
   @ApiOperation({ summary: 'Create a knowledge base' })
+  @ApiZodBody(BaseSchema)
   createBase(@Body(zodBody(BaseSchema)) body: z.infer<typeof BaseSchema>) {
     return this.knowledge.createBase(body);
   }
@@ -168,6 +171,7 @@ export class KnowledgeController {
   @Patch('bases/:id')
   @RequirePermissions('knowledge:update')
   @ApiOperation({ summary: 'Update a knowledge base' })
+  @ApiZodBody(BaseSchema.partial())
   updateBase(
     @Param('id') id: string,
     @Body(zodBody(BaseSchema.partial())) body: Record<string, unknown>,
@@ -186,6 +190,7 @@ export class KnowledgeController {
   @Post('bases/:id/categories')
   @RequirePermissions('knowledge:update')
   @ApiOperation({ summary: 'Create a category' })
+  @ApiZodBody(CategorySchema)
   createCategory(
     @Param('id') id: string,
     @Body(zodBody(CategorySchema)) body: z.infer<typeof CategorySchema>,
@@ -225,6 +230,7 @@ export class KnowledgeController {
   @Post('articles')
   @RequirePermissions('knowledge:create')
   @ApiOperation({ summary: 'Create a draft article' })
+  @ApiZodBody(ArticleSchema)
   createArticle(@Body(zodBody(ArticleSchema)) body: z.infer<typeof ArticleSchema>) {
     return this.knowledge.createArticle(body);
   }
@@ -239,6 +245,7 @@ export class KnowledgeController {
   @Patch('articles/:id')
   @RequirePermissions('knowledge:update')
   @ApiOperation({ summary: 'Update an article, snapshotting the previous revision' })
+  @ApiZodBody(UpdateArticleSchema)
   updateArticle(
     @Param('id') id: string,
     @Body(zodBody(UpdateArticleSchema)) body: z.infer<typeof UpdateArticleSchema>,
@@ -323,6 +330,7 @@ export class KnowledgeController {
   @Post('documents/url')
   @RequirePermissions('knowledge:create')
   @ApiOperation({ summary: 'Ingest a URL' })
+  @ApiZodBody(UrlSchema)
   ingestUrl(@Body(zodBody(UrlSchema)) body: z.infer<typeof UrlSchema>) {
     return this.knowledge.ingestUrl(body);
   }
@@ -348,6 +356,7 @@ export class KnowledgeController {
   @Get('sources')
   @RequirePermissions('knowledge:read')
   @ApiOperation({ summary: 'List knowledge sources' })
+  @ApiOptionalQuery('knowledgeBaseId')
   listSources(@Query('knowledgeBaseId') knowledgeBaseId?: string) {
     return this.knowledge.listSources(knowledgeBaseId);
   }
@@ -355,6 +364,7 @@ export class KnowledgeController {
   @Post('sources')
   @RequirePermissions('knowledge:create')
   @ApiOperation({ summary: 'Register a knowledge source' })
+  @ApiZodBody(SourceSchema)
   createSource(@Body(zodBody(SourceSchema)) body: z.infer<typeof SourceSchema>) {
     return this.knowledge.createSource(body as never);
   }

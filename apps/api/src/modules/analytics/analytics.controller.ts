@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { IntelligenceService } from '../intelligence/intelligence.service';
 import { AnalyticsService } from './analytics.service';
@@ -34,6 +35,7 @@ export class AnalyticsController {
   @ApiOperation({
     summary: 'Executive dashboard: volume, resolution, AI deflection, CSAT, SLA, cost',
   })
+  @ApiZodQuery(RangeQuery)
   executive(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.analytics.executive(resolveRange(query));
   }
@@ -41,6 +43,7 @@ export class AnalyticsController {
   @Get('agents')
   @RequirePermissions('analytics:read_all')
   @ApiOperation({ summary: 'Agent performance: AHT, FCR, CSAT, QA score' })
+  @ApiZodQuery(RangeQuery)
   agents(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.analytics.agentPerformance(resolveRange(query));
   }
@@ -50,6 +53,7 @@ export class AnalyticsController {
   @ApiOperation({
     summary: 'AI performance: deflection, handoff, tokens, cost, latency, guardrails',
   })
+  @ApiZodQuery(RangeQuery)
   ai(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.analytics.aiPerformance(resolveRange(query));
   }
@@ -57,6 +61,7 @@ export class AnalyticsController {
   @Get('channels')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'Channel performance' })
+  @ApiZodQuery(RangeQuery)
   channels(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.analytics.channelPerformance(resolveRange(query));
   }
@@ -64,6 +69,7 @@ export class AnalyticsController {
   @Get('series/:metric')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'A daily time series for charting' })
+  @ApiZodQuery(RangeQuery)
   series(
     @Param('metric') metric: 'conversations' | 'resolutions' | 'ai_cost' | 'messages',
     @Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>,
@@ -81,6 +87,7 @@ export class AnalyticsController {
   @Get('intelligence')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'Intent, topic, complaint and sentiment trends' })
+  @ApiZodQuery(RangeQuery)
   intelligenceTrends(@Query(zodQuery(RangeQuery)) query: z.infer<typeof RangeQuery>) {
     return this.intelligence.trends(resolveRange(query));
   }

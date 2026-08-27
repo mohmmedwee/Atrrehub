@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { QualityService } from './quality.service';
 
@@ -61,6 +62,7 @@ export class QualityController {
   @Post('templates')
   @RequirePermissions('qc:template_manage')
   @ApiOperation({ summary: 'Create a QC template; criterion weights must total 100' })
+  @ApiZodBody(TemplateSchema)
   createTemplate(@Body(zodBody(TemplateSchema)) body: z.infer<typeof TemplateSchema>) {
     return this.quality.createTemplate(body);
   }
@@ -86,6 +88,7 @@ export class QualityController {
   @Get('evaluations')
   @RequirePermissions('qc:read_own')
   @ApiOperation({ summary: 'List evaluations' })
+  @ApiOptionalQuery('subjectId', 'templateId')
   listEvaluations(
     @Query('subjectId') subjectId?: string,
     @Query('templateId') templateId?: string,
@@ -104,6 +107,7 @@ export class QualityController {
   @RequirePermissions('qc:evaluate')
   @RateLimit(RATE_BUCKETS.ai)
   @ApiOperation({ summary: 'Run an AI evaluation of a conversation' })
+  @ApiOptionalQuery('templateId')
   evaluate(
     @Param('conversationId') conversationId: string,
     @Query('templateId') templateId?: string,
@@ -114,6 +118,7 @@ export class QualityController {
   @Post('evaluations/manual')
   @RequirePermissions('qc:evaluate')
   @ApiOperation({ summary: 'Record a manual evaluation' })
+  @ApiZodBody(ManualSchema)
   manual(@Body(zodBody(ManualSchema)) body: z.infer<typeof ManualSchema>) {
     return this.quality.manualEvaluation(body);
   }

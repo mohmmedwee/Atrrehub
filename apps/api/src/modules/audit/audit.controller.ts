@@ -2,6 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodQuery } from '../../core/http/zod-openapi';
 import { CurrentOrg } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { AuditService } from './audit.service';
@@ -25,6 +26,7 @@ export class AuditController {
   @Get()
   @RequirePermissions('audit:read')
   @ApiOperation({ summary: 'Search the audit trail' })
+  @ApiZodQuery(SearchQuery)
   async search(
     @CurrentOrg() organizationId: string,
     @Query(zodQuery(SearchQuery)) query: z.infer<typeof SearchQuery>,

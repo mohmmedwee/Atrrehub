@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { EvaluationService } from './evaluation.service';
 import { METRIC_WEIGHTS } from './scorers';
@@ -54,6 +55,7 @@ export class EvaluationController {
   @Get('datasets')
   @RequirePermissions('agent:read')
   @ApiOperation({ summary: 'List evaluation datasets' })
+  @ApiOptionalQuery('agentId')
   listDatasets(@Query('agentId') agentId?: string) {
     return this.evaluation.listDatasets(agentId);
   }
@@ -61,6 +63,7 @@ export class EvaluationController {
   @Post('datasets')
   @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Create an evaluation dataset' })
+  @ApiZodBody(DatasetSchema)
   createDataset(@Body(zodBody(DatasetSchema)) body: z.infer<typeof DatasetSchema>) {
     return this.evaluation.createDataset(body);
   }
@@ -75,6 +78,7 @@ export class EvaluationController {
   @Patch('datasets/:datasetId')
   @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Update a dataset' })
+  @ApiZodBody(DatasetSchema.partial())
   updateDataset(
     @Param('datasetId') datasetId: string,
     @Body(zodBody(DatasetSchema.partial())) body: Partial<z.infer<typeof DatasetSchema>>,
@@ -95,6 +99,7 @@ export class EvaluationController {
   @Post('datasets/:datasetId/cases')
   @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Add cases to a dataset' })
+  @ApiZodBody(CasesSchema)
   addCases(
     @Param('datasetId') datasetId: string,
     @Body(zodBody(CasesSchema)) body: z.infer<typeof CasesSchema>,
@@ -115,6 +120,7 @@ export class EvaluationController {
   @Post('datasets/:datasetId/runs')
   @RequirePermissions('eval:manage')
   @ApiOperation({ summary: 'Run a dataset against an agent and score every case' })
+  @ApiZodBody(RunSchema)
   run(
     @Param('datasetId') datasetId: string,
     @Body(zodBody(RunSchema)) body: z.infer<typeof RunSchema>,
@@ -125,6 +131,7 @@ export class EvaluationController {
   @Get('runs')
   @RequirePermissions('agent:read')
   @ApiOperation({ summary: 'List evaluation runs' })
+  @ApiZodQuery(RunQuery)
   listRuns(@Query(zodQuery(RunQuery)) query: z.infer<typeof RunQuery>) {
     return this.evaluation.listRuns(query);
   }

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { DirectoryService } from './directory.service';
 
@@ -152,6 +153,7 @@ export class DirectoryController {
   @Post('teams')
   @RequirePermissions('team:manage')
   @ApiOperation({ summary: 'Create a team' })
+  @ApiZodBody(TeamSchema)
   createTeam(@Body(zodBody(TeamSchema)) body: z.infer<typeof TeamSchema>) {
     return this.directory.createTeam(body);
   }
@@ -166,6 +168,7 @@ export class DirectoryController {
   @Patch('teams/:id')
   @RequirePermissions('team:manage')
   @ApiOperation({ summary: 'Update a team or its roster' })
+  @ApiZodBody(TeamSchema.partial())
   updateTeam(
     @Param('id') id: string,
     @Body(zodBody(TeamSchema.partial())) body: Record<string, unknown>,
@@ -193,6 +196,7 @@ export class DirectoryController {
   @Post('queues')
   @RequirePermissions('queue:manage')
   @ApiOperation({ summary: 'Create a queue' })
+  @ApiZodBody(QueueSchema)
   createQueue(@Body(zodBody(QueueSchema)) body: z.infer<typeof QueueSchema>) {
     return this.directory.createQueue(body as never);
   }
@@ -207,6 +211,7 @@ export class DirectoryController {
   @Patch('queues/:id')
   @RequirePermissions('queue:manage')
   @ApiOperation({ summary: 'Update a queue' })
+  @ApiZodBody(QueueSchema.partial())
   updateQueue(
     @Param('id') id: string,
     @Body(zodBody(QueueSchema.partial())) body: Record<string, unknown>,
@@ -234,6 +239,7 @@ export class DirectoryController {
   @Post('business-hours')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Create a business-hours calendar' })
+  @ApiZodBody(BusinessHoursSchema)
   createBusinessHours(
     @Body(zodBody(BusinessHoursSchema)) body: z.infer<typeof BusinessHoursSchema>,
   ) {
@@ -243,6 +249,7 @@ export class DirectoryController {
   @Patch('business-hours/:id')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Update a business-hours calendar' })
+  @ApiZodBody(BusinessHoursSchema.partial())
   updateBusinessHours(
     @Param('id') id: string,
     @Body(zodBody(BusinessHoursSchema.partial())) body: Record<string, unknown>,
@@ -261,6 +268,7 @@ export class DirectoryController {
   @Post('business-hours/:id/holidays')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Add a holiday' })
+  @ApiZodBody(HolidaySchema)
   addHoliday(
     @Param('id') id: string,
     @Body(zodBody(HolidaySchema)) body: z.infer<typeof HolidaySchema>,
@@ -288,6 +296,7 @@ export class DirectoryController {
   @Post('tags')
   @RequirePermissions('taxonomy:manage')
   @ApiOperation({ summary: 'Create a tag' })
+  @ApiZodBody(TagSchema)
   createTag(@Body(zodBody(TagSchema)) body: z.infer<typeof TagSchema>) {
     return this.directory.createTag(body);
   }
@@ -303,6 +312,7 @@ export class DirectoryController {
   @Get('custom-fields')
   @RequirePermissions('organization:read')
   @ApiOperation({ summary: 'List custom field definitions' })
+  @ApiOptionalQuery('entity')
   listCustomFields(@Query('entity') entity?: string) {
     return this.directory.listCustomFields(entity);
   }
@@ -310,6 +320,7 @@ export class DirectoryController {
   @Post('custom-fields')
   @RequirePermissions('taxonomy:manage')
   @ApiOperation({ summary: 'Define a custom field' })
+  @ApiZodBody(CustomFieldSchema)
   createCustomField(@Body(zodBody(CustomFieldSchema)) body: z.infer<typeof CustomFieldSchema>) {
     return this.directory.createCustomField(body);
   }
@@ -325,6 +336,7 @@ export class DirectoryController {
   @Get('saved-replies')
   @RequirePermissions('conversation:read')
   @ApiOperation({ summary: 'List saved replies' })
+  @ApiOptionalQuery('locale')
   listSavedReplies(@Query('locale') locale?: string) {
     return this.directory.listSavedReplies(locale);
   }
@@ -332,6 +344,7 @@ export class DirectoryController {
   @Post('saved-replies')
   @RequirePermissions('taxonomy:manage')
   @ApiOperation({ summary: 'Create a saved reply' })
+  @ApiZodBody(SavedReplySchema)
   createSavedReply(@Body(zodBody(SavedReplySchema)) body: z.infer<typeof SavedReplySchema>) {
     return this.directory.createSavedReply(body);
   }
@@ -339,6 +352,7 @@ export class DirectoryController {
   @Patch('saved-replies/:id')
   @RequirePermissions('taxonomy:manage')
   @ApiOperation({ summary: 'Update a saved reply' })
+  @ApiZodBody(SavedReplySchema.partial())
   updateSavedReply(
     @Param('id') id: string,
     @Body(zodBody(SavedReplySchema.partial())) body: Record<string, unknown>,

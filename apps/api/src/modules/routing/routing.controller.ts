@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RoutingService } from './routing.service';
 
@@ -48,6 +49,7 @@ export class RoutingController {
   @Post('rules')
   @RequirePermissions('routing:manage')
   @ApiOperation({ summary: 'Create a routing rule' })
+  @ApiZodBody(RuleSchema)
   createRule(@Body(zodBody(RuleSchema)) body: z.infer<typeof RuleSchema>) {
     return this.routing.createRule(body as never);
   }
@@ -55,6 +57,7 @@ export class RoutingController {
   @Patch('rules/:id')
   @RequirePermissions('routing:manage')
   @ApiOperation({ summary: 'Update a routing rule' })
+  @ApiZodBody(RuleSchema.partial())
   updateRule(
     @Param('id') id: string,
     @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>,

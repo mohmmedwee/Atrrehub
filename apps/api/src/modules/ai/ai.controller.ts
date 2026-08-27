@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { CurrentOrg } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { AiGateway } from './gateway.service';
@@ -43,6 +44,7 @@ export class AiController {
   @Put('models')
   @RequirePermissions('governance:manage')
   @ApiOperation({ summary: 'Set the model route for a role' })
+  @ApiZodBody(RouteSchema)
   upsertRoute(@Body(zodBody(RouteSchema)) body: z.infer<typeof RouteSchema>) {
     return this.gateway.upsertRoute(body as never);
   }
@@ -50,6 +52,7 @@ export class AiController {
   @Get('usage')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'Token and cost usage by model' })
+  @ApiZodQuery(UsageQuery)
   usage(@Query(zodQuery(UsageQuery)) query: z.infer<typeof UsageQuery>) {
     return this.gateway.usageSummary({
       from: query.from ?? new Date(Date.now() - 30 * 86_400_000),

@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { ToolsService } from './tools.service';
 
@@ -41,6 +42,7 @@ export class ToolsController {
   @Post()
   @RequirePermissions('tool:manage')
   @ApiOperation({ summary: 'Define a custom HTTP tool' })
+  @ApiZodBody(ToolSchema)
   create(@Body(zodBody(ToolSchema)) body: z.infer<typeof ToolSchema>) {
     return this.tools.create(body as never);
   }
@@ -48,6 +50,7 @@ export class ToolsController {
   @Patch(':id')
   @RequirePermissions('tool:manage')
   @ApiOperation({ summary: 'Update a custom tool' })
+  @ApiZodBody(ToolSchema.partial())
   update(
     @Param('id') id: string,
     @Body(zodBody(ToolSchema.partial())) body: Record<string, unknown>,

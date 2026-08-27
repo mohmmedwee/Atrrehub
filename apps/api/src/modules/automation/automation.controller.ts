@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { AutomationService } from './automation.service';
 
@@ -76,6 +77,7 @@ export class AutomationController {
   @Post('rules')
   @RequirePermissions('automation:manage')
   @ApiOperation({ summary: 'Create an automation rule' })
+  @ApiZodBody(RuleSchema)
   create(@Body(zodBody(RuleSchema)) body: z.infer<typeof RuleSchema>) {
     return this.automation.create(body as never);
   }
@@ -83,6 +85,7 @@ export class AutomationController {
   @Patch('rules/:id')
   @RequirePermissions('automation:manage')
   @ApiOperation({ summary: 'Update an automation rule' })
+  @ApiZodBody(RuleSchema.partial())
   update(
     @Param('id') id: string,
     @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>,
@@ -101,6 +104,7 @@ export class AutomationController {
   @Get('runs')
   @RequirePermissions('organization:read')
   @ApiOperation({ summary: 'Recent automation runs' })
+  @ApiOptionalQuery('ruleId')
   runs(@Query('ruleId') ruleId?: string) {
     return this.automation.runs(ruleId);
   }

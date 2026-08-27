@@ -17,6 +17,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppError } from '../../core/errors/app-error';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody } from '../../core/http/zod-openapi';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CallsService } from './calls.service';
@@ -133,6 +134,7 @@ export class VoiceController {
   @Get('calls')
   @RequirePermissions('call:read')
   @ApiOperation({ summary: 'List calls' })
+  @ApiOptionalQuery('status', 'queueId')
   list(@Query('status') status?: string, @Query('queueId') queueId?: string) {
     return this.calls.list({ status: status as never, queueId });
   }
@@ -154,6 +156,7 @@ export class VoiceController {
   @Post('calls')
   @RequirePermissions('call:control')
   @ApiOperation({ summary: 'Place an outbound call' })
+  @ApiZodBody(OriginateSchema)
   originate(@Body(zodBody(OriginateSchema)) body: z.infer<typeof OriginateSchema>) {
     return this.calls.originate(body);
   }
@@ -175,6 +178,7 @@ export class VoiceController {
   @Post('calls/:callId/transfer')
   @RequirePermissions('call:control')
   @ApiOperation({ summary: 'Transfer to a person, a queue or an outside number' })
+  @ApiZodBody(TransferSchema)
   transfer(
     @Param('callId') callId: string,
     @Body(zodBody(TransferSchema)) body: z.infer<typeof TransferSchema>,
@@ -185,6 +189,7 @@ export class VoiceController {
   @Post('calls/:callId/say')
   @RequirePermissions('call:control')
   @ApiOperation({ summary: 'Speak to the caller' })
+  @ApiZodBody(SaySchema)
   say(@Param('callId') callId: string, @Body(zodBody(SaySchema)) body: z.infer<typeof SaySchema>) {
     return this.calls.say(callId, body.text);
   }
@@ -219,6 +224,7 @@ export class VoiceController {
   @Post('calls/:callId/turn')
   @RequirePermissions('call:control')
   @ApiOperation({ summary: 'Run one AI voice turn against what the caller just said' })
+  @ApiZodBody(TurnSchema)
   turn(
     @Param('callId') callId: string,
     @Body(zodBody(TurnSchema)) body: z.infer<typeof TurnSchema>,
@@ -250,6 +256,7 @@ export class VoiceController {
   @Post('numbers')
   @RequirePermissions('voice:manage')
   @ApiOperation({ summary: 'Add a phone number and say what answers it' })
+  @ApiZodBody(PhoneNumberSchema)
   addNumber(@Body(zodBody(PhoneNumberSchema)) body: z.infer<typeof PhoneNumberSchema>) {
     return this.ivr.createNumber(body);
   }
@@ -257,6 +264,7 @@ export class VoiceController {
   @Patch('numbers/:numberId')
   @RequirePermissions('voice:manage')
   @ApiOperation({ summary: 'Update a phone number' })
+  @ApiZodBody(PhoneNumberSchema.partial())
   updateNumber(
     @Param('numberId') numberId: string,
     @Body(zodBody(PhoneNumberSchema.partial())) body: Partial<z.infer<typeof PhoneNumberSchema>>,
@@ -282,6 +290,7 @@ export class VoiceController {
   @Post('ivr')
   @RequirePermissions('voice:manage')
   @ApiOperation({ summary: 'Create an IVR flow; a flow that cannot be walked is refused' })
+  @ApiZodBody(IvrFlowSchema)
   createFlow(@Body(zodBody(IvrFlowSchema)) body: z.infer<typeof IvrFlowSchema>) {
     return this.ivr.createFlow(body as never);
   }
@@ -296,6 +305,7 @@ export class VoiceController {
   @Patch('ivr/:flowId')
   @RequirePermissions('voice:manage')
   @ApiOperation({ summary: 'Update an IVR flow' })
+  @ApiZodBody(IvrFlowSchema.partial())
   updateFlow(
     @Param('flowId') flowId: string,
     @Body(zodBody(IvrFlowSchema.partial())) body: Partial<z.infer<typeof IvrFlowSchema>>,

@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { CursorQuery } from '../../common/pagination';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { TicketsService } from './tickets.service';
 
@@ -97,6 +98,7 @@ export class TicketsController {
   @Get()
   @RequirePermissions('ticket:read')
   @ApiOperation({ summary: 'List and filter tickets' })
+  @ApiZodQuery(ListQuery)
   list(@Query(zodQuery(ListQuery)) query: z.infer<typeof ListQuery>) {
     return this.tickets.list(query);
   }
@@ -104,6 +106,7 @@ export class TicketsController {
   @Post()
   @RequirePermissions('ticket:create')
   @ApiOperation({ summary: 'Create a ticket' })
+  @ApiZodBody(CreateSchema)
   create(@Body(zodBody(CreateSchema)) body: z.infer<typeof CreateSchema>) {
     return this.tickets.create(body as never);
   }
@@ -118,6 +121,7 @@ export class TicketsController {
   @Post('templates')
   @RequirePermissions('ticket:update')
   @ApiOperation({ summary: 'Create a ticket template' })
+  @ApiZodBody(TemplateSchema)
   createTemplate(@Body(zodBody(TemplateSchema)) body: z.infer<typeof TemplateSchema>) {
     return this.tickets.createTemplate(body);
   }
@@ -133,6 +137,7 @@ export class TicketsController {
   @Post('templates/:id/instantiate')
   @RequirePermissions('ticket:create')
   @ApiOperation({ summary: 'Create a ticket from a template' })
+  @ApiZodBody(CreateSchema.partial())
   fromTemplate(
     @Param('id') id: string,
     @Body(zodBody(CreateSchema.partial())) body: Record<string, unknown>,
@@ -143,6 +148,7 @@ export class TicketsController {
   @Post('from-conversation/:conversationId')
   @RequirePermissions('ticket:create')
   @ApiOperation({ summary: 'Open a ticket from a conversation, carrying its context' })
+  @ApiZodBody(CreateSchema.partial())
   fromConversation(
     @Param('conversationId') conversationId: string,
     @Body(zodBody(CreateSchema.partial())) body: Record<string, unknown>,
@@ -154,6 +160,7 @@ export class TicketsController {
   @RateLimit(RATE_BUCKETS.bulk)
   @RequirePermissions('ticket:update')
   @ApiOperation({ summary: 'Apply one change set to many tickets' })
+  @ApiZodBody(BulkSchema)
   bulk(@Body(zodBody(BulkSchema)) body: z.infer<typeof BulkSchema>) {
     return this.tickets.bulkUpdate(body.ticketIds, body.patch as never);
   }
@@ -168,6 +175,7 @@ export class TicketsController {
   @Patch(':id')
   @RequirePermissions('ticket:update')
   @ApiOperation({ summary: 'Update a ticket; send If-Match for optimistic locking' })
+  @ApiZodBody(UpdateSchema)
   update(
     @Param('id') id: string,
     @Body(zodBody(UpdateSchema)) body: z.infer<typeof UpdateSchema>,
@@ -199,6 +207,7 @@ export class TicketsController {
   @Post(':id/comments')
   @RequirePermissions('ticket:update')
   @ApiOperation({ summary: 'Add a comment' })
+  @ApiZodBody(CommentSchema)
   addComment(
     @Param('id') id: string,
     @Body(zodBody(CommentSchema)) body: z.infer<typeof CommentSchema>,

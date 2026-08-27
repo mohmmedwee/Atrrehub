@@ -5,6 +5,7 @@ import { CursorQuery } from '../../common/pagination';
 import type { Principal } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { ChannelsService } from '../channels/channels.service';
@@ -123,6 +124,7 @@ export class ConversationsController {
   @Get()
   @RequirePermissions('conversation:read')
   @ApiOperation({ summary: 'List conversations' })
+  @ApiZodQuery(ListQuery)
   list(@Query(zodQuery(ListQuery)) query: z.infer<typeof ListQuery>) {
     return this.conversations.list(query);
   }
@@ -130,6 +132,7 @@ export class ConversationsController {
   @Get('inbox')
   @RequirePermissions('conversation:read')
   @ApiOperation({ summary: 'The signed-in agent’s inbox' })
+  @ApiZodQuery(ListQuery)
   inbox(
     @CurrentUser() principal: Principal | undefined,
     @Query(zodQuery(ListQuery)) query: z.infer<typeof ListQuery>,
@@ -149,6 +152,7 @@ export class ConversationsController {
   @Post()
   @RequirePermissions('conversation:create')
   @ApiOperation({ summary: 'Open a conversation' })
+  @ApiZodBody(CreateSchema)
   create(@Body(zodBody(CreateSchema)) body: z.infer<typeof CreateSchema>) {
     return this.conversations.create(body as never);
   }
@@ -163,6 +167,7 @@ export class ConversationsController {
   @Patch(':id')
   @RequirePermissions('conversation:update')
   @ApiOperation({ summary: 'Update subject, priority, tags or locale' })
+  @ApiZodBody(UpdateSchema)
   update(@Param('id') id: string, @Body(zodBody(UpdateSchema)) body: z.infer<typeof UpdateSchema>) {
     return this.conversations.update(id, body);
   }
@@ -170,6 +175,7 @@ export class ConversationsController {
   @Get(':id/messages')
   @RequirePermissions('conversation:read')
   @ApiOperation({ summary: 'List messages' })
+  @ApiZodQuery(CursorQuery)
   messages(
     @Param('id') id: string,
     @Query(zodQuery(CursorQuery)) query: z.infer<typeof CursorQuery>,
@@ -180,6 +186,7 @@ export class ConversationsController {
   @Post(':id/messages')
   @RequirePermissions('message:create')
   @ApiOperation({ summary: 'Reply to the customer through the conversation’s channel' })
+  @ApiZodBody(ReplySchema)
   reply(
     @CurrentUser() principal: Principal | undefined,
     @Param('id') id: string,
@@ -199,6 +206,7 @@ export class ConversationsController {
   @Post(':id/notes')
   @RequirePermissions('message:create')
   @ApiOperation({ summary: 'Add an internal note, never sent to the customer' })
+  @ApiZodBody(NoteSchema)
   note(@Param('id') id: string, @Body(zodBody(NoteSchema)) body: z.infer<typeof NoteSchema>) {
     return this.conversations.addInternalNote(id, body.body);
   }
@@ -206,6 +214,7 @@ export class ConversationsController {
   @Post(':id/status')
   @RequirePermissions('conversation:update')
   @ApiOperation({ summary: 'Move the conversation through its lifecycle' })
+  @ApiZodBody(StatusSchema)
   setStatus(
     @Param('id') id: string,
     @Body(zodBody(StatusSchema)) body: z.infer<typeof StatusSchema>,
@@ -216,6 +225,7 @@ export class ConversationsController {
   @Post(':id/assign')
   @RequirePermissions('conversation:assign')
   @ApiOperation({ summary: 'Assign to an agent or AI agent, or return to the queue' })
+  @ApiZodBody(AssignSchema)
   assign(@Param('id') id: string, @Body(zodBody(AssignSchema)) body: z.infer<typeof AssignSchema>) {
     return this.conversations.assign(
       id,
@@ -227,6 +237,7 @@ export class ConversationsController {
   @Post(':id/transfer')
   @RequirePermissions('conversation:assign')
   @ApiOperation({ summary: 'Transfer to another agent, team or queue' })
+  @ApiZodBody(TransferSchema)
   transfer(
     @Param('id') id: string,
     @Body(zodBody(TransferSchema)) body: z.infer<typeof TransferSchema>,
@@ -245,6 +256,7 @@ export class ConversationsController {
   @HttpCode(200)
   @RequirePermissions('conversation:update')
   @ApiOperation({ summary: 'Record a satisfaction score' })
+  @ApiZodBody(CsatSchema)
   csat(@Param('id') id: string, @Body(zodBody(CsatSchema)) body: z.infer<typeof CsatSchema>) {
     return this.conversations.submitCsat(id, body.score, body.comment);
   }

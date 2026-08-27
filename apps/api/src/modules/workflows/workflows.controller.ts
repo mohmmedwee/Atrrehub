@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put } from '@nest
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { NODE_TYPES } from './graph';
 import { WorkflowsService } from './workflows.service';
@@ -63,6 +64,7 @@ export class WorkflowsController {
   @Post()
   @RequirePermissions('workflow:manage')
   @ApiOperation({ summary: 'Create a workflow' })
+  @ApiZodBody(CreateSchema)
   create(@Body(zodBody(CreateSchema)) body: z.infer<typeof CreateSchema>) {
     return this.workflows.create(body as never);
   }
@@ -77,6 +79,7 @@ export class WorkflowsController {
   @Put(':id/graph')
   @RequirePermissions('workflow:manage')
   @ApiOperation({ summary: 'Save the graph and return validation issues' })
+  @ApiZodBody(GraphSchema)
   saveGraph(
     @Param('id') id: string,
     @Body(zodBody(GraphSchema)) body: z.infer<typeof GraphSchema>,

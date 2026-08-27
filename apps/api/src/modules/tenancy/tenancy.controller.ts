@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { CurrentOrg } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { TenancyService } from './tenancy.service';
@@ -50,6 +51,7 @@ export class TenancyController {
   @Patch('organization')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Update organization profile, branding and localization' })
+  @ApiZodBody(UpdateOrganizationSchema)
   async updateOrganization(
     @CurrentOrg() organizationId: string,
     @Body(zodBody(UpdateOrganizationSchema)) body: z.infer<typeof UpdateOrganizationSchema>,
@@ -67,6 +69,7 @@ export class TenancyController {
   @Post('workspaces')
   @RequirePermissions('workspace:manage')
   @ApiOperation({ summary: 'Create a workspace' })
+  @ApiZodBody(CreateWorkspaceSchema)
   async createWorkspace(
     @Body(zodBody(CreateWorkspaceSchema)) body: z.infer<typeof CreateWorkspaceSchema>,
   ) {
@@ -83,6 +86,7 @@ export class TenancyController {
   @Patch('workspaces/:id')
   @RequirePermissions('workspace:manage')
   @ApiOperation({ summary: 'Update a workspace' })
+  @ApiZodBody(UpdateWorkspaceSchema)
   async updateWorkspace(
     @Param('id') id: string,
     @Body(zodBody(UpdateWorkspaceSchema)) body: z.infer<typeof UpdateWorkspaceSchema>,

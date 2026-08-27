@@ -2,6 +2,7 @@ import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/comm
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery, ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { BillingService } from './billing.service';
@@ -75,6 +76,7 @@ export class BillingController {
   @Get('usage/history')
   @RequirePermissions('billing:read')
   @ApiOperation({ summary: 'Recorded usage by period, as billing would count it' })
+  @ApiOptionalQuery('months')
   history(@Query('months') months?: string) {
     return this.billing.usageHistory(months ? Number(months) : undefined);
   }
@@ -89,6 +91,7 @@ export class BillingController {
   @Post('plan')
   @RequirePermissions('billing:manage')
   @ApiOperation({ summary: 'Change plan; a downgrade below current usage is refused' })
+  @ApiZodBody(ChangePlanSchema)
   changePlan(@Body(zodBody(ChangePlanSchema)) body: z.infer<typeof ChangePlanSchema>) {
     return this.billing.changePlan(body.plan, { seats: body.seats, reason: body.reason });
   }
@@ -96,6 +99,7 @@ export class BillingController {
   @Post('limits')
   @RequirePermissions('billing:manage')
   @ApiOperation({ summary: 'Record a negotiated limit override against the subscription' })
+  @ApiZodBody(OverrideSchema)
   overrides(@Body(zodBody(OverrideSchema)) body: z.infer<typeof OverrideSchema>) {
     return this.billing.setLimitOverrides(body.overrides as never, body.reason);
   }
@@ -112,6 +116,7 @@ export class BillingController {
   @Get('metrics/series')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'A daily series from the rollup table rather than live tables' })
+  @ApiZodQuery(SeriesQuery)
   series(@Query(zodQuery(SeriesQuery)) query: z.infer<typeof SeriesQuery>) {
     return this.metrics.series(query);
   }
@@ -138,6 +143,7 @@ export class BillingController {
   @Public()
   @Post('tenants')
   @ApiOperation({ summary: 'Provision a tenant, its owner and its subscription' })
+  @ApiZodBody(ProvisionSchema)
   provision(
     @Headers('x-provisioning-key') key: string | undefined,
     @Body(zodBody(ProvisionSchema)) body: z.infer<typeof ProvisionSchema>,

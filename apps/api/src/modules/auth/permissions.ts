@@ -73,6 +73,7 @@ export const PERMISSIONS = [
   'wfm:manage',
   'notification:manage',
   'integration:manage',
+  'webhook:manage',
   'governance:manage',
   'eval:manage',
 ] as const;
@@ -168,6 +169,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
   'qc:template_manage',
   'qc:calibrate',
   'integration:manage',
+  'webhook:manage',
   'governance:manage',
   'eval:manage',
   'voice:manage',
@@ -251,6 +253,7 @@ export const SYSTEM_ROLES: Record<
       'automation:manage',
       'analytics:read',
       'integration:manage',
+      'webhook:manage',
       'eval:manage',
     ],
   },

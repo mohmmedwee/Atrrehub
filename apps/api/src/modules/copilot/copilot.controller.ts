@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CopilotService } from './copilot.service';
 
@@ -35,6 +36,7 @@ export class CopilotController {
   @ApiOperation({
     summary: 'Suggest, rewrite, summarize, translate, adjust tone or recommend the next action',
   })
+  @ApiZodBody(AssistSchema)
   assist(@Body(zodBody(AssistSchema)) body: z.infer<typeof AssistSchema>) {
     return this.copilot.assist(body);
   }

@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { ReportsService } from './reports.service';
 
@@ -62,6 +63,7 @@ export class ReportsController {
   @Post('run')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'Run an ad-hoc report definition without saving it' })
+  @ApiZodBody(DefinitionSchema)
   runAdHoc(@Body(zodBody(DefinitionSchema)) body: z.infer<typeof DefinitionSchema>) {
     return this.reports.run(body);
   }
@@ -76,6 +78,7 @@ export class ReportsController {
   @Post()
   @RequirePermissions('report:manage')
   @ApiOperation({ summary: 'Save a report definition' })
+  @ApiZodBody(ReportSchema)
   create(@Body(zodBody(ReportSchema)) body: z.infer<typeof ReportSchema>) {
     return this.reports.create(body);
   }
@@ -90,6 +93,7 @@ export class ReportsController {
   @Patch(':reportId')
   @RequirePermissions('report:manage')
   @ApiOperation({ summary: 'Update a saved report' })
+  @ApiZodBody(ReportSchema.partial())
   update(
     @Param('reportId') reportId: string,
     @Body(zodBody(ReportSchema.partial())) body: Partial<z.infer<typeof ReportSchema>>,

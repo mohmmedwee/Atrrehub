@@ -5,6 +5,7 @@ import { CursorQuery } from '../../common/pagination';
 import type { Principal } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { NotificationsService } from './notifications.service';
@@ -57,6 +58,7 @@ export class NotificationsController {
   @Post('rules')
   @RequirePermissions('notification:manage')
   @ApiOperation({ summary: 'Create a notification rule' })
+  @ApiZodBody(RuleSchema)
   createRule(@Body(zodBody(RuleSchema)) body: z.infer<typeof RuleSchema>) {
     return this.notifications.createRule(body as never);
   }
@@ -64,6 +66,7 @@ export class NotificationsController {
   @Patch('rules/:id')
   @RequirePermissions('notification:manage')
   @ApiOperation({ summary: 'Update a notification rule' })
+  @ApiZodBody(RuleSchema.partial())
   updateRule(
     @Param('id') id: string,
     @Body(zodBody(RuleSchema.partial())) body: Record<string, unknown>,
@@ -81,6 +84,7 @@ export class NotificationsController {
 
   @Get()
   @ApiOperation({ summary: 'The signed-in user’s notification inbox' })
+  @ApiZodQuery(InboxQuery)
   inbox(
     @CurrentUser() principal: Principal | undefined,
     @Query(zodQuery(InboxQuery)) query: z.infer<typeof InboxQuery>,

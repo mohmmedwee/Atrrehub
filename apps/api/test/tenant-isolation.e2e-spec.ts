@@ -150,4 +150,65 @@ describe('tenant isolation', () => {
     const count = await RequestContextStore.runAsSystem(() => context.prisma.db.customer.count());
     expect(count).toBeGreaterThanOrEqual(1);
   });
+  it('does not deliver one tenant’s events to another tenant’s webhook', async () => {
+    // The fan-out reads endpoints with the unguarded client, because it runs
+    // from a listener that may have no request in scope — so the scoping is a
+    // filter in the query rather than the guard, and it is worth proving.
+    const betaEndpoint = await context.request('POST', '/webhooks', {
+      token: beta.token,
+      body: {
+        name: 'Beta listener',
+        url: 'http://localhost:9/never-listening',
+        events: ['*'],
+      },
+    });
+    expect(betaEndpoint.status).toBe(201);
+    const betaEndpointId = betaEndpoint.body.data.id;
+
+    // Alpha does something that publishes events.
+    const conversation = await context.request('POST', '/conversations', {
+      token: alpha.token,
+      body: { channel: 'api', customerId: alphaCustomerId, subject: 'Alpha event source' },
+    });
+    expect(conversation.status).toBe(201);
+    await new Promise((resolve) => setTimeout(resolve, 750));
+
+    const betaDeliveries = await context.request('GET', '/webhooks/deliveries', {
+      token: beta.token,
+    });
+    expect(betaDeliveries.status).toBe(200);
+    expect(betaDeliveries.body.data).toEqual([]);
+
+    // And beta cannot see, replay or delete alpha's endpoints either.
+    const alphaEndpoint = await context.request('POST', '/webhooks', {
+      token: alpha.token,
+      body: { name: 'Alpha listener', url: 'http://localhost:9/hook', events: ['*'] },
+    });
+    expect(alphaEndpoint.status).toBe(201);
+
+    const foreign = await context.request('GET', `/webhooks/${alphaEndpoint.body.data.id}`, {
+      token: beta.token,
+    });
+    expect(foreign.status).toBe(404);
+
+    const betaList = await context.request('GET', '/webhooks', { token: beta.token });
+    expect(betaList.body.data.map((row: { id: string }) => row.id)).toEqual([betaEndpointId]);
+  });
+
+  it('never returns a webhook signing secret after it is created', async () => {
+    const created = await context.request('POST', '/webhooks', {
+      token: alpha.token,
+      body: { name: 'Secret check', url: 'http://localhost:9/hook', events: ['ticket.created'] },
+    });
+    expect(created.body.data.secret).toMatch(/^whsec_/);
+
+    const read = await context.request('GET', `/webhooks/${created.body.data.id}`, {
+      token: alpha.token,
+    });
+    expect(read.body.data.secret).toBeUndefined();
+    expect(read.body.data.secretSet).toBe(true);
+
+    const listed = await context.request('GET', '/webhooks', { token: alpha.token });
+    expect(JSON.stringify(listed.body)).not.toContain('whsec_');
+  });
 });

@@ -19,6 +19,7 @@ import { AutomationModule } from './modules/automation/automation.module';
 import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { EvaluationModule } from './modules/evaluation/evaluation.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SsoModule } from './modules/sso/sso.module';
@@ -96,6 +97,7 @@ import { WorkersModule } from './workers/workers.module';
     AnalyticsModule,
     EvaluationModule,
     IntegrationsModule,
+    WebhooksModule,
     NotificationsModule,
     ReportsModule,
     SsoModule,

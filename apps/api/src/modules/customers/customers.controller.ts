@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { CursorQuery } from '../../common/pagination';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CustomersService } from './customers.service';
 
@@ -81,6 +82,7 @@ export class CustomersController {
   @Get()
   @RequirePermissions('customer:read')
   @ApiOperation({ summary: 'Search customers' })
+  @ApiZodQuery(SearchQuery)
   search(@Query(zodQuery(SearchQuery)) query: z.infer<typeof SearchQuery>) {
     return this.customers.search(query);
   }
@@ -88,6 +90,7 @@ export class CustomersController {
   @Post()
   @RequirePermissions('customer:create')
   @ApiOperation({ summary: 'Create a customer' })
+  @ApiZodBody(CustomerSchema)
   create(@Body(zodBody(CustomerSchema)) body: z.infer<typeof CustomerSchema>) {
     return this.customers.create(body);
   }
@@ -104,6 +107,7 @@ export class CustomersController {
   @Post('segments')
   @RequirePermissions('customer:update')
   @ApiOperation({ summary: 'Create a customer segment' })
+  @ApiZodBody(SegmentSchema)
   createSegment(@Body(zodBody(SegmentSchema)) body: z.infer<typeof SegmentSchema>) {
     return this.customers.createSegment(body);
   }
@@ -142,6 +146,7 @@ export class CustomersController {
   @Get(':id/timeline')
   @RequirePermissions('customer:read')
   @ApiOperation({ summary: 'Unified customer timeline' })
+  @ApiZodQuery(CursorQuery)
   timeline(
     @Param('id') id: string,
     @Query(zodQuery(CursorQuery)) query: z.infer<typeof CursorQuery>,
@@ -152,6 +157,7 @@ export class CustomersController {
   @Patch(':id')
   @RequirePermissions('customer:update')
   @ApiOperation({ summary: 'Update a customer' })
+  @ApiZodBody(CustomerSchema.partial())
   update(
     @Param('id') id: string,
     @Body(zodBody(CustomerSchema.partial())) body: Record<string, unknown>,
@@ -170,6 +176,7 @@ export class CustomersController {
   @Post(':id/merge')
   @RequirePermissions('customer:merge')
   @ApiOperation({ summary: 'Merge another customer into this one' })
+  @ApiZodBody(MergeSchema)
   merge(
     @Param('id') targetId: string,
     @Body(zodBody(MergeSchema)) body: z.infer<typeof MergeSchema>,
@@ -180,6 +187,7 @@ export class CustomersController {
   @Post(':id/contact-methods')
   @RequirePermissions('customer:update')
   @ApiOperation({ summary: 'Add a contact method' })
+  @ApiZodBody(ContactMethodSchema)
   addContactMethod(
     @Param('id') id: string,
     @Body(zodBody(ContactMethodSchema)) body: z.infer<typeof ContactMethodSchema>,
@@ -205,6 +213,7 @@ export class CustomersController {
   @Post(':id/notes')
   @RequirePermissions('customer:update')
   @ApiOperation({ summary: 'Add a customer note' })
+  @ApiZodBody(NoteSchema)
   addNote(@Param('id') id: string, @Body(zodBody(NoteSchema)) body: z.infer<typeof NoteSchema>) {
     return this.customers.addNote(id, body.body, body.isPinned);
   }

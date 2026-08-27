@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GuardrailsService } from './guardrails.service';
 
@@ -40,6 +41,7 @@ export class GuardrailsController {
   @Post('policies')
   @RequirePermissions('guardrail:manage')
   @ApiOperation({ summary: 'Create a guardrail policy' })
+  @ApiZodBody(PolicySchema)
   create(@Body(zodBody(PolicySchema)) body: z.infer<typeof PolicySchema>) {
     return this.guardrails.createPolicy(body as never);
   }
@@ -47,6 +49,7 @@ export class GuardrailsController {
   @Patch('policies/:id')
   @RequirePermissions('guardrail:manage')
   @ApiOperation({ summary: 'Update a guardrail policy' })
+  @ApiZodBody(PolicySchema.partial())
   update(
     @Param('id') id: string,
     @Body(zodBody(PolicySchema.partial())) body: Record<string, unknown>,

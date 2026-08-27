@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { AppError } from '../../core/errors/app-error';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { HybridService } from './hybrid.service';
@@ -46,6 +47,7 @@ export class HybridController {
   @Public()
   @Post('heartbeat')
   @ApiOperation({ summary: 'Receive a data plane heartbeat and return its configuration' })
+  @ApiZodBody(HeartbeatSchema)
   heartbeat(
     @Headers('authorization') authorization: string | undefined,
     @Body(zodBody(HeartbeatSchema)) body: z.infer<typeof HeartbeatSchema>,
@@ -74,6 +76,7 @@ export class HybridController {
   @Post('data-planes')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Register a data plane; its enrollment token is shown once' })
+  @ApiZodBody(RegisterSchema)
   register(@Body(zodBody(RegisterSchema)) body: z.infer<typeof RegisterSchema>) {
     return this.hybrid.registerDataPlane(body);
   }

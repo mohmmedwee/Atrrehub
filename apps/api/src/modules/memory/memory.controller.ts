@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiOptionalQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { MemoryService } from './memory.service';
 
@@ -40,6 +41,7 @@ export class MemoryController {
   @Get('conversations/:id')
   @RequirePermissions('memory:read')
   @ApiOperation({ summary: 'Memory scoped to a conversation' })
+  @ApiOptionalQuery('limit')
   forConversation(@Param('id') id: string, @Query('limit') limit?: string) {
     return this.memory.recall({ conversationId: id, limit: limit ? Number(limit) : undefined });
   }

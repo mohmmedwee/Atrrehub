@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { SsoService } from './sso.service';
@@ -44,6 +45,7 @@ export class SsoController {
   @Public()
   @Get('discover')
   @ApiOperation({ summary: 'Whether an email domain is routed to SSO' })
+  @ApiZodQuery(DiscoverQuery)
   discover(@Query(zodQuery(DiscoverQuery)) query: z.infer<typeof DiscoverQuery>) {
     return this.sso.discover(query.email);
   }
@@ -51,6 +53,7 @@ export class SsoController {
   @Public()
   @Post('connections/:connectionId/authorize')
   @ApiOperation({ summary: 'Begin a login; returns the provider URL to redirect to' })
+  @ApiZodBody(BeginSchema)
   begin(
     @Param('connectionId') connectionId: string,
     @Body(zodBody(BeginSchema)) body: z.infer<typeof BeginSchema>,
@@ -61,6 +64,7 @@ export class SsoController {
   @Public()
   @Post('callback')
   @ApiOperation({ summary: 'Complete a login and exchange it for platform tokens' })
+  @ApiZodBody(CallbackSchema)
   callback(@Body(zodBody(CallbackSchema)) body: z.infer<typeof CallbackSchema>) {
     return this.sso.complete(body.state, body.code);
   }
@@ -77,6 +81,7 @@ export class SsoController {
   @Post('connections')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Add an OIDC connection for an email domain' })
+  @ApiZodBody(ConnectionSchema)
   create(@Body(zodBody(ConnectionSchema)) body: z.infer<typeof ConnectionSchema>) {
     return this.sso.create(body);
   }
@@ -91,6 +96,7 @@ export class SsoController {
   @Patch('connections/:connectionId')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Update an SSO connection' })
+  @ApiZodBody(ConnectionSchema.partial())
   update(
     @Param('connectionId') connectionId: string,
     @Body(zodBody(ConnectionSchema.partial())) body: Partial<z.infer<typeof ConnectionSchema>>,

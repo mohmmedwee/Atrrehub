@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
+import { ApiOptionalQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { ScimService } from './scim.service';
 
@@ -36,6 +37,7 @@ export class ScimController {
   @Get('Users')
   @RequirePermissions('user:manage')
   @ApiOperation({ summary: 'List provisioned users' })
+  @ApiOptionalQuery('filter', 'startIndex', 'count')
   async listUsers(
     @Res() reply: FastifyReply,
     @Query('filter') filter?: string,
@@ -98,6 +100,7 @@ export class ScimController {
   @Get('Groups')
   @RequirePermissions('user:manage')
   @ApiOperation({ summary: 'List groups — the organization’s roles, read-only' })
+  @ApiOptionalQuery('startIndex', 'count')
   async listGroups(
     @Res() reply: FastifyReply,
     @Query('startIndex') startIndex?: string,

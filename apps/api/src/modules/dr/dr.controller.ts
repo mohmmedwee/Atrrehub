@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { BackupService } from './backup.service';
 
@@ -34,6 +35,7 @@ export class DrController {
   @Post('backups')
   @RequirePermissions('organization:manage')
   @ApiOperation({ summary: 'Take a backup now' })
+  @ApiZodBody(BackupSchema)
   create(@Body(zodBody(BackupSchema)) body: z.infer<typeof BackupSchema>) {
     return this.backups.create(body);
   }

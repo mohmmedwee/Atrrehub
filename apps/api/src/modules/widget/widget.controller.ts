@@ -5,6 +5,7 @@ import { RequestContextStore } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { RATE_BUCKETS, RateLimit } from '../../core/http/rate-limit.guard';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { Public } from '../auth/decorators/public.decorator';
 import { WidgetService } from './widget.service';
 
@@ -34,6 +35,7 @@ export class WidgetController {
   @Public()
   @Post('messages')
   @ApiOperation({ summary: 'Send a message from the chat widget' })
+  @ApiZodBody(MessageSchema)
   async send(
     @Headers('x-widget-key') widgetKey: string | undefined,
     @Body(zodBody(MessageSchema)) body: z.infer<typeof MessageSchema>,

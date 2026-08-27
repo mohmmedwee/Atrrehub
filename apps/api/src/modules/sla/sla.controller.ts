@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody, zodQuery } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody, ApiZodQuery } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { SlaService } from './sla.service';
 
@@ -54,6 +55,7 @@ export class SlaController {
   @Post('policies')
   @RequirePermissions('sla:manage')
   @ApiOperation({ summary: 'Create an SLA policy' })
+  @ApiZodBody(PolicySchema)
   createPolicy(@Body(zodBody(PolicySchema)) body: z.infer<typeof PolicySchema>) {
     return this.sla.createPolicy(body as never);
   }
@@ -96,6 +98,7 @@ export class SlaController {
   @Get('attainment')
   @RequirePermissions('analytics:read')
   @ApiOperation({ summary: 'SLA attainment over a period' })
+  @ApiZodQuery(AttainmentQuery)
   attainment(@Query(zodQuery(AttainmentQuery)) query: z.infer<typeof AttainmentQuery>) {
     return this.sla.attainment(query);
   }

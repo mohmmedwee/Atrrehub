@@ -126,10 +126,13 @@ AI endpoints support `Accept: text/event-stream` and emit SSE frames:
 
 ## Webhooks
 
-Delivered as `POST` with headers `X-Atrrehub-Event`, `X-Atrrehub-Delivery`,
+See [the webhooks guide](../events/webhooks.md) for the full contract. In short:
+delivered as `POST` with headers `X-Atrrehub-Event`, `X-Atrrehub-Delivery` and
 `X-Atrrehub-Signature: t=<ts>,v1=<hmac-sha256>`. Signatures are computed over
-`{timestamp}.{rawBody}`; reject deliveries older than 5 minutes. Retries use exponential
-backoff for 24 hours, then the endpoint is disabled and the owner notified.
+`{timestamp}.{rawBody}`; reject deliveries whose timestamp is more than 5 minutes from
+your clock. Retries use exponential backoff for roughly two days; after 15 consecutive
+failures the endpoint is disabled and the organization's owners and administrators are
+notified.
 
 ## Identifiers
 

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@ne
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { zodBody } from '../../core/http/zod-validation.pipe';
+import { ApiZodBody } from '../../core/http/zod-openapi';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { ChannelsService } from './channels.service';
 
@@ -69,6 +70,7 @@ export class ChannelsController {
   @Post('accounts')
   @RequirePermissions('integration:manage')
   @ApiOperation({ summary: 'Connect a channel account' })
+  @ApiZodBody(AccountSchema)
   createAccount(@Body(zodBody(AccountSchema)) body: z.infer<typeof AccountSchema>) {
     return this.channels.createAccount(body as never);
   }
@@ -76,6 +78,7 @@ export class ChannelsController {
   @Patch('accounts/:id')
   @RequirePermissions('integration:manage')
   @ApiOperation({ summary: 'Update a channel account' })
+  @ApiZodBody(UpdateAccountSchema)
   updateAccount(
     @Param('id') id: string,
     @Body(zodBody(UpdateAccountSchema)) body: z.infer<typeof UpdateAccountSchema>,
@@ -94,6 +97,7 @@ export class ChannelsController {
   @Post('ingest')
   @RequirePermissions('conversation:create')
   @ApiOperation({ summary: 'Ingest an inbound provider payload' })
+  @ApiZodBody(IngestSchema)
   ingest(@Body(zodBody(IngestSchema)) body: z.infer<typeof IngestSchema>) {
     return this.channels.ingest(body.channel, body.payload, body.accountId);
   }
