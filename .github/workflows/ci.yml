@@ -33,6 +33,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @atrrehub/api db:generate
       - run: pnpm format:check
+      # The job has always been called "Lint, typecheck and unit tests" and had
+      # never once run lint, which is how the web app reached production with no
+      # ESLint config at all.
+      - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm --filter @atrrehub/api test
       # Every number in a document rots. These are the checkable ones, and

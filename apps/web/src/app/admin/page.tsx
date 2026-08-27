@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { del, get, post } from '@/lib/api';
+import { get, post } from '@/lib/api';
 import { relativeTime } from '@/lib/format';
 import { Badge, Button, Card, Empty, Field, Spinner, inputClass } from '@/components/ui';
 

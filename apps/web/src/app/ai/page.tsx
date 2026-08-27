@@ -9,7 +9,6 @@ import type { Agent, ExecutionDebug } from '@/lib/types';
 
 /** AI Studio: agents, a test console and the execution debugger. */
 export default function AiStudioPage() {
-  const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<string | null>(null);
 
@@ -144,6 +143,7 @@ function TestConsole({
   agentId: string;
   onExecution: (id: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
 
   const run = useMutation({
@@ -151,7 +151,13 @@ function TestConsole({
       post<{ executionId: string; status: string; costUsd: number }>(`/agents/${agentId}/run`, {
         message,
       }),
-    onSuccess: (result) => onExecution(result.executionId),
+    onSuccess: (result) => {
+      onExecution(result.executionId);
+      // Without this the run appears in the debugger but not in the list beside
+      // it until the ten-second poll comes round, which reads as the run having
+      // been lost.
+      void queryClient.invalidateQueries({ queryKey: ['executions'] });
+    },
   });
 
   return (
