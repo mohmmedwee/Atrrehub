@@ -2774,3 +2774,65 @@ model AdherenceRecord {
   @@index([organizationId, date])
   @@map("adherence_records")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hybrid deployment: control plane / data plane
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DataPlaneStatus {
+  /// Registered, enrollment token issued, never yet seen.
+  pending
+  healthy
+  degraded
+  /// No heartbeat within the expected window.
+  unreachable
+  suspended
+}
+
+/// A customer-operated deployment, as the control plane sees it.
+///
+/// The control plane knows a data plane exists, what version it runs and
+/// whether it is healthy. It does not know, and has no means to learn, what
+/// conversations it holds.
+model DataPlane {
+  id                  String          @id
+  name                String
+  region              String
+  /// Only the hash is stored; the token is shown once at registration.
+  enrollmentTokenHash String          @unique @map("enrollment_token_hash")
+  enrolledAt          DateTime?       @map("enrolled_at")
+  status              DataPlaneStatus @default(pending)
+  version             String?
+  /// Contract version the plane speaks, so a rolling upgrade is detectable.
+  contractVersion     String?         @map("contract_version")
+  /// Tenants that live on this plane. Ids only — the control plane resolves
+  /// nothing about them beyond routing.
+  organizationIds     String[]        @default([]) @map("organization_ids")
+  /// Configuration the plane pulls. Never contains customer data.
+  config              Json            @default("{}")
+  configVersion       Int             @default(1) @map("config_version")
+  lastHeartbeatAt     DateTime?       @map("last_heartbeat_at")
+  lastError           String?         @map("last_error")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  heartbeats DataPlaneHeartbeat[]
+
+  @@map("data_planes")
+}
+
+model DataPlaneHeartbeat {
+  id            String   @id
+  dataPlaneId   String   @map("data_plane_id")
+  version       String?
+  status        String
+  /// Aggregates only, and every payload passes the residency guard first.
+  metrics       Json     @default("{}")
+  uptimeSeconds Int?     @map("uptime_seconds")
+  reportedAt    DateTime @default(now()) @map("reported_at")
+
+  dataPlane DataPlane @relation(fields: [dataPlaneId], references: [id], onDelete: Cascade)
+
+  @@index([dataPlaneId, reportedAt])
+  @@map("data_plane_heartbeats")
+}

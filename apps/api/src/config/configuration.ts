@@ -82,6 +82,13 @@ export const buildConfig = (env: Env) => ({
   },
 
   workers: { enabled: env.WORKERS_ENABLED, concurrency: env.WORKER_CONCURRENCY },
+
+  deployment: {
+    mode: env.DEPLOYMENT_MODE,
+    controlPlaneUrl: env.CONTROL_PLANE_URL,
+    enrollmentToken: env.DATA_PLANE_ENROLLMENT_TOKEN,
+    region: env.DATA_PLANE_REGION,
+  },
 });
 
 export type AppConfig = ReturnType<typeof buildConfig>;

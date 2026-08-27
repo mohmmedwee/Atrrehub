@@ -105,6 +105,8 @@ export const ID_PREFIXES = {
   timeOff: 'tof',
   stateEvent: 'ase',
   adherence: 'adh',
+  dataPlane: 'dpl',
+  heartbeat: 'hbt',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

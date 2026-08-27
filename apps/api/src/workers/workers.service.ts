@@ -13,6 +13,7 @@ import { MemoryService } from '../modules/memory/memory.service';
 import { QualityService } from '../modules/quality/quality.service';
 import { ReportsService } from '../modules/reports/reports.service';
 import { TenancyService } from '../modules/tenancy/tenancy.service';
+import { HybridService } from '../modules/hybrid/hybrid.service';
 import { WfmService } from '../modules/wfm/wfm.service';
 import { IntegrationsService } from '../modules/integrations/integrations.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
@@ -41,6 +42,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly reports: ReportsService,
     private readonly tenancy: TenancyService,
     private readonly wfm: WfmService,
+    private readonly hybrid: HybridService,
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
     private readonly memory: MemoryService,
@@ -252,6 +254,32 @@ export class WorkersService implements OnApplicationBootstrap {
           organizationId: organization.id,
         });
       }
+    }
+  }
+
+  /**
+   * Hybrid deployment upkeep.
+   *
+   * A data plane reports in; a control plane notices the ones that stopped.
+   * Both are no-ops in a standalone deployment, which is what SaaS and private
+   * cloud run, so neither pays for this.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async hybridUpkeep(): Promise<void> {
+    if (!this.enabled) return;
+
+    const mode = this.hybrid.mode();
+    if (mode === 'standalone') return;
+
+    try {
+      if (mode === 'data_plane') {
+        const result = await this.hybrid.sendHeartbeat();
+        if (!result.sent) this.logger.warn('Heartbeat not sent', { reason: result.reason });
+      } else {
+        await this.hybrid.sweepUnreachable();
+      }
+    } catch (error) {
+      this.logger.error('Hybrid upkeep failed', error);
     }
   }
 

@@ -73,6 +73,14 @@ export const envSchema = z.object({
   METRICS_ENABLED: bool(true),
 
   WORKERS_ENABLED: bool(true),
+
+  // Hybrid deployment. `standalone` is a complete platform on its own, which
+  // is what SaaS and private cloud both run; the split modes are only for a
+  // control plane operating customer-hosted data planes.
+  DEPLOYMENT_MODE: z.enum(['standalone', 'control_plane', 'data_plane']).default('standalone'),
+  CONTROL_PLANE_URL: z.string().url().optional(),
+  DATA_PLANE_ENROLLMENT_TOKEN: z.string().optional(),
+  DATA_PLANE_REGION: z.string().default('local'),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
 });
 

@@ -88,6 +88,11 @@ export class AuthGuard implements CanActivate {
     const header = headers.authorization;
     if (!header?.startsWith('Bearer ')) return null;
 
+    // Credentials that are deliberately not platform sessions carry their own
+    // prefix and are resolved by the route that understands them. Attempting
+    // JWT verification here would reject them before the public check runs.
+    if (header.startsWith('Bearer dpt_')) return null;
+
     let claims: AccessTokenClaims;
     try {
       claims = await this.jwt.verifyAsync<AccessTokenClaims>(header.slice(7));
