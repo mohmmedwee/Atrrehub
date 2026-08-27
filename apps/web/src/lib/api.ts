@@ -75,6 +75,20 @@ async function refreshSession(): Promise<boolean> {
   return refreshInFlight;
 }
 
+/**
+ * The shape a collection endpoint returns.
+ *
+ * Declared here next to the unwrapping rule that produces it, because the rule
+ * — collections keep their envelope, single resources are unwrapped — is
+ * invisible at the call site, and typing a list as `T[]` compiles happily and
+ * then fails at runtime with "rows is not iterable".
+ */
+export interface Paginated<T> {
+  data: T[];
+  meta: { total?: number; limit: number; cursor?: string | null };
+  links?: { next?: string | null };
+}
+
 export interface RequestOptions {
   method?: string;
   body?: unknown;

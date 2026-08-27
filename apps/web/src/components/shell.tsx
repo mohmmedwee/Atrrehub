@@ -3,28 +3,30 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { get, post, tokens } from '@/lib/api';
 import { disconnectRealtime, realtime } from '@/lib/realtime';
+import { visibleGroups } from '@/lib/navigation';
 import { Avatar, Spinner } from '@/components/ui';
+import { CommandPalette, openCommandPalette } from '@/components/command-palette';
+import { PresenceMenu } from '@/components/presence-menu';
 import type { Me } from '@/lib/types';
 
-const NAV = [
-  { href: '/workspace', label: 'Workspace', permission: 'conversation:read' },
-  { href: '/ai', label: 'AI Studio', permission: 'agent:read' },
-  { href: '/analytics', label: 'Analytics', permission: 'analytics:read' },
-  { href: '/admin', label: 'Admin', permission: 'organization:read' },
-];
+const COLLAPSE_KEY = 'atrrehub:sidebar-collapsed';
 
-/** True when the granted set satisfies `required`, mirroring the server rule. */
-function allows(granted: string[], required: string): boolean {
-  if (granted.includes('*') || granted.includes(required)) return true;
-  return granted.includes(`${required.split(':')[0]}:manage`);
-}
-
+/**
+ * The application shell.
+ *
+ * A sidebar rather than a row of tabs, because the product has two dozen
+ * surfaces and a tab row can hold four. Everything beyond those four used to
+ * be unreachable — not unfinished, unreachable — which made the API's breadth
+ * invisible to the person using it.
+ */
 export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
 
   const {
     data: me,
@@ -35,6 +37,28 @@ export function Shell({ children }: { children: ReactNode }) {
     queryFn: () => get<Me>('/auth/me'),
     retry: false,
   });
+
+  // Read after mount, not during render: the server has no localStorage and a
+  // mismatch here is a hydration error on every page load.
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1');
+    } catch {
+      /* private browsing, or storage disabled — the default is fine */
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+      } catch {
+        /* the preference simply will not persist */
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (isError) router.replace('/login');
@@ -58,88 +82,138 @@ export function Shell({ children }: { children: ReactNode }) {
   if (isLoading) return <Spinner label="Loading your workspace" />;
   if (!me) return null;
 
-  const visible = NAV.filter((item) => allows(me.permissions, item.permission));
+  const groups = visibleGroups(me.permissions);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4">
-        <div className="flex items-center gap-6">
-          <Link href="/workspace" className="text-sm font-semibold tracking-tight">
-            Atrrehub
-          </Link>
-          <nav className="flex items-center gap-1" aria-label="Primary">
-            {visible.map((item) => {
-              const active = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`rounded-md px-2.5 py-1 text-sm transition-colors duration-fast ${
-                    active
-                      ? 'bg-accent/10 font-medium text-accent'
-                      : 'text-text-muted hover:bg-surface-sunken hover:text-text'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+    <div className="flex h-screen overflow-hidden bg-surface-sunken">
+      <CommandPalette permissions={me.permissions} />
 
-        <div className="flex items-center gap-3">
-          <span className="hidden text-xs text-text-muted sm:inline">{me.organization.name}</span>
-          <PresenceToggle current={me.user.presence} />
-          <Avatar
-            name={`${me.user.firstName} ${me.user.lastName}`}
-            url={me.user.avatarUrl}
-            size={26}
-          />
-          <button
-            onClick={signOut}
-            className="text-xs text-text-muted underline-offset-2 hover:text-text hover:underline"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <div className="min-h-0 flex-1">{children}</div>
-    </div>
-  );
-}
-
-/** Availability drives routing, so it belongs where an agent always sees it. */
-function PresenceToggle({ current }: { current: string }) {
-  const options = ['available', 'busy', 'away', 'on_break', 'offline'];
-  const tone: Record<string, string> = {
-    available: 'text-success',
-    busy: 'text-warning',
-    away: 'text-text-muted',
-    on_break: 'text-text-muted',
-    offline: 'text-text-muted',
-  };
-
-  return (
-    <label className="flex items-center gap-1.5">
-      <span className="sr-only">Availability</span>
-      <span aria-hidden="true" className={tone[current] ?? 'text-text-muted'}>
-        ●
-      </span>
-      <select
-        defaultValue={current}
-        onChange={(event) =>
-          post('/me/presence', { presence: event.target.value }).catch(() => undefined)
-        }
-        className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-xs text-text"
+      <aside
+        className={`hidden shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-base md:flex ${
+          collapsed ? 'w-[60px]' : 'w-[212px]'
+        }`}
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option.replace('_', ' ')}
-          </option>
-        ))}
-      </select>
-    </label>
+        <div className="flex h-12 shrink-0 items-center gap-2 px-3">
+          <Link
+            href="/workspace"
+            className="flex items-center gap-2 overflow-hidden text-sm font-semibold tracking-tight"
+          >
+            <span
+              aria-hidden="true"
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-accent text-[13px] font-bold text-accent-fg"
+            >
+              A
+            </span>
+            {collapsed ? null : <span className="truncate">Atrrehub</span>}
+          </Link>
+        </div>
+
+        {collapsed ? null : (
+          <button
+            onClick={openCommandPalette}
+            className="mx-3 mb-2 flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-xs text-text-muted transition-colors duration-fast hover:bg-surface-sunken hover:text-text"
+          >
+            <Search size={13} aria-hidden="true" />
+            <span className="flex-1">Search</span>
+            <kbd className="rounded border border-border px-1 text-[10px]">⌘K</kbd>
+          </button>
+        )}
+
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" aria-label="Primary">
+          {groups.map((group) => (
+            <div key={group.label} className="mb-3">
+              {collapsed ? (
+                <div className="mx-2 mb-1.5 border-t border-border" role="presentation" />
+              ) : (
+                <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
+                  {group.label}
+                </p>
+              )}
+              <ul className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = pathname.startsWith(item.href);
+                  const planned = item.status === 'planned';
+                  const Icon = item.icon;
+
+                  const inner = (
+                    <>
+                      <Icon size={15} className="shrink-0" aria-hidden="true" />
+                      {collapsed ? null : <span className="truncate">{item.label}</span>}
+                    </>
+                  );
+                  const shape =
+                    'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] transition-colors duration-fast';
+
+                  return (
+                    <li key={item.href}>
+                      {planned ? (
+                        // Shown, not hidden: an operator learns the capability
+                        // exists and is coming, instead of assuming it does not.
+                        <span
+                          title={`${item.label} — API is ready, screen is not built yet`}
+                          aria-disabled="true"
+                          className={`${shape} cursor-not-allowed text-text-muted opacity-45`}
+                        >
+                          {inner}
+                        </span>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          title={collapsed ? item.label : undefined}
+                          aria-current={active ? 'page' : undefined}
+                          className={`${shape} ${
+                            active
+                              ? 'bg-accent/10 font-medium text-accent'
+                              : 'text-text-muted hover:bg-surface-sunken hover:text-text'
+                          }`}
+                        >
+                          {inner}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        <button
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="flex shrink-0 items-center gap-2.5 border-t border-border px-4 py-2 text-[13px] text-text-muted transition-colors duration-fast hover:bg-surface-sunken hover:text-text"
+        >
+          {collapsed ? (
+            <PanelLeftOpen size={15} aria-hidden="true" />
+          ) : (
+            <PanelLeftClose size={15} aria-hidden="true" />
+          )}
+          {collapsed ? null : <span>Collapse</span>}
+        </button>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-4">
+          <span className="truncate text-sm font-medium text-text">{me.organization.name}</span>
+
+          <div className="flex items-center gap-3">
+            <PresenceMenu current={me.user.presence} />
+            <Avatar
+              name={`${me.user.firstName} ${me.user.lastName}`}
+              url={me.user.avatarUrl}
+              size={26}
+            />
+            <button
+              onClick={signOut}
+              className="text-xs text-text-muted transition-colors duration-fast hover:text-text"
+            >
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+      </div>
+    </div>
   );
 }
