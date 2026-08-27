@@ -162,7 +162,54 @@ export class AiGateway implements OnModuleInit {
     if (!chain.some((entry) => entry.provider === 'local')) {
       chain.push({ provider: 'local', model: 'local' });
     }
-    return chain.filter((entry) => this.providers.has(entry.provider));
+    return this.applyGovernance(chain.filter((entry) => this.providers.has(entry.provider)));
+  }
+
+  /**
+   * Drop anything the tenant's governance policy forbids.
+   *
+   * Filtering rather than throwing at the point of use: a tenant who permits
+   * only one provider should still get their configured fallbacks *within* that
+   * provider, and should only see an error when nothing at all is permitted.
+   *
+   * An empty allow-list means no restriction. That is the only workable default
+   * for a column that starts empty on every tenant that already exists — the
+   * alternative would stop every AI call in the platform the moment this
+   * shipped.
+   */
+  private async applyGovernance(
+    chain: { provider: AiProvider; model: string }[],
+  ): Promise<{ provider: AiProvider; model: string }[]> {
+    const policy = await this.governancePolicy();
+    if (!policy) return chain;
+    const { allowedProviders, allowedModels } = policy;
+    if (!allowedProviders.length && !allowedModels.length) return chain;
+
+    const permitted = chain.filter(
+      (entry) =>
+        (!allowedProviders.length || allowedProviders.includes(entry.provider)) &&
+        (!allowedModels.length || allowedModels.includes(entry.model)),
+    );
+
+    if (!permitted.length) {
+      // Deliberately an error rather than a silent fall back to the local
+      // provider: a tenant who restricted their models did so for a reason, and
+      // quietly serving the request from somewhere else defeats it.
+      throw AppError.policyBlocked(
+        'ai_governance',
+        'Your organization’s AI policy permits no provider or model that can serve this request',
+      );
+    }
+    return permitted;
+  }
+
+  /** Cached for five minutes; the governance API clears this key on a change. */
+  private async governancePolicy() {
+    const organizationId = RequestContextStore.organizationId();
+    if (!organizationId) return null;
+    return this.redis.remember(this.redis.key(organizationId, 'governance'), 300, async () =>
+      this.prisma.raw.governancePolicy.findUnique({ where: { organizationId } }),
+    );
   }
 
   // ── Completions ────────────────────────────────────────────────────────────
@@ -384,11 +431,7 @@ export class AiGateway implements OnModuleInit {
     const organizationId = RequestContextStore.organizationId();
     if (!organizationId) return;
 
-    const policy = await this.redis.remember(
-      this.redis.key(organizationId, 'governance'),
-      300,
-      async () => this.prisma.raw.governancePolicy.findUnique({ where: { organizationId } }),
-    );
+    const policy = await this.governancePolicy();
     if (!policy?.monthlyTokenLimit && !policy?.monthlyCostLimitUsd) return;
 
     const periodStart = new Date();

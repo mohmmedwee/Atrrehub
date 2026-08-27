@@ -6,6 +6,7 @@ import { DomainEvent } from '../../core/events/domain-events';
 import { EventBus } from '../../core/events/event-bus.service';
 import { newId } from '../../core/ids/id.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { RedisService } from '../../core/redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { isPublishable, validateGraph, type WorkflowGraph } from '../workflows/graph';
 import { RuntimeService } from '../workflows/runtime.service';
@@ -38,6 +39,7 @@ export interface AgentVersionInput {
 export class AgentsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly runtime: RuntimeService,
     private readonly events: EventBus,
     private readonly audit: AuditService,
@@ -93,6 +95,7 @@ export class AgentsService {
           organizationId,
           agentId,
           version: 1,
+          createdById: principal?.id ?? null,
           instructions:
             input.instructions ??
             'You are a helpful customer support agent. Answer using the knowledge provided, and hand off to a human when you are unsure.',
@@ -168,6 +171,7 @@ export class AgentsService {
         organizationId,
         agentId,
         version: nextVersion,
+        createdById: RequestContextStore.principal()?.id ?? null,
         instructions: patch.instructions ?? base?.instructions ?? '',
         modelRole: (patch.modelRole ?? base?.modelRole ?? 'chat') as never,
         modelOverride: patch.modelOverride ?? base?.modelOverride ?? null,
@@ -238,6 +242,8 @@ export class AgentsService {
     }
 
     const principal = RequestContextStore.principal();
+    await this.assertApprovalSatisfied(draft, principal?.id);
+
     const published = await this.prisma.raw.$transaction(async (tx) => {
       const version = await tx.agentVersion.update({
         where: { id: draft.id },
@@ -266,6 +272,45 @@ export class AgentsService {
       after: { version: published.version, environment },
     });
     return published;
+  }
+
+  /**
+   * Four-eyes on publication, when the tenant's governance policy asks for it.
+   *
+   * The field has existed since the schema was written and enforced nothing, so
+   * an organization that switched it on got no second pair of eyes at all —
+   * which is worse than not offering it, because somebody believed they had it.
+   *
+   * A draft with no recorded author predates this being tracked. It is allowed
+   * through rather than blocked: refusing would strand every agent written
+   * before the column existed, and the policy is about the *next* change.
+   */
+  private async assertApprovalSatisfied(
+    draft: { id: string; createdById: string | null },
+    publisherId: string | undefined,
+  ): Promise<void> {
+    const organizationId = RequestContextStore.organizationId();
+    if (!organizationId) return;
+
+    const policy = await this.redis.remember(
+      this.redis.key(organizationId, 'governance'),
+      300,
+      async () => this.prisma.raw.governancePolicy.findUnique({ where: { organizationId } }),
+    );
+    if (!policy?.requireHumanApproval) return;
+
+    if (!publisherId) {
+      throw AppError.policyBlocked(
+        'human_approval_required',
+        'This organization requires a person to approve a publication, and this request has no user behind it',
+      );
+    }
+    if (draft.createdById && draft.createdById === publisherId) {
+      throw AppError.policyBlocked(
+        'human_approval_required',
+        'This organization requires a second person to publish: you wrote this draft, so somebody else must approve it',
+      );
+    }
   }
 
   /** Roll back to a previously published version. */

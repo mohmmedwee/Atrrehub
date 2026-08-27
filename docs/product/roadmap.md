@@ -14,11 +14,11 @@ Status is assessed against **code that exists and runs**, not against intent:
 - **Schema only** — database tables exist, no service or API behind them.
 - **Not built** — designed and documented, no implementation.
 
-**Totals: 38 built · 13 partial · 0 schema only · 0 not built.**
+**Totals: 41 built · 10 partial · 0 schema only · 0 not built.**
 
 ---
 
-## Built (38)
+## Built (41)
 
 | Phase | Domain | Evidence |
 |---|---|---|
@@ -58,21 +58,22 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 38 | Security | Application and data controls — see `docs/security/controls.md` |
 | 43 | Disaster recovery | Automated backup, restore verification into a scratch database, readiness endpoint |
 | 46 | Hybrid deployment | Control-plane / data-plane split with an enforced data residency guard |
-| 48 | Testing platform | 289 unit + 23 integration tests, tenant isolation in CI |
+| 48 | Testing platform | 462 unit + 25 integration tests, tenant isolation and webhook isolation in CI |
 | 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
+| 33 | Developer platform | API keys, webhook endpoints with signed delivery and replay, generated TypeScript SDK, OpenAPI with request bodies |
+| 37 | AI governance | Policy API with every field enforced: provider and model allow-lists, tool allow-list, per-execution cap, four-eyes publication |
+| 39 | Enterprise compliance | Subject access export, real right-to-erasure across every table, access reviews, retention enforcement |
 
 ---
 
-## Partial (13)
+## Partial (10)
 
 | Phase | Domain | Built | Gap |
 |---|---|---|---|
 | 22 | Omnichannel expansion | Eight channels: web chat, email, WhatsApp, SMS, Telegram, Messenger, Instagram, Teams — each with webhook signature verification | Teams verification is a shared secret, not the Bot Framework's JWT scheme; no channel has been exercised against a live provider account |
 | 23 | Voice platform | Call lifecycle and state machine, IVR engine, call control, recording with consent and retention, routing into the existing engine, three telephony adapters (simulated, Twilio, SIP gateway) | No media plane: audio is carried by the provider, so the platform never touches RTP. Verified end to end against the simulated provider only — no PSTN call has been placed from this repository |
-| 33 | Developer platform | API keys with scoped permissions, OpenAPI spec, API request log | No webhook CRUD API, no developer portal, no SDK, no sandbox |
 | 35 | Billing & usage | Four plans with ten enforced limits, subscriptions, negotiated overrides, monthly usage records, invoice estimate | No payment provider; the invoice estimate is list price only |
-| 37 | AI governance | Allowed models, token and cost limits, retention window, full AI audit trail | No admin API or UI to manage the policy |
-| 39 | Enterprise compliance | Retention enforcement, audit trail, right-to-erasure for memory | No data export, no residency controls, no access reviews |
+
 | 40 | Enterprise SSO & provisioning | OIDC with JWKS verification, PKCE, domain routing, JIT provisioning, group→role mapping, SCIM 2.0 Users and Groups | No SAML — assertion signature verification needs XML canonicalization, which is not safe to hand-roll |
 | 41 | Observability | 168 Prometheus metrics, structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
 | 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown | No read-replica routing, no dead-letter queue configuration |

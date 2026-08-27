@@ -8,6 +8,7 @@ import { newId } from '../../core/ids/id.service';
 import { AppLogger } from '../../core/logger/logger.service';
 import { MetricsService } from '../../core/metrics/metrics.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { RedisService } from '../../core/redis/redis.service';
 import {
   NodeExecutors,
   type NodeExecutionResult,
@@ -41,11 +42,29 @@ const MAX_STEPS = 200;
 export class RuntimeService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly executors: NodeExecutors,
     private readonly events: EventBus,
     private readonly metrics: MetricsService,
     private readonly logger: AppLogger,
   ) {}
+
+  /**
+   * The tenant's per-execution token ceiling, or undefined when they have not
+   * set one. Read through the same cache key the AI gateway and the tool runner
+   * use, so a policy change invalidates one entry rather than three that expire
+   * at different moments and disagree in between.
+   */
+  private async governanceTokenCap(): Promise<number | undefined> {
+    const organizationId = RequestContextStore.organizationId();
+    if (!organizationId) return undefined;
+    const policy = await this.redis.remember(
+      this.redis.key(organizationId, 'governance'),
+      300,
+      async () => this.prisma.raw.governancePolicy.findUnique({ where: { organizationId } }),
+    );
+    return policy?.perExecutionTokenCap ?? undefined;
+  }
 
   // ── Starting ───────────────────────────────────────────────────────────────
 
@@ -212,6 +231,24 @@ export class RuntimeService {
       promptTokens += result.usage?.promptTokens ?? 0;
       completionTokens += result.usage?.completionTokens ?? 0;
       costUsd += result.usage?.costUsd ?? 0;
+
+      // The tenant's per-execution ceiling. Checked after the step rather than
+      // before it, because the cap exists to stop a workflow that loops away
+      // spending the monthly budget — and the only way to know a step was
+      // expensive is to have run it. Failing the execution rather than
+      // truncating it: a half-run workflow that reports success has done
+      // something nobody asked for.
+      const tokenCap = await this.governanceTokenCap();
+      if (tokenCap && promptTokens + completionTokens > tokenCap) {
+        await this.fail(
+          executionId,
+          `Execution exceeded the organization's per-execution limit of ${tokenCap} tokens`,
+          node.id,
+          state,
+          { promptTokens, completionTokens, costUsd },
+        );
+        return 'failed';
+      }
 
       await this.prisma.db.executionStep.update({
         where: { id: step.id },

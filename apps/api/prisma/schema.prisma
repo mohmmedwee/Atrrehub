@@ -1553,6 +1553,9 @@ model AgentVersion {
   fallbackMessage   String?     @map("fallback_message")
   locales           String[]    @default(["en"])
   environment       Environment @default(development)
+  /// Who wrote this draft. Recorded so that a policy requiring human approval
+  /// can tell publishing from self-approval.
+  createdById       String?     @map("created_by_id")
   publishedAt       DateTime?   @map("published_at")
   publishedById     String?     @map("published_by_id")
   evaluationRunId   String?     @map("evaluation_run_id")

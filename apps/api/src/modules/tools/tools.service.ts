@@ -8,6 +8,7 @@ import { EventBus } from '../../core/events/event-bus.service';
 import { newId } from '../../core/ids/id.service';
 import { AppLogger } from '../../core/logger/logger.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { RedisService } from '../../core/redis/redis.service';
 import { ConversationsService } from '../conversations/conversations.service';
 import { CustomersService } from '../customers/customers.service';
 import { isEgressAllowed } from '../guardrails/detectors';
@@ -51,6 +52,7 @@ export class ToolsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly redis: RedisService,
     private readonly events: EventBus,
     private readonly logger: AppLogger,
     private readonly customers: CustomersService,
@@ -399,6 +401,7 @@ export class ToolsService {
     context: ToolExecutionContext = {},
   ): Promise<ToolInvocationResult> {
     const started = Date.now();
+    await this.assertPermittedByPolicy(key);
 
     const builtin = this.builtins[key];
     if (builtin) {
@@ -425,6 +428,35 @@ export class ToolsService {
     const result = await this.invokeHttp(tool, args);
     await this.recordInvocation(key, tool.id, args, result, context);
     return result;
+  }
+
+  /**
+   * Refuse a tool the tenant's governance policy does not list.
+   *
+   * The allow-list on the policy was stored and read by nothing, so a tenant
+   * who restricted their agents to two tools still had every tool available.
+   * An empty list means no restriction — it is the value every existing tenant
+   * has, and treating it as "nothing is allowed" would disable the platform.
+   *
+   * Read through the same cache key the gateway uses, so a policy change
+   * invalidates one entry rather than several that disagree in between.
+   */
+  private async assertPermittedByPolicy(key: string): Promise<void> {
+    const organizationId = RequestContextStore.organizationId();
+    if (!organizationId) return;
+
+    const policy = await this.redis.remember(
+      this.redis.key(organizationId, 'governance'),
+      300,
+      async () => this.prisma.raw.governancePolicy.findUnique({ where: { organizationId } }),
+    );
+    if (!policy?.allowedTools.length) return;
+    if (!policy.allowedTools.includes(key)) {
+      throw AppError.policyBlocked(
+        'ai_governance',
+        `Your organization’s policy does not permit the tool ${key}`,
+      );
+    }
   }
 
   /** Call a custom HTTP tool with a hard timeout and a response size cap. */

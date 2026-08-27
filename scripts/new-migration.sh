@@ -30,8 +30,11 @@ import re, sys
 
 raw = open(sys.argv[1]).read()
 # Prisma emits "-- DropIndex\nDROP INDEX ...;" style pairs; remove the whole pair.
+# The body must not run past the next `--` header: a lazy match that could
+# cross one would swallow every additive statement between here and the next
+# DROP anywhere in the file, and report "nothing to migrate".
 cleaned = re.sub(
-    r'--\s*(DropIndex|DropTable|DropColumn|DropEnum|AlterTable)\s*\n(?:[^\n]*\n)*?[^\n]*\b(DROP\s+(INDEX|TABLE|COLUMN|TYPE)|DROP\s+CONSTRAINT)\b[^\n]*;\s*\n',
+    r'--\s*(DropIndex|DropTable|DropColumn|DropEnum|AlterTable)\s*\n(?:(?!--)[^\n]*\n)*?[^\n]*\b(DROP\s+(INDEX|TABLE|COLUMN|TYPE)|DROP\s+CONSTRAINT)\b[^\n]*;\s*\n',
     '', raw, flags=re.IGNORECASE)
 # Any stray destructive line that survived the pairing.
 cleaned = '\n'.join(
@@ -49,7 +52,15 @@ if grep -Eiq '^\s*(DROP|TRUNCATE)' "$RAW.clean"; then
   exit 1
 fi
 
+# An empty result is only believable when the diff itself was empty. Anything
+# else means the filter ate a statement it should have kept, and reporting
+# "nothing to migrate" would lose it silently.
 if [ ! -s "$RAW.clean" ]; then
+  if grep -Eiq '^\s*(ALTER|CREATE|INSERT|UPDATE)' "$RAW"; then
+    echo "Refusing to write: the filter removed every additive statement." >&2
+    grep -Ein '^\s*(ALTER|CREATE)' "$RAW" | head >&2
+    exit 1
+  fi
   echo "Nothing to migrate — the database already matches the schema."
   exit 0
 fi

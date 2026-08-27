@@ -20,6 +20,7 @@ import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { EvaluationModule } from './modules/evaluation/evaluation.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { GovernanceModule } from './modules/governance/governance.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SsoModule } from './modules/sso/sso.module';
@@ -98,6 +99,7 @@ import { WorkersModule } from './workers/workers.module';
     EvaluationModule,
     IntegrationsModule,
     WebhooksModule,
+    GovernanceModule,
     NotificationsModule,
     ReportsModule,
     SsoModule,
