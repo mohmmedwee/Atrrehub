@@ -24,7 +24,13 @@ TOKEN=$(curl -sf -X POST "$API/api/v1/auth/login" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" |
   node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>process.stdout.write(JSON.parse(b).data.accessToken))')
 
-mapfile -t ARTICLES < <(
+# `mapfile` is bash 4, and macOS ships bash 3.2 — the version every Mac
+# contributor gets from /bin/bash. Read the ids into a plain array instead, so
+# this runs on the shell people actually have rather than the one Linux has.
+ARTICLES=()
+while IFS= read -r id; do
+  [ -n "$id" ] && ARTICLES+=("$id")
+done < <(
   curl -sf "$API/api/v1/knowledge/articles?limit=100" -H "authorization: Bearer $TOKEN" |
     node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>{
       const rows = JSON.parse(b).data ?? [];

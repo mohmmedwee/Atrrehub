@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { actorTypeFor } from '../../core/context/actor';
 import { RequestContextStore } from '../../core/context/request-context';
 import { newId } from '../../core/ids/id.service';
 import { AppLogger } from '../../core/logger/logger.service';
@@ -42,9 +43,7 @@ export class AuditService {
         data: {
           id: newId('audit'),
           organizationId,
-          actorType: (context?.principal?.type === 'api_key'
-            ? 'user'
-            : (context?.principal?.type ?? 'system')) as never,
+          actorType: actorTypeFor(context?.principal),
           actorId: input.actorId ?? context?.principal?.id ?? null,
           actorLabel: input.actorLabel ?? context?.principal?.label ?? null,
           action: input.action,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type TicketStatus } from '@prisma/client';
+import { actorTypeFor } from '../../core/context/actor';
 import { RequestContextStore } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { DomainEvent } from '../../core/events/domain-events';
@@ -365,7 +366,7 @@ export class TicketsService {
       id: newId('history'),
       organizationId,
       ticketId,
-      actorType: (principal?.type === 'api_key' ? 'user' : (principal?.type ?? 'system')) as never,
+      actorType: actorTypeFor(principal),
       actorId: principal?.id ?? null,
       field,
       fromValue:

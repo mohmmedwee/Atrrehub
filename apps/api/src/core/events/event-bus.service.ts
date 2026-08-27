@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Prisma } from '@prisma/client';
+import { actorTypeFor } from '../context/actor';
 import { RequestContextStore } from '../context/request-context';
 import { newId } from '../ids/id.service';
 import { AppLogger } from '../logger/logger.service';
@@ -54,9 +55,7 @@ export class EventBus {
       workspaceId: options.workspaceId ?? context?.workspaceId ?? null,
       type,
       version: 1,
-      actorType: (context?.principal?.type === 'api_key'
-        ? 'user'
-        : (context?.principal?.type ?? 'system')) as any,
+      actorType: actorTypeFor(context?.principal),
       actorId: context?.principal?.id ?? null,
       subjectType: subject.type,
       subjectId: subject.id,

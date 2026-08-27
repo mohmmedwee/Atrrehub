@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type ChannelType, type ConversationStatus } from '@prisma/client';
+import { actorTypeFor } from '../../core/context/actor';
 import { RequestContextStore } from '../../core/context/request-context';
 import { AppError } from '../../core/errors/app-error';
 import { DomainEvent } from '../../core/events/domain-events';
@@ -608,9 +609,7 @@ export class ConversationsService {
         organizationId,
         conversationId,
         type,
-        actorType: (principal?.type === 'api_key'
-          ? 'user'
-          : (principal?.type ?? 'system')) as never,
+        actorType: actorTypeFor(principal),
         actorId: principal?.id ?? null,
         data: data as Prisma.InputJsonValue,
       },

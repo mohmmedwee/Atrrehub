@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,6 +84,65 @@ export class BackupService {
     };
   }
 
+  /**
+   * The `pg_dump` to use for this server.
+   *
+   * `pg_dump` refuses outright when its own major version is older than the
+   * server's — it cannot know about newer catalogue structures. On a developer
+   * machine with Postgres 15 client tools against a Postgres 16 container that
+   * is a hard failure, and as a nightly job it fails silently until somebody
+   * needs a restore.
+   *
+   * A version-matched binary is preferred where the distribution installs one;
+   * otherwise the mismatch is reported with both versions and the remedy,
+   * rather than surfacing as "exited with code 1".
+   */
+  private async resolvePgDump(): Promise<string> {
+    const serverMajor = await this.serverMajorVersion();
+    if (serverMajor === null) return 'pg_dump';
+
+    // Debian and Ubuntu keep every installed major here, which is where a
+    // matching binary usually already exists.
+    const versioned = `/usr/lib/postgresql/${serverMajor}/bin/pg_dump`;
+    if (existsSync(versioned)) return versioned;
+
+    const clientMajor = await this.clientMajorVersion('pg_dump');
+    if (clientMajor !== null && clientMajor < serverMajor) {
+      throw AppError.dependency(
+        `pg_dump ${clientMajor} cannot dump a PostgreSQL ${serverMajor} server. ` +
+          `Install the version ${serverMajor} client tools (postgresql-client-${serverMajor}), ` +
+          `or point PATH at a pg_dump of at least version ${serverMajor}.`,
+      );
+    }
+    return 'pg_dump';
+  }
+
+  /** Read from the live connection rather than the URL — Prisma is already there. */
+  private async serverMajorVersion(): Promise<number | null> {
+    try {
+      const rows = await this.prisma.raw.$queryRawUnsafe<{ v: string }[]>(
+        'SELECT current_setting($1) AS v',
+        'server_version_num',
+      );
+      // 160004 → 16. Postgres numbers majors in the ten-thousands from 10 on.
+      const numeric = Number(rows[0]?.v);
+      return Number.isFinite(numeric) ? Math.floor(numeric / 10_000) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async clientMajorVersion(binary: string): Promise<number | null> {
+    try {
+      const { stdout } = await run(binary, ['--version'], { timeout: 5_000 });
+      // "pg_dump (PostgreSQL) 16.4" — the first number is the major.
+      const match = /(\d+)/.exec(stdout);
+      return match ? Number(match[1]) : null;
+    } catch {
+      return null;
+    }
+  }
+
   // ── Taking a backup ────────────────────────────────────────────────────────
 
   /**
@@ -109,8 +169,9 @@ export class BackupService {
     const file = join(workdir, 'db.dump');
 
     try {
+      const pgDump = await this.resolvePgDump();
       await run(
-        'pg_dump',
+        pgDump,
         [
           '--format=custom',
           '--no-owner',

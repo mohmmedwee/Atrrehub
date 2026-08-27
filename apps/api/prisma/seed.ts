@@ -121,9 +121,22 @@ async function main() {
 
   const users = [];
   for (const person of people) {
-    const userId = newId('user');
-    await prisma.user.create({
-      data: {
+    // Upserted rather than created: email is unique across the platform, so a
+    // second run of the seed used to die on P2002 partway through and leave a
+    // half-built organization behind. A seed you cannot run twice is a seed
+    // nobody can use to reset a broken local database.
+    const existing = await prisma.user.findUnique({ where: { email: person.email } });
+    const userId = existing?.id ?? newId('user');
+    await prisma.user.upsert({
+      where: { email: person.email },
+      update: {
+        firstName: person.firstName,
+        lastName: person.lastName,
+        status: 'active',
+        skills: person.skills,
+        languages: person.languages,
+      },
+      create: {
         id: userId,
         email: person.email,
         passwordHash,

@@ -15,7 +15,13 @@ npm-debug.log*
 .turbo/
 generated/
 prisma/migrations/dev.db*
-storage/
-tmp/
+
+# Anchored to the one directory that actually holds runtime uploads. Written
+# as a bare `storage/` this matched *any* directory of that name at any depth,
+# which silently excluded apps/api/src/core/storage/ — the StorageService
+# source — from the repository. A fresh clone did not compile, and nothing in
+# this working tree showed it, because the file was present locally.
+/apps/api/storage/
+/tmp/
 .vscode/
 .idea/
