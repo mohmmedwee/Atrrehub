@@ -94,6 +94,12 @@ export class MetricsService {
     labelNames: ['workflow', 'node_type'] as const,
   });
 
+  readonly deadLetters = new Counter({
+    name: 'atrrehub_dead_letters_total',
+    help: 'Jobs that exhausted every retry and were dead-lettered',
+    labelNames: ['queue'] as const,
+  });
+
   readonly conversationsOpen = new Gauge({
     name: 'atrrehub_conversations_open',
     help: 'Conversations currently open, by status',
@@ -123,6 +129,7 @@ export class MetricsService {
       this.aiCost,
       this.retrievalDuration,
       this.queueDepth,
+      this.deadLetters,
       this.workflowFailures,
       this.conversationsOpen,
       this.slaBreaches,

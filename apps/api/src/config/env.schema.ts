@@ -22,6 +22,13 @@ export const envSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
   DATABASE_URL: z.string().min(1),
+  // A read-only replica for reporting and analytics. Absent means every read
+  // goes to the primary, which is correct for a single-node deployment.
+  DATABASE_REPLICA_URL: z.string().min(1).optional(),
+  // How stale a replica read may be before it is not worth taking. Reporting
+  // tolerates seconds; a read-after-write does not, which is why only the
+  // deliberately-routed queries use it at all.
+  DB_REPLICA_MAX_LAG_SECONDS: z.coerce.number().int().min(1).max(3600).default(30),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),

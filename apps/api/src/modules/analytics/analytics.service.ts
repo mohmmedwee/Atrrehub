@@ -26,6 +26,18 @@ export class AnalyticsService {
     private readonly sla: SlaService,
   ) {}
 
+  /**
+   * Dashboards read from the replica when one is configured.
+   *
+   * Every query in this service aggregates over a window that already ends in
+   * the past, so a second or two of replication lag changes nothing a viewer
+   * could notice — and these are the heaviest reads in the platform, which is
+   * exactly the load worth keeping off the primary.
+   */
+  private get read() {
+    return this.prisma.readOnly();
+  }
+
   private cacheKey(name: string, range: DateRange): string {
     return this.redis.key(
       RequestContextStore.organizationId(),
@@ -43,13 +55,13 @@ export class AnalyticsService {
 
       const [total, resolved, aiHandled, aiResolved, csat, slaAttainment, aiSpend, openNow] =
         await Promise.all([
-          this.prisma.db.conversation.count({ where }),
-          this.prisma.db.conversation.count({
+          this.read.conversation.count({ where }),
+          this.read.conversation.count({
             where: { ...where, status: { in: ['resolved', 'closed'] } },
           }),
-          this.prisma.db.conversation.count({ where: { ...where, aiHandled: true } }),
+          this.read.conversation.count({ where: { ...where, aiHandled: true } }),
           // AI resolution means the AI closed it without ever reaching a person.
-          this.prisma.db.conversation.count({
+          this.read.conversation.count({
             where: {
               ...where,
               aiHandled: true,
@@ -57,14 +69,14 @@ export class AnalyticsService {
               assigneeType: { not: 'user' },
             },
           }),
-          this.prisma.db.conversation.aggregate({
+          this.read.conversation.aggregate({
             where: { ...where, csatScore: { not: null } },
             _avg: { csatScore: true },
             _count: { csatScore: true },
           }),
           this.sla.attainment(range),
-          this.prisma.db.aiUsage.aggregate({ where, _sum: { costUsd: true, totalTokens: true } }),
-          this.prisma.db.conversation.count({
+          this.read.aiUsage.aggregate({ where, _sum: { costUsd: true, totalTokens: true } }),
+          this.read.conversation.count({
             where: { status: { in: ['new', 'queued', 'assigned', 'active', 'waiting'] } },
           }),
         ]);
@@ -92,7 +104,7 @@ export class AnalyticsService {
   /** Per-agent productivity: AHT, FCR, CSAT, QA score. */
   async agentPerformance(range: DateRange) {
     return this.redis.remember(this.cacheKey('agents', range), CACHE_SECONDS, async () => {
-      const conversations = await this.prisma.db.conversation.findMany({
+      const conversations = await this.read.conversation.findMany({
         where: {
           createdAt: { gte: range.from, lte: range.to },
           assigneeType: 'user',
@@ -110,7 +122,7 @@ export class AnalyticsService {
         },
       });
 
-      const evaluations = await this.prisma.db.qcEvaluation.findMany({
+      const evaluations = await this.read.qcEvaluation.findMany({
         where: { createdAt: { gte: range.from, lte: range.to }, subjectId: { not: null } },
         select: { subjectId: true, score: true },
       });
@@ -199,30 +211,30 @@ export class AnalyticsService {
       const where = { createdAt: { gte: range.from, lte: range.to } };
 
       const [executions, usage, guardrails, retrieval, handoffs] = await Promise.all([
-        this.prisma.db.execution.groupBy({
+        this.read.execution.groupBy({
           by: ['status'],
           where,
           _count: { _all: true },
           _avg: { durationMs: true },
         }),
-        this.prisma.db.aiUsage.groupBy({
+        this.read.aiUsage.groupBy({
           by: ['model'],
           where,
           _sum: { promptTokens: true, completionTokens: true, costUsd: true },
           _avg: { latencyMs: true },
           _count: { _all: true },
         }),
-        this.prisma.db.guardrailEvent.groupBy({
+        this.read.guardrailEvent.groupBy({
           by: ['check', 'action'],
           where,
           _count: { _all: true },
         }),
-        this.prisma.db.retrievalLog.aggregate({
+        this.read.retrievalLog.aggregate({
           where,
           _avg: { latencyMs: true, topScore: true },
           _count: { _all: true },
         }),
-        this.prisma.db.conversation.count({
+        this.read.conversation.count({
           where: { ...where, aiHandled: true, assigneeType: 'user' },
         }),
       ]);
@@ -230,7 +242,7 @@ export class AnalyticsService {
       const totalExecutions = executions.reduce((total, row) => total + row._count._all, 0);
       const succeeded = executions.find((row) => row.status === 'succeeded')?._count._all ?? 0;
       const failed = executions.find((row) => row.status === 'failed')?._count._all ?? 0;
-      const aiConversations = await this.prisma.db.conversation.count({
+      const aiConversations = await this.read.conversation.count({
         where: { ...where, aiHandled: true },
       });
 
@@ -275,7 +287,7 @@ export class AnalyticsService {
   /** Volume, response time and resolution by channel. */
   async channelPerformance(range: DateRange) {
     return this.redis.remember(this.cacheKey('channels', range), CACHE_SECONDS, async () => {
-      const conversations = await this.prisma.db.conversation.findMany({
+      const conversations = await this.read.conversation.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
         select: {
           channel: true,
@@ -344,7 +356,7 @@ export class AnalyticsService {
     const day = (date: Date) => date.toISOString().slice(0, 10);
 
     if (metric === 'ai_cost') {
-      const rows = await this.prisma.db.aiUsage.findMany({
+      const rows = await this.read.aiUsage.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
         select: { createdAt: true, costUsd: true },
       });
@@ -355,14 +367,14 @@ export class AnalyticsService {
         );
       }
     } else if (metric === 'messages') {
-      const rows = await this.prisma.db.message.findMany({
+      const rows = await this.read.message.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
         select: { createdAt: true },
       });
       for (const row of rows)
         buckets.set(day(row.createdAt), (buckets.get(day(row.createdAt)) ?? 0) + 1);
     } else {
-      const rows = await this.prisma.db.conversation.findMany({
+      const rows = await this.read.conversation.findMany({
         where:
           metric === 'resolutions'
             ? { resolvedAt: { gte: range.from, lte: range.to } }
@@ -395,19 +407,19 @@ export class AnalyticsService {
   /** Live operational snapshot for the supervisor wallboard. */
   async liveSnapshot() {
     const [byStatus, byQueue, agents, oldest] = await Promise.all([
-      this.prisma.db.conversation.groupBy({
+      this.read.conversation.groupBy({
         by: ['status'],
         where: { status: { in: ['new', 'queued', 'assigned', 'active', 'waiting'] } },
         _count: { _all: true },
       }),
-      this.prisma.db.conversation.groupBy({
+      this.read.conversation.groupBy({
         by: ['queueId'],
         where: { status: 'queued' },
         _count: { _all: true },
         _min: { queuedAt: true },
       }),
-      this.prisma.db.membership.count({ where: { user: { presence: 'available' } } }),
-      this.prisma.db.conversation.findFirst({
+      this.read.membership.count({ where: { user: { presence: 'available' } } }),
+      this.read.conversation.findFirst({
         where: { status: 'queued' },
         orderBy: { queuedAt: 'asc' },
         select: { queuedAt: true },

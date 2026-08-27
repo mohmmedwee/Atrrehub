@@ -14,11 +14,11 @@ Status is assessed against **code that exists and runs**, not against intent:
 - **Schema only** — database tables exist, no service or API behind them.
 - **Not built** — designed and documented, no implementation.
 
-**Totals: 41 built · 10 partial · 0 schema only · 0 not built.**
+**Totals: 42 built · 9 partial · 0 schema only · 0 not built.**
 
 ---
 
-## Built (41)
+## Built (42)
 
 | Phase | Domain | Evidence |
 |---|---|---|
@@ -58,15 +58,16 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 38 | Security | Application and data controls — see `docs/security/controls.md` |
 | 43 | Disaster recovery | Automated backup, restore verification into a scratch database, readiness endpoint |
 | 46 | Hybrid deployment | Control-plane / data-plane split with an enforced data residency guard |
-| 48 | Testing platform | 462 unit + 25 integration tests, tenant isolation and webhook isolation in CI |
+| 48 | Testing platform | 474 unit + 25 integration tests, tenant isolation and webhook isolation in CI |
 | 49 | Product QA | Requirement→test→security→UAT process, enforced by CI |
+| 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown, dead-letter store with replay, read-replica routing |
 | 33 | Developer platform | API keys, webhook endpoints with signed delivery and replay, generated TypeScript SDK, OpenAPI with request bodies |
 | 37 | AI governance | Policy API with every field enforced: provider and model allow-lists, tool allow-list, per-execution cap, four-eyes publication |
 | 39 | Enterprise compliance | Subject access export, real right-to-erasure across every table, access reviews, retention enforcement |
 
 ---
 
-## Partial (10)
+## Partial (9)
 
 | Phase | Domain | Built | Gap |
 |---|---|---|---|
@@ -76,10 +77,10 @@ Status is assessed against **code that exists and runs**, not against intent:
 
 | 40 | Enterprise SSO & provisioning | OIDC with JWKS verification, PKCE, domain routing, JIT provisioning, group→role mapping, SCIM 2.0 Users and Groups | No SAML — assertion signature verification needs XML canonicalization, which is not safe to hand-roll |
 | 41 | Observability | 168 Prometheus metrics, structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
-| 42 | High availability | Replicas, HPA, PDB, health probes, graceful shutdown | No read-replica routing, no dead-letter queue configuration |
+
 | 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress, tenant provisioning API with suspend/resume, metered usage records | No payment provider integration |
 | 45 | Private cloud / on-prem | Helm values, no-external-dependency local AI provider | No Terraform, no air-gapped packaging, no private registry flow |
-| 47 | Performance & scalability | Async processing, caching, partial and HNSW indexes, queue workers | No partitioning, no read replicas, no load-test evidence |
+| 47 | Performance & scalability | Async processing, caching, partial and HNSW indexes, queue workers, monthly partitioning with a maintenance job, read-replica routing | No load-test evidence against production-like infrastructure |
 | 50 | Production readiness | Runbooks, monitoring signals, backup and DR procedure | No VAPT, no load testing, no incident-management tooling |
 
 ---

@@ -35,8 +35,13 @@ import { StorageService } from './storage/storage.service';
     },
     {
       provide: PrismaService,
-      useFactory: (logger: AppLogger, config: ConfigService<AppConfig>) =>
-        new PrismaService(logger, config.get('database', { infer: true })?.url),
+      useFactory: (logger: AppLogger, config: ConfigService<AppConfig>) => {
+        const database = config.get('database', { infer: true });
+        return new PrismaService(logger, database?.url, {
+          url: database?.replicaUrl,
+          maxLagSeconds: database?.replicaMaxLagSeconds,
+        });
+      },
       inject: [AppLogger, ConfigService],
     },
     {

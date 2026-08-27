@@ -17,7 +17,12 @@ export const buildConfig = (env: Env) => ({
       .filter(Boolean),
   },
 
-  database: { url: env.DATABASE_URL, rls: env.DB_RLS },
+  database: {
+    url: env.DATABASE_URL,
+    replicaUrl: env.DATABASE_REPLICA_URL,
+    replicaMaxLagSeconds: env.DB_REPLICA_MAX_LAG_SECONDS,
+    rls: env.DB_RLS,
+  },
   redis: { url: env.REDIS_URL },
 
   security: {

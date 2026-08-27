@@ -350,6 +350,7 @@ model Organization {
   timeOffRequests   TimeOffRequest[]
 
   @@map("organizations")
+  deadLetters       DeadLetter[]
 }
 
 model Workspace {
@@ -2283,6 +2284,37 @@ model WebhookDelivery {
   @@index([organizationId, createdAt])
   @@index([nextAttemptAt])
   @@map("webhook_deliveries")
+}
+
+/// Jobs that exhausted every retry.
+///
+/// BullMQ keeps a failed job in Redis for a day and then forgets it, so a job
+/// that could never succeed disappeared with no record and no way to replay it.
+/// This is the record: durable, queryable, and replayable by an operator.
+model DeadLetter {
+  id             String    @id
+  organizationId String    @map("organization_id")
+  queue          String
+  jobName        String    @map("job_name")
+  /// The original BullMQ job id, so a log line can be traced to this row.
+  jobId          String?   @map("job_id")
+  payload        Json
+  attempts       Int       @default(0)
+  error          String
+  stack          String?
+  failedAt       DateTime  @default(now()) @map("failed_at")
+  /// Set when an operator has replayed it; the row is kept either way.
+  replayedAt     DateTime? @map("replayed_at")
+  replayedById   String?   @map("replayed_by_id")
+  /// Set when an operator decided it should never run again.
+  discardedAt    DateTime? @map("discarded_at")
+  note           String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, failedAt])
+  @@index([queue, failedAt])
+  @@map("dead_letters")
 }
 
 /// Transactional outbox — domain events are written in the same transaction as

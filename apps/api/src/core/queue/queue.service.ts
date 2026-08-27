@@ -37,6 +37,24 @@ const DEFAULT_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { age: 86_400 },
 };
 
+/**
+ * Called once a job has exhausted every attempt.
+ *
+ * Supplied rather than imported so this stays free of Prisma: the queue is
+ * core infrastructure and the dead-letter store is a table, and having one
+ * reach for the other would make the queue impossible to construct in a test.
+ */
+export type DeadLetterSink = (letter: {
+  queue: string;
+  jobName: string;
+  jobId?: string;
+  organizationId?: string;
+  payload: unknown;
+  attempts: number;
+  error: string;
+  stack?: string;
+}) => Promise<void>;
+
 @Injectable()
 export class QueueService implements OnModuleDestroy {
   private readonly queues = new Map<QueueName, Queue>();
@@ -47,6 +65,16 @@ export class QueueService implements OnModuleDestroy {
     private readonly logger: AppLogger,
     private readonly concurrency: number,
   ) {}
+
+  private deadLetter?: DeadLetterSink;
+
+  /**
+   * Where exhausted jobs go. Registered after construction because the store
+   * that receives them is built on top of this service.
+   */
+  onDeadLetter(sink: DeadLetterSink): void {
+    this.deadLetter = sink;
+  }
 
   queue(name: QueueName): Queue {
     let queue = this.queues.get(name);
@@ -120,13 +148,40 @@ export class QueueService implements OnModuleDestroy {
       connection: this.connection,
       concurrency: this.concurrency,
     });
-    worker.on('failed', (job, error) =>
-      this.logger.error('Job failed', error, {
+    worker.on('failed', (job, error) => {
+      const attempts = job?.attemptsMade ?? 0;
+      const maxAttempts = (job?.opts?.attempts ?? DEFAULT_JOB_OPTIONS.attempts) as number;
+      const exhausted = attempts >= maxAttempts;
+
+      this.logger.error(exhausted ? 'Job dead-lettered' : 'Job failed', error, {
         queue: name,
         jobId: job?.id,
-        attempts: job?.attemptsMade,
-      }),
-    );
+        attempts,
+        maxAttempts,
+      });
+
+      // Only on the last attempt. Recording every intermediate failure would
+      // fill the table with jobs that went on to succeed, and an operator
+      // reading it could not tell which ones still needed them.
+      if (!exhausted || !job || !this.deadLetter) return;
+      const payload = job.data as JobPayload<unknown>;
+      void this.deadLetter({
+        queue: name,
+        jobName: job.name,
+        jobId: job.id,
+        organizationId: payload?.__ctx?.organizationId,
+        payload: job.data,
+        attempts,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      }).catch((sinkError) =>
+        // If this fails the job is genuinely lost, so it must be loud.
+        this.logger.error('Could not record a dead-lettered job', sinkError, {
+          queue: name,
+          jobId: job.id,
+        }),
+      );
+    });
     worker.on('error', (error) => this.logger.error('Worker error', error, { queue: name }));
     this.workers.push(worker);
     return worker;

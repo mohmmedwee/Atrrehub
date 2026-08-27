@@ -64,6 +64,21 @@ export class ReportsService {
     private readonly logger: AppLogger,
   ) {}
 
+  /**
+   * Where a report's *data* is fetched from.
+   *
+   * Only the query that produces the rows — a report is a snapshot of a past
+   * window by definition, so replication lag is invisible in it, and a large
+   * export should never compete with live traffic.
+   *
+   * Saved-report CRUD deliberately stays on the primary. Those are writes and
+   * read-after-writes: routing them at a replica would fail outright on a
+   * read-only standby, and succeed misleadingly on one that is merely stale.
+   */
+  private get read() {
+    return this.prisma.readOnly();
+  }
+
   catalogue() {
     return describeSources();
   }
@@ -211,7 +226,10 @@ export class ReportsService {
       .filter(Boolean)
       .join('\n');
 
-    const raw = await this.prisma.raw.$queryRawUnsafe<Record<string, unknown>[]>(sql, ...params);
+    // The one query worth keeping off the primary: it scans a reporting window
+    // and can return thousands of rows. It scopes itself by organization in the
+    // WHERE clause above, which is what makes the unguarded client safe here.
+    const raw = await this.read.$queryRawUnsafe<Record<string, unknown>[]>(sql, ...params);
     const truncated = raw.length > limit;
 
     const rows = raw.slice(0, limit).map((row) => {

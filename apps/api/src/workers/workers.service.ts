@@ -20,6 +20,7 @@ import { HybridService } from '../modules/hybrid/hybrid.service';
 import { WfmService } from '../modules/wfm/wfm.service';
 import { IntegrationsService } from '../modules/integrations/integrations.service';
 import { WebhooksService } from '../modules/webhooks/webhooks.service';
+import { PartitionService } from '../modules/resilience/partition.service';
 import { IntelligenceService } from '../modules/intelligence/intelligence.service';
 import { RuntimeService } from '../modules/workflows/runtime.service';
 import { SlaService } from '../modules/sla/sla.service';
@@ -53,6 +54,7 @@ export class WorkersService implements OnApplicationBootstrap {
     private readonly intelligence: IntelligenceService,
     private readonly integrations: IntegrationsService,
     private readonly webhooks: WebhooksService,
+    private readonly partitions: PartitionService,
     private readonly memory: MemoryService,
     private readonly metrics: MetricsService,
     private readonly logger: AppLogger,
@@ -390,6 +392,26 @@ export class WorkersService implements OnApplicationBootstrap {
       if (delivered) this.logger.debug('Retried webhook deliveries', { delivered });
     } catch (error) {
       this.logger.error('Webhook retry sweep failed', error);
+    }
+  }
+
+  /**
+   * Keep monthly partitions ahead of the writes and behind retention.
+   *
+   * Daily rather than monthly, and creating two months ahead, because the
+   * failure mode is total: a range-partitioned table with no partition for
+   * today rejects every insert. A daily job that runs 28 times before it is
+   * needed is the cheapest insurance in the platform.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async maintainPartitions(): Promise<void> {
+    if (!this.enabled) return;
+    try {
+      const results = await RequestContextStore.runAsSystem(() => this.partitions.maintain());
+      const changed = results.filter((row) => row.created.length || row.dropped.length);
+      if (changed.length) this.logger.info('Partitions maintained', { changed });
+    } catch (error) {
+      this.logger.error('Partition maintenance failed', error);
     }
   }
 }
