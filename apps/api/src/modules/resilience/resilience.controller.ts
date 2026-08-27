@@ -8,9 +8,7 @@ import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { DeadLetterService } from './dead-letter.service';
 import { PartitionService } from './partition.service';
 
-const DiscardSchema = z
-  .object({ note: z.string().min(5).max(1000) })
-  .strict();
+const DiscardSchema = z.object({ note: z.string().min(5).max(1000) }).strict();
 
 @ApiTags('Resilience')
 @Controller('resilience')

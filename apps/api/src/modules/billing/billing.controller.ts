@@ -12,7 +12,11 @@ import { ProvisioningService } from './provisioning.service';
 const PlanEnum = z.enum(['starter', 'professional', 'business', 'enterprise']);
 
 const ChangePlanSchema = z
-  .object({ plan: PlanEnum, seats: z.number().int().min(1).max(10_000).optional(), reason: z.string().max(300).optional() })
+  .object({
+    plan: PlanEnum,
+    seats: z.number().int().min(1).max(10_000).optional(),
+    reason: z.string().max(300).optional(),
+  })
   .strict();
 
 const OverrideSchema = z
@@ -126,7 +130,10 @@ export class BillingController {
   @ApiOperation({ summary: 'Recompute a range of days, to repair a gap in the rollups' })
   async backfill(
     @Body(zodBody(z.object({ from: z.coerce.date(), to: z.coerce.date() }).strict()))
-    body: { from: Date; to: Date },
+    body: {
+      from: Date;
+      to: Date;
+    },
   ) {
     const subscription = await this.billing.subscription();
     const rows = await this.metrics.backfill(subscription.organizationId, body.from, body.to);

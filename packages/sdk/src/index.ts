@@ -29,7 +29,11 @@ export class Atrrehub extends Operations {
   }
 
   /** For a call the generator has not caught up with yet. */
-  request<T>(method: string, path: string, options?: Parameters<HttpClient['request']>[2]): Promise<T> {
+  request<T>(
+    method: string,
+    path: string,
+    options?: Parameters<HttpClient['request']>[2],
+  ): Promise<T> {
     return this.http.request<T>(method, path, options);
   }
 }

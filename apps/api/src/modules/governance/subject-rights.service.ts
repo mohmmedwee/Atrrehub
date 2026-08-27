@@ -255,17 +255,15 @@ export class SubjectRightsService {
         select: { id: true, storageKey: true },
       });
       for (const row of rows) {
-        await this.storage
-          .delete(row.storageKey)
-          .catch((error) =>
-            // A missing object is fine — it is already gone. Any other failure
-            // is logged and the row is still removed: leaving the row would
-            // mean the export still lists a file the subject asked us to erase.
-            this.logger.warn('Could not delete a stored object during erasure', {
-              storageKey: row.storageKey,
-              error: error instanceof Error ? error.message : String(error),
-            }),
-          );
+        await this.storage.delete(row.storageKey).catch((error) =>
+          // A missing object is fine — it is already gone. Any other failure
+          // is logged and the row is still removed: leaving the row would
+          // mean the export still lists a file the subject asked us to erase.
+          this.logger.warn('Could not delete a stored object during erasure', {
+            storageKey: row.storageKey,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
       }
       if (rows.length) {
         await delegate.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } });

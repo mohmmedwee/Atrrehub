@@ -133,12 +133,9 @@ export class DeadLetterService implements OnApplicationBootstrap {
     // The payload already carries its `__ctx`, so the job replays inside the
     // tenant it originally belonged to rather than whoever is replaying it.
     const payload = letter.payload as Record<string, unknown>;
-    const jobId = await this.queue.enqueue(
-      queueName,
-      letter.jobName,
-      payload,
-      { organizationId: letter.organizationId },
-    );
+    const jobId = await this.queue.enqueue(queueName, letter.jobName, payload, {
+      organizationId: letter.organizationId,
+    });
 
     const updated = await this.prisma.db.deadLetter.update({
       where: { id: deadLetterId },

@@ -51,7 +51,8 @@ async function loadDocument(): Promise<OpenApiDocument> {
   }
 
   const urlIndex = process.argv.indexOf('--url');
-  const base = (urlIndex !== -1 ? process.argv[urlIndex + 1] : undefined) ?? 'http://localhost:4000';
+  const base =
+    (urlIndex !== -1 ? process.argv[urlIndex + 1] : undefined) ?? 'http://localhost:4000';
   const response = await fetch(`${base.replace(/\/+$/, '')}/api/openapi.json`);
   if (!response.ok) {
     throw new Error(
@@ -66,8 +67,10 @@ async function loadDocument(): Promise<OpenApiDocument> {
 function methodName(operationId: string | undefined, method: string, path: string): string {
   if (operationId) {
     // Nest emits `ControllerName_handlerName`; the handler name is the useful half.
-    const handler = operationId.includes('_') ? operationId.split('_').slice(1).join('_') : operationId;
-    const controller = operationId.includes('_') ? operationId.split('_')[0] ?? '' : '';
+    const handler = operationId.includes('_')
+      ? operationId.split('_').slice(1).join('_')
+      : operationId;
+    const controller = operationId.includes('_') ? (operationId.split('_')[0] ?? '') : '';
     const group = controller.replace(/Controller$/, '');
     return camel(`${handler}_${group}`);
   }
@@ -155,15 +158,22 @@ function render(operations: Operation[]): string {
 
     if (operation.queryParams.length) {
       const fields = operation.queryParams
-        .map((param) => `${JSON.stringify(param.name)}${param.required ? '' : '?'}: string | number | boolean`)
+        .map(
+          (param) =>
+            `${JSON.stringify(param.name)}${param.required ? '' : '?'}: string | number | boolean`,
+        )
         .join('; ');
-      if (operation.queryParams.some((param) => param.required)) required.push(`query: { ${fields} }`);
+      if (operation.queryParams.some((param) => param.required))
+        required.push(`query: { ${fields} }`);
       else optional.push(`query?: { ${fields} }`);
     }
     optional.push('options?: RequestOptions');
     const args = [...required, ...optional];
 
-    const template = operation.path.replace(/\{(\w+)\}/g, (_match, param) => `\${encodeURIComponent(${camel(param)})}`);
+    const template = operation.path.replace(
+      /\{(\w+)\}/g,
+      (_match, param) => `\${encodeURIComponent(${camel(param)})}`,
+    );
     const requestOptions: string[] = ['...options'];
     if (operation.hasBody || operation.maybeBody) requestOptions.push('body');
     if (operation.queryParams.length) requestOptions.push('query: { ...query, ...options?.query }');

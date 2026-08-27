@@ -37,7 +37,12 @@ export interface OpenApiSchema {
 }
 
 /** Unwraps the wrappers that describe presence rather than shape. */
-function unwrap(schema: ZodTypeAny): { inner: ZodTypeAny; optional: boolean; nullable: boolean; defaultValue?: unknown } {
+function unwrap(schema: ZodTypeAny): {
+  inner: ZodTypeAny;
+  optional: boolean;
+  nullable: boolean;
+  defaultValue?: unknown;
+} {
   let inner = schema;
   let optional = false;
   let nullable = false;
@@ -46,7 +51,12 @@ function unwrap(schema: ZodTypeAny): { inner: ZodTypeAny; optional: boolean; nul
   // Bounded rather than `while (true)`: a schema built by a cyclic factory
   // would otherwise hang the process at module load, before any log line.
   for (let depth = 0; depth < 20; depth += 1) {
-    const definition = inner._def as { typeName?: string; innerType?: ZodTypeAny; defaultValue?: () => unknown; schema?: ZodTypeAny };
+    const definition = inner._def as {
+      typeName?: string;
+      innerType?: ZodTypeAny;
+      defaultValue?: () => unknown;
+      schema?: ZodTypeAny;
+    };
     if (definition.typeName === 'ZodOptional') {
       optional = true;
       inner = definition.innerType!;
@@ -77,7 +87,9 @@ export function zodToOpenApi(schema: ZodTypeAny): OpenApiSchema {
   switch (definition.typeName) {
     case 'ZodString': {
       const checks = (definition.checks ?? []) as { kind: string; value?: number }[];
-      const format = checks.find((check) => ['email', 'url', 'uuid', 'datetime'].includes(check.kind));
+      const format = checks.find((check) =>
+        ['email', 'url', 'uuid', 'datetime'].includes(check.kind),
+      );
       return {
         ...base,
         type: 'string',

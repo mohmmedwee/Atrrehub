@@ -142,8 +142,18 @@ export class WebhooksService {
       'webhook.updated',
       'webhook_endpoint',
       endpointId,
-      { name: existing.name, url: existing.url, events: existing.events, isActive: existing.isActive },
-      { name: endpoint.name, url: endpoint.url, events: endpoint.events, isActive: endpoint.isActive },
+      {
+        name: existing.name,
+        url: existing.url,
+        events: existing.events,
+        isActive: existing.isActive,
+      },
+      {
+        name: endpoint.name,
+        url: endpoint.url,
+        events: endpoint.events,
+        isActive: endpoint.isActive,
+      },
     );
     return this.redact(endpoint);
   }
@@ -189,7 +199,13 @@ export class WebhooksService {
 
   // ── Delivery history ───────────────────────────────────────────────────────
 
-  async deliveries(options: { endpointId?: string; status?: 'delivered' | 'pending' | 'failed'; limit?: number } = {}) {
+  async deliveries(
+    options: {
+      endpointId?: string;
+      status?: 'delivered' | 'pending' | 'failed';
+      limit?: number;
+    } = {},
+  ) {
     const where: Prisma.WebhookDeliveryWhereInput = {};
     if (options.endpointId) {
       await this.load(options.endpointId);
@@ -270,7 +286,9 @@ export class WebhooksService {
       type: 'ping',
       createdAt: new Date().toISOString(),
       organizationId: endpoint.organizationId,
-      data: { message: 'If you can read this, your endpoint is reachable and your secret verifies.' },
+      data: {
+        message: 'If you can read this, your endpoint is reachable and your secret verifies.',
+      },
     };
     return this.post(endpoint, payload, 'ping', payload.id);
   }
@@ -357,13 +375,16 @@ export class WebhooksService {
    * retry sweep both come through here so that backoff, failure counting and
    * auto-disable cannot drift apart between them.
    */
-  async attempt(deliveryId: string): Promise<{ delivered: boolean; statusCode?: number; error?: string }> {
+  async attempt(
+    deliveryId: string,
+  ): Promise<{ delivered: boolean; statusCode?: number; error?: string }> {
     const delivery = await this.prisma.raw.webhookDelivery.findUnique({
       where: { id: deliveryId },
       include: { endpoint: true },
     });
     if (!delivery) throw AppError.notFound('Webhook delivery', deliveryId);
-    if (delivery.deliveredAt) return { delivered: true, statusCode: delivery.statusCode ?? undefined };
+    if (delivery.deliveredAt)
+      return { delivered: true, statusCode: delivery.statusCode ?? undefined };
     if (!delivery.endpoint.isActive) return { delivered: false, error: 'endpoint is disabled' };
 
     const attempts = delivery.attempts + 1;
@@ -545,7 +566,8 @@ export class WebhooksService {
 
   private assertUrl(url: string): void {
     const reachable = this.reachable(url);
-    if (!reachable.allowed) throw AppError.badRequest(`That URL cannot be used: ${reachable.reason}`);
+    if (!reachable.allowed)
+      throw AppError.badRequest(`That URL cannot be used: ${reachable.reason}`);
   }
 
   /**
@@ -578,14 +600,19 @@ export class WebhooksService {
     const egress = isEgressAllowed(url);
     if (!egress.allowed) return egress;
     if (parsed.protocol !== 'https:') {
-      return { allowed: false, reason: 'webhooks must be HTTPS — the payload carries customer data' };
+      return {
+        allowed: false,
+        reason: 'webhooks must be HTTPS — the payload carries customer data',
+      };
     }
     return { allowed: true };
   }
 
   private assertEvents(events: string[]): string[] {
     if (!events.length) {
-      throw AppError.badRequest('Subscribe to at least one event, or the endpoint receives nothing');
+      throw AppError.badRequest(
+        'Subscribe to at least one event, or the endpoint receives nothing',
+      );
     }
     const invalid = events.filter((event) => !isValidSubscription(event));
     if (invalid.length) {

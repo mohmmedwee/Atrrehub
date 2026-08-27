@@ -94,9 +94,7 @@ export class AccessReviewService {
     ]);
 
     const sessionsByUser = new Map(sessions.map((row) => [row.userId, row._count._all]));
-    const keysByUser = new Map(
-      apiKeys.map((row) => [row.createdById ?? '', row._count._all]),
-    );
+    const keysByUser = new Map(apiKeys.map((row) => [row.createdById ?? '', row._count._all]));
 
     const now = Date.now();
     const rows = memberships.map((membership): AccessReviewRow => {
@@ -117,7 +115,8 @@ export class AccessReviewService {
 
       const flags: string[] = [];
       if (dormant && sensitive.length) flags.push('dormant account with sensitive access');
-      if (!membership.user.mfaEnabled && sensitive.length) flags.push('sensitive access without MFA');
+      if (!membership.user.mfaEnabled && sensitive.length)
+        flags.push('sensitive access without MFA');
       if (membership.isOwner && membership.user.status !== 'active')
         flags.push('owner whose account is not active');
       if ((keysByUser.get(membership.userId) ?? 0) > 0 && dormant)
@@ -147,7 +146,8 @@ export class AccessReviewService {
       (a, b) =>
         b.flags.length - a.flags.length ||
         b.sensitivePermissions.length - a.sensitivePermissions.length ||
-        (b.daysSinceLogin ?? Number.MAX_SAFE_INTEGER) - (a.daysSinceLogin ?? Number.MAX_SAFE_INTEGER),
+        (b.daysSinceLogin ?? Number.MAX_SAFE_INTEGER) -
+          (a.daysSinceLogin ?? Number.MAX_SAFE_INTEGER),
     );
 
     return {
@@ -188,10 +188,12 @@ export class AccessReviewService {
         note: input.note,
         reviewedMembers: snapshot.summary.members,
         dormant: snapshot.summary.dormant,
-        flagged: snapshot.rows.filter((row) => row.flags.length).map((row) => ({
-          userId: row.userId,
-          flags: row.flags,
-        })),
+        flagged: snapshot.rows
+          .filter((row) => row.flags.length)
+          .map((row) => ({
+            userId: row.userId,
+            flags: row.flags,
+          })),
         revokedUserIds: input.revokedUserIds ?? [],
         reviewer: reviewer?.id,
       },

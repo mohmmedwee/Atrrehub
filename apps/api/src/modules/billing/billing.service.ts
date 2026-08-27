@@ -6,13 +6,7 @@ import { newId } from '../../core/ids/id.service';
 import { AppLogger } from '../../core/logger/logger.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import {
-  LIMIT_LABELS,
-  PLANS,
-  effectiveLimit,
-  hasFeature,
-  type LimitKey,
-} from './plans';
+import { LIMIT_LABELS, PLANS, effectiveLimit, hasFeature, type LimitKey } from './plans';
 
 /**
  * Subscriptions, plan limits and metered usage.
@@ -30,8 +24,7 @@ type Counter = (
 ) => Promise<number>;
 
 const COUNTERS: Record<LimitKey, Counter> = {
-  seats: (prisma, organizationId) =>
-    prisma.raw.membership.count({ where: { organizationId } }),
+  seats: (prisma, organizationId) => prisma.raw.membership.count({ where: { organizationId } }),
 
   // Monthly limits count the current billing period, not all time — the
   // difference between a usage allowance and a hard cap on the product.
@@ -147,7 +140,10 @@ export class BillingService {
       where: { id: current.id },
       data: { plan: tier, seats: options.seats ?? PLANS[tier].limits.seats ?? current.seats },
     });
-    await this.prisma.raw.organization.update({ where: { id: organizationId }, data: { plan: tier } });
+    await this.prisma.raw.organization.update({
+      where: { id: organizationId },
+      data: { plan: tier },
+    });
 
     await this.audit.record({
       action: 'billing.plan_changed',
@@ -199,8 +195,7 @@ export class BillingService {
     if (limit === null) return;
 
     const used = await COUNTERS[key](this.prisma, organizationId, this.periodStart(subscription));
-    if (used + adding > limit)
-      throw AppError.quotaExceeded(LIMIT_LABELS[key], limit);
+    if (used + adding > limit) throw AppError.quotaExceeded(LIMIT_LABELS[key], limit);
   }
 
   async assertFeature(feature: string): Promise<void> {

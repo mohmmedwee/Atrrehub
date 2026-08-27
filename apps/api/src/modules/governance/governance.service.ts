@@ -59,7 +59,9 @@ export class GovernanceService {
 
   /** Everything a policy screen needs: the policy, and what it can choose from. */
   async catalogue() {
-    const tools = await this.toolsService().list().catch(() => []);
+    const tools = await this.toolsService()
+      .list()
+      .catch(() => []);
     return {
       providers: this.configuredProviders(),
       tools: tools.map((tool: { key: string; name: string }) => ({
@@ -105,10 +107,14 @@ export class GovernanceService {
     const policy = await this.prisma.raw.governancePolicy.update({
       where: { organizationId },
       data: {
-        ...(input.allowedProviders === undefined ? {} : { allowedProviders: input.allowedProviders }),
+        ...(input.allowedProviders === undefined
+          ? {}
+          : { allowedProviders: input.allowedProviders }),
         ...(input.allowedModels === undefined ? {} : { allowedModels: input.allowedModels }),
         ...(input.allowedTools === undefined ? {} : { allowedTools: input.allowedTools }),
-        ...(input.monthlyTokenLimit === undefined ? {} : { monthlyTokenLimit: input.monthlyTokenLimit }),
+        ...(input.monthlyTokenLimit === undefined
+          ? {}
+          : { monthlyTokenLimit: input.monthlyTokenLimit }),
         ...(input.monthlyCostLimitUsd === undefined
           ? {}
           : { monthlyCostLimitUsd: input.monthlyCostLimitUsd as unknown as Prisma.Decimal }),
@@ -118,7 +124,9 @@ export class GovernanceService {
         ...(input.requireHumanApproval === undefined
           ? {}
           : { requireHumanApproval: input.requireHumanApproval }),
-        ...(input.dataRetentionDays === undefined ? {} : { dataRetentionDays: input.dataRetentionDays }),
+        ...(input.dataRetentionDays === undefined
+          ? {}
+          : { dataRetentionDays: input.dataRetentionDays }),
         ...(input.allowTraining === undefined ? {} : { allowTraining: input.allowTraining }),
       },
     });

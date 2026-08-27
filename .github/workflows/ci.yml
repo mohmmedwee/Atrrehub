@@ -35,6 +35,10 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm --filter @atrrehub/api test
+      # Every number in a document rots. These are the checkable ones, and
+      # several had already drifted before this ran for the first time.
+      - name: Documentation matches the code
+        run: node scripts/audit-docs.mjs
 
   integration:
     name: Integration tests

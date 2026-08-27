@@ -189,7 +189,10 @@ export class ProvisioningService {
     await RequestContextStore.runAsSystem(
       () =>
         this.audit.record({
-          action: status === 'suspended' ? 'provisioning.tenant_suspended' : 'provisioning.tenant_resumed',
+          action:
+            status === 'suspended'
+              ? 'provisioning.tenant_suspended'
+              : 'provisioning.tenant_resumed',
           resourceType: 'organization',
           resourceId: organizationId,
         }),

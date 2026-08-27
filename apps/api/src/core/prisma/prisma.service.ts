@@ -121,7 +121,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       // boot, where somebody is watching, instead of on the first report.
       await this.replicaClient.$connect();
       const lag = await this.replicaLagSeconds();
-      this.logger.info('Read replica connected', { lagSeconds: lag, maxLagSeconds: this.maxLagSeconds });
+      this.logger.info('Read replica connected', {
+        lagSeconds: lag,
+        maxLagSeconds: this.maxLagSeconds,
+      });
     }
   }
 

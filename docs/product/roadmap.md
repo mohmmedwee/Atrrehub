@@ -76,7 +76,7 @@ Status is assessed against **code that exists and runs**, not against intent:
 | 35 | Billing & usage | Four plans with ten enforced limits, subscriptions, negotiated overrides, monthly usage records, invoice estimate | No payment provider; the invoice estimate is list price only |
 
 | 40 | Enterprise SSO & provisioning | OIDC with JWKS verification, PKCE, domain routing, JIT provisioning, group→role mapping, SCIM 2.0 Users and Groups | No SAML — assertion signature verification needs XML canonicalization, which is not safe to hand-roll |
-| 41 | Observability | 168 Prometheus metrics, structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
+| 41 | Observability | 44 Prometheus metric names (217 series), structured logs with correlation, OTLP tracing across HTTP and Prisma with database query spans | No log aggregation shipped; no alert rules bundled |
 
 | 44 | SaaS deployment | Helm chart, Compose, migration hook, ingress, tenant provisioning API with suspend/resume, metered usage records | No payment provider integration |
 | 45 | Private cloud / on-prem | Helm values, local AI provider with no external dependency, air-gapped bundle with a verifiable manifest, Terraform for the AWS data plane | The Terraform has not been applied against a live account — the provider registry was unreachable where it was written |

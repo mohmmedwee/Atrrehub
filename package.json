@@ -26,7 +26,9 @@
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
-    "bootstrap": "bash scripts/bootstrap.sh"
+    "bootstrap": "bash scripts/bootstrap.sh",
+    "audit:docs": "node scripts/audit-docs.mjs",
+    "loadtest": "node tools/loadtest/run.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

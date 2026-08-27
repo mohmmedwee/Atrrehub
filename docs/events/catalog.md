@@ -34,6 +34,7 @@ committed.
 | `user.invited` | `{ email, roleId }` |
 | `user.activated` | `{ userId }` |
 | `user.deactivated` | `{ userId }` |
+| `user.presence_changed` | `{ userId, presence, note }` |
 | `role.changed` | `{ userId, from, to }` |
 | `session.created` | `{ userId, ip, userAgent }` |
 | `apikey.created` / `apikey.revoked` | `{ apiKeyId }` |

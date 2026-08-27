@@ -131,9 +131,7 @@ export class PartitionService {
    * rather than parsed out of their names — a partition attached by hand with
    * different bounds must not be dropped because its name looked right.
    */
-  private async existingPartitions(
-    table: string,
-  ): Promise<{ name: string; upperBound: string }[]> {
+  private async existingPartitions(table: string): Promise<{ name: string; upperBound: string }[]> {
     const rows = await this.prisma.raw.$queryRawUnsafe<{ name: string; expression: string }[]>(
       `SELECT child.relname AS name, pg_get_expr(child.relpartbound, child.oid) AS expression
        FROM pg_inherits
